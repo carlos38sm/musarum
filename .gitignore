@@ -1,0 +1,44 @@
+#. Java / Spring Boot
+target/
+*.class
+*.jar
+*.war
+.classpath
+.project
+.settings/
+.idea/
+*.iml
+*.log
+.metadata/
+
+#. Variables de entorno y seguridad
+.env
+application-secret.properties
+
+#. Archivos de sistema
+.DS_Store
+Thumbs.db
+
+#. Angular / Node
+node_modules/
+dist/
+.angular/
+
+#. Carpeta de Recursos Musicales
+**/uploads/
+
+#. Certificados y claves
+*.pem
+*.key
+*.p12
+
+#. Android / Kotlin
+.gradle/
+build/
+local.properties
+.externalNativeBuild/
+.cxx/
+
+#. Otros
+*.bak
+*.tmp
