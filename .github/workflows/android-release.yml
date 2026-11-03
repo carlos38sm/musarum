@@ -49,6 +49,27 @@ jobs:
         # ./gradlew da exit 126 (permission denied) sin este chmod.
         run: chmod +x gradlew
 
+      - name: Validate release secrets
+        # Si falta alguno de los 4 secrets Android, abortamos con mensaje
+        # claro en vez de dejar que el fallo caiga más adelante con un error
+        # críptico (base64 vacío, keystore ilegible, etc).
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=()
+          [ -z "$KEYSTORE_B64" ] && missing+=("ANDROID_KEYSTORE_BASE64")
+          [ -z "$KEYSTORE_PASSWORD" ] && missing+=("ANDROID_KEYSTORE_PASSWORD")
+          [ -z "$KEY_ALIAS" ] && missing+=("ANDROID_KEY_ALIAS")
+          [ -z "$KEY_PASSWORD" ] && missing+=("ANDROID_KEY_PASSWORD")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Faltan secrets en Settings → Secrets and variables → Actions: ${missing[*]}"
+            exit 1
+          fi
+          echo "Los 4 secrets Android están presentes."
+
       - name: Determine version
         id: version
         run: |
