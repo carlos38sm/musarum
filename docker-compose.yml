@@ -1,3 +1,25 @@
+# Musarum — stack completo. Levanta con `docker compose up -d`.
+#
+# Volúmenes clave:
+#   - ${MUSARUM_MUSIC_PATH}:/music → carpeta paraguas con la música y las
+#     subcarpetas que el backend crea (_covers, _lyrics, _videos,
+#     _profilepictures). Dentro del contenedor siempre es /music, así que
+#     las variables de app apuntan a esa ruta.
+#   - musarum_postgres_data → datos de Postgres (no borrar manualmente).
+#
+# Variables obligatorias en .env (al lado de este fichero):
+#   POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+#   JWT_SECRET, JWT_EXPIRATION
+#   MUSARUM_OWNER_NICK, MUSARUM_OWNER_PASSWORD
+#   MUSARUM_MUSIC_PATH (ruta HOST, no del contenedor)
+#
+# Opcionales:
+#   MUSARUM_APK_LATEST, MUSARUM_APK_URL, MUSARUM_APK_MANDATORY → canal
+#     de releases que lee el móvil al arrancar (ver VersionController).
+#
+# Si Emendatium no te interesa de momento, comenta su bloque + el
+# EMENDATIUM_BASE_URL del backend; el backend sigue funcionando igual.
+
 services:
   postgres:
     image: postgres:17
@@ -11,6 +33,75 @@ services:
       - "5432:5432"
     volumes:
       - musarum_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    image: ghcr.io/${GITHUB_OWNER:-carlos}/musarum-backend:latest
+    container_name: musarum-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Dentro del contenedor Postgres está en el nombre del servicio.
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # El JDBC URL del backend está hard-coded a localhost:5432 en
+      # application.properties: lo sobreescribimos aquí.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION}
+      MUSARUM_OWNER_NICK: ${MUSARUM_OWNER_NICK}
+      MUSARUM_OWNER_PASSWORD: ${MUSARUM_OWNER_PASSWORD}
+      MUSARUM_MUSIC_PATH: /music
+      # Enriquecimiento opcional: si no quieres levantar Emendatium, comenta.
+      EMENDATIUM_BASE_URL: http://emendatium:8081
+      # Canal de releases que lee el móvil (opcional).
+      MUSARUM_APK_LATEST: ${MUSARUM_APK_LATEST:-}
+      MUSARUM_APK_URL: ${MUSARUM_APK_URL:-}
+      MUSARUM_APK_MANDATORY: ${MUSARUM_APK_MANDATORY:-false}
+    volumes:
+      - ${MUSARUM_MUSIC_PATH}:/music
+    ports:
+      - "8080:8080"
+    labels:
+      # Watchtower mira estas labels: solo actualiza las imágenes etiquetadas.
+      com.centurylinklabs.watchtower.enable: "true"
+
+  emendatium:
+    build:
+      context: ./emendatium
+    image: ghcr.io/${GITHUB_OWNER:-carlos}/musarum-emendatium:latest
+    container_name: musarum-emendatium
+    restart: unless-stopped
+    environment:
+      MUSARUM_MUSIC_PATH: /music
+    volumes:
+      - ${MUSARUM_MUSIC_PATH}:/music
+    ports:
+      - "8081:8081"
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: musarum-watchtower
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Comprueba cada 30 min, solo actualiza contenedores con la label.
+      WATCHTOWER_POLL_INTERVAL: 1800
+      WATCHTOWER_LABEL_ENABLE: "true"
+      WATCHTOWER_CLEANUP: "true"
+      TZ: Europe/Madrid
 
 volumes:
   musarum_postgres_data:

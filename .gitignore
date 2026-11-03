@@ -15,6 +15,12 @@ target/
 .env
 application-secret.properties
 
+#. Firma Android — NUNCA commitear el keystore ni sus contraseñas.
+#  Si lo pierdes, no puedes publicar updates de la misma app.
+mobile/keystore.properties
+*.jks
+*.keystore
+
 #. Archivos de sistema
 .DS_Store
 Thumbs.db

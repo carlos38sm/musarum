@@ -1,0 +1,52 @@
+name: Backend image
+
+# Construye y publica la imagen del backend a GHCR. Watchtower, corriendo
+# en el portátil, verá la etiqueta `latest` nueva y actualizará el
+# contenedor sin que nadie entre por SSH.
+#
+# Dispara con tag "backend-vX.Y.Z" o manualmente. Las imágenes quedan en:
+#   ghcr.io/<owner>/musarum-backend:latest
+#   ghcr.io/<owner>/musarum-backend:<tag>
+
+on:
+  push:
+    tags:
+      - 'backend-v*'
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          # El owner viene minúsculas (GHCR es case-sensitive al revés).
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/musarum-backend:latest
+            ghcr.io/${{ github.repository_owner }}/musarum-backend:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

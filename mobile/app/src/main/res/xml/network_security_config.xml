@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Musarum solo habla con un host: el backend propio en Tailscale (IPs
+  100.64.0.0/10) o en LAN del dueño. Como no hablamos con ninguna web
+  pública, permitimos cleartext globalmente — simplifica cambiar la IP
+  del servidor sin tocar el XML. El JWT va dentro del Authorization
+  header, cifrarlo contra tu propio portátil en Tailscale no aporta nada.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>
