@@ -10,10 +10,14 @@ val localProps = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
+// Fallback a la IP del servidor en Tailscale: una IP CGNAT que solo funciona
+// dentro de la tailnet del dueño, así que no es "pública" aunque esté en el
+// repo. Si cambias de servidor, actualiza local.properties o el secret
+// MUSARUM_BASE_URL en Actions sin tocar este fichero.
 val musarumBaseUrl: String =
     (localProps.getProperty("musarum.baseUrl")?.takeIf { it.isNotBlank() }
         ?: System.getenv("MUSARUM_BASE_URL")?.takeIf { it.isNotBlank() }
-        ?: "http://10.0.2.2:8080/api/v1/")
+        ?: "http://100.88.167.4:8080/api/v1/")
 
 // El workflow de GitHub Actions inyecta MUSARUM_VERSION_NAME derivado del tag
 // (android-v1.2.3 → "1.2.3"). En local se queda en el fallback.
