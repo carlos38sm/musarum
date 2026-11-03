@@ -44,6 +44,11 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Make gradlew executable
+        # El repo se cloneó desde Windows, el bit +x se pierde. En Linux
+        # ./gradlew da exit 126 (permission denied) sin este chmod.
+        run: chmod +x gradlew
+
       - name: Determine version
         id: version
         run: |
