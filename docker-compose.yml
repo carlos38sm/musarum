@@ -91,7 +91,7 @@ services:
       com.centurylinklabs.watchtower.enable: "true"
 
   watchtower:
-    image: containrrr/watchtower:latest
+    image: containrrr/watchtower:1.7.1
     container_name: musarum-watchtower
     restart: unless-stopped
     volumes:
