@@ -11,9 +11,27 @@ val localProps = Properties().apply {
 }
 
 val musarumBaseUrl: String =
-    (localProps.getProperty("musarum.baseUrl")
-        ?: System.getenv("MUSARUM_BASE_URL")
+    (localProps.getProperty("musarum.baseUrl")?.takeIf { it.isNotBlank() }
+        ?: System.getenv("MUSARUM_BASE_URL")?.takeIf { it.isNotBlank() }
         ?: "http://10.0.2.2:8080/api/v1/")
+
+// El workflow de GitHub Actions inyecta MUSARUM_VERSION_NAME derivado del tag
+// (android-v1.2.3 → "1.2.3"). En local se queda en el fallback.
+val musarumVersionName: String =
+    System.getenv("MUSARUM_VERSION_NAME")?.takeIf { it.isNotBlank() } ?: "1.0.0"
+
+// versionCode derivado del versionName: "1.2.3" → 1*10000 + 2*100 + 3 = 10203.
+// Garantiza monotonía siempre que el versionName suba, que es lo que Android pide.
+val musarumVersionCode: Int = run {
+    val parts = musarumVersionName.split(".").mapNotNull { it.toIntOrNull() }
+    val code = when (parts.size) {
+        3 -> parts[0] * 10000 + parts[1] * 100 + parts[2]
+        2 -> parts[0] * 10000 + parts[1] * 100
+        1 -> parts[0] * 10000
+        else -> 1
+    }
+    code.coerceAtLeast(1)
+}
 
 android {
     namespace = "com.musarum.mobile"
@@ -27,8 +45,8 @@ android {
         applicationId = "com.musarum.mobile"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = musarumVersionCode
+        versionName = musarumVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
