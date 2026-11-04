@@ -276,6 +276,16 @@ interface ApiService {
     @GET("version")
     suspend fun appVersion(): com.musarum.mobile.data.network.dto.VersionDto
 
+    // ── Anuncio de versión (OWNER) ──
+    @GET("admin/version")
+    suspend fun currentPublishedUpdate():
+            com.musarum.mobile.data.network.dto.AppUpdateDto
+
+    @POST("admin/version")
+    suspend fun publishUpdate(
+        @Body request: com.musarum.mobile.data.network.dto.PublishUpdateRequest
+    ): com.musarum.mobile.data.network.dto.AppUpdateDto
+
     @retrofit2.http.POST("admin/server/clean-orphan-lyrics")
     suspend fun cleanOrphanLyrics(): com.musarum.mobile.data.network.dto.CleanOrphanLyricsDto
 

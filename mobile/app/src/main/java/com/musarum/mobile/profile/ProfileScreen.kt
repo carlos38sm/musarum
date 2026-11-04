@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PlayArrow
@@ -81,6 +82,7 @@ fun ProfileScreen(
     onOpenUsers: () -> Unit = {},
     onOpenServerStats: () -> Unit = {},
     onOpenEqualizer: () -> Unit = {},
+    onOpenPublishUpdate: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModel.factory(LocalAppContainer.current.userRepository)
     )
@@ -339,6 +341,13 @@ fun ProfileScreen(
                     title = "Análisis del servidor",
                     subtitle = "Catálogo, letras, disco y actividad",
                     onClick = onOpenServerStats
+                )
+                Spacer(Modifier.height(10.dp))
+                SettingRow(
+                    icon = Icons.Filled.NewReleases,
+                    title = "Publicar actualización",
+                    subtitle = "Anunciar nueva versión del APK",
+                    onClick = onOpenPublishUpdate
                 )
             }
 

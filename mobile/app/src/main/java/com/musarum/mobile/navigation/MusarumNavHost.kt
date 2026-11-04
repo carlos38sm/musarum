@@ -204,7 +204,8 @@ fun MusarumNavHost(
                     onOpenFolders = { navController.navigate(Routes.LIBRARY_FOLDERS) },
                     onOpenUsers = { navController.navigate(Routes.USERS_ADMIN) },
                     onOpenServerStats = { navController.navigate(Routes.SERVER_STATS) },
-                    onOpenEqualizer = { navController.navigate(Routes.EQUALIZER) }
+                    onOpenEqualizer = { navController.navigate(Routes.EQUALIZER) },
+                    onOpenPublishUpdate = { navController.navigate(Routes.PUBLISH_UPDATE) }
                 )
             }
 
@@ -218,6 +219,12 @@ fun MusarumNavHost(
 
             composable(Routes.SERVER_STATS) {
                 ServerStatsScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(Routes.PUBLISH_UPDATE) {
+                com.musarum.mobile.profile.version.PublishUpdateScreen(
+                    onBack = { navController.popBackStack() }
+                )
             }
 
             composable(Routes.EQUALIZER) {

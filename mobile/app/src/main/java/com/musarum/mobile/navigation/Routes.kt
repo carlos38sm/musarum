@@ -19,6 +19,7 @@ object Routes {
     const val LIBRARY_FOLDERS = "profile/folders"
     const val USERS_ADMIN = "profile/users"
     const val SERVER_STATS = "profile/server"
+    const val PUBLISH_UPDATE = "profile/publish-update"
     const val EQUALIZER = "profile/equalizer"
 
     const val PLAYLIST_DETAIL = "playlist/{id}"
