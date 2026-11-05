@@ -267,6 +267,39 @@ public class ServerStatsService {
         }
     }
 
+    /**
+     * Vacía la biblioteca entera: canciones, artistas, álbumes, géneros y todas
+     * sus referencias (favoritos, entradas de playlist, reproducciones). NO
+     * toca usuarios, playlists, carpetas configuradas ni ajustes — solo el
+     * catálogo musical. Útil para re-arrancar con una carpeta de música nueva
+     * sin arrastrar duplicados ni fantasmas del scanner.
+     *
+     * Devuelve las cifras de "antes" para que el móvil las muestre al OWNER.
+     */
+    @Transactional
+    public WipeSummary wipeLibrary() {
+        long songsBefore = songRepository.count();
+        long artistsBefore = artistRepository.count();
+        long albumsBefore = albumRepository.count();
+        long genresBefore = genreRepository.count();
+
+        // TRUNCATE nativo: mucho más rápido que DELETE row-by-row con Hibernate,
+        // RESTART IDENTITY resetea las secuencias (así los próximos ids vuelven
+        // a 1), CASCADE arrastra song_artists/favoritos/etc. automáticamente.
+        entityManager.createNativeQuery(
+                "TRUNCATE TABLE songs, albums, artists, genres, " +
+                "song_artists, playlist_entries, favorites, reproductions " +
+                "RESTART IDENTITY CASCADE"
+        ).executeUpdate();
+
+        log.info("wipeLibrary: borradas {} canciones, {} artistas, {} álbumes, {} géneros",
+                songsBefore, artistsBefore, albumsBefore, genresBefore);
+
+        return new WipeSummary(songsBefore, artistsBefore, albumsBefore, genresBefore);
+    }
+
+    public record WipeSummary(long songs, long artists, long albums, long genres) {}
+
     /** Borra los `.lrc` huérfanos y devuelve cuántos se eliminaron. */
     public int deleteOrphanLyricFiles() {
         int deleted = 0;

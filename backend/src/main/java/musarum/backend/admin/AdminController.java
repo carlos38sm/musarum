@@ -33,5 +33,15 @@ class AdminController {
         return new DeleteResult(deleted);
     }
 
+    /**
+     * Vacía el catálogo musical entero (canciones + artistas + álbumes + géneros
+     * y sus referencias). Deja intactos usuarios, playlists y carpetas
+     * configuradas. Pensado para re-arrancar con una carpeta de música nueva.
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/wipe-library")
+    ServerStatsService.WipeSummary wipeLibrary() {
+        return statsService.wipeLibrary();
+    }
+
     public record DeleteResult(int deleted) {}
 }

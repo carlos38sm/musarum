@@ -16,7 +16,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,12 +28,20 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,6 +64,9 @@ fun ServerStatsScreen(onBack: () -> Unit) {
         factory = ServerStatsViewModel.factory(container.apiService)
     )
     val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    var showWipeDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -68,7 +83,8 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         when (val s = state) {
             is ServerStatsUiState.Loading -> Box(
@@ -104,8 +120,76 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                     t = s.stats.technical,
                     onCleanOrphans = { viewModel.cleanOrphanLyrics() }
                 )
+                MaintenanceCard(
+                    songCount = s.stats.catalog.songs,
+                    onWipeRequested = { showWipeDialog = true }
+                )
                 Spacer(Modifier.height(8.dp))
             }
+        }
+    }
+
+    if (showWipeDialog) {
+        val songCount = (state as? ServerStatsUiState.Ready)?.stats?.catalog?.songs ?: 0L
+        AlertDialog(
+            onDismissRequest = { showWipeDialog = false },
+            icon = { Icon(Icons.Filled.DeleteSweep, contentDescription = null) },
+            title = { Text("¿Vaciar la biblioteca?") },
+            text = {
+                Text(
+                    "Se borrarán las $songCount canciones, todos los artistas, " +
+                        "álbumes y géneros. También favoritos y entradas de " +
+                        "playlists. Las playlists (vacías), usuarios y carpetas " +
+                        "configuradas se mantienen. Esta acción no se puede deshacer."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showWipeDialog = false
+                        viewModel.wipeLibrary { _, msg ->
+                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+                ) { Text("Vaciar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showWipeDialog = false }) { Text("Cancelar") }
+            }
+        )
+    }
+}
+
+@Composable
+private fun MaintenanceCard(songCount: Long, onWipeRequested: () -> Unit) {
+    StatCard(title = "Mantenimiento") {
+        Text(
+            "Vacía el catálogo musical del servidor cuando vayas a cargar " +
+                "una carpeta de música nueva. No toca usuarios, playlists ni " +
+                "las carpetas configuradas.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = onWipeRequested,
+            enabled = songCount > 0,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.DeleteSweep, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (songCount > 0) "Vaciar biblioteca ($songCount canciones)"
+                else "Biblioteca ya vacía"
+            )
         }
     }
 }

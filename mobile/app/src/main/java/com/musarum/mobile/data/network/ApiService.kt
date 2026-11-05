@@ -289,6 +289,11 @@ interface ApiService {
     @retrofit2.http.POST("admin/server/clean-orphan-lyrics")
     suspend fun cleanOrphanLyrics(): com.musarum.mobile.data.network.dto.CleanOrphanLyricsDto
 
+    // Vacía el catálogo musical del servidor (canciones + artistas + álbumes +
+    // géneros + referencias). Devuelve cuántos había antes del wipe.
+    @retrofit2.http.POST("admin/server/wipe-library")
+    suspend fun wipeLibrary(): com.musarum.mobile.data.network.dto.WipeLibrarySummaryDto
+
     // ── Carpetas de biblioteca (solo OWNER) ──
     @GET("admin/folders")
     suspend fun listLibraryFolders(): List<com.musarum.mobile.data.network.dto.LibraryFolderDto>

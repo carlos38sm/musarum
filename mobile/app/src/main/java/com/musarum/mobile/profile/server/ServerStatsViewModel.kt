@@ -58,6 +58,27 @@ class ServerStatsViewModel(
         }
     }
 
+    /**
+     * Vacía la biblioteca entera (songs/artists/albums/genres + referencias).
+     * El TRUNCATE del servidor es prácticamente instantáneo; igualmente
+     * marcamos Loading para no mostrar las cifras viejas mientras llega la
+     * respuesta. onResult(cuántas canciones había antes, mensaje).
+     */
+    fun wipeLibrary(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            _state.value = ServerStatsUiState.Loading
+            try {
+                val summary = apiService.wipeLibrary()
+                onResult(true, "Biblioteca vaciada · ${summary.songs} canciones borradas")
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                onResult(false, t.message ?: "No se pudo vaciar la biblioteca")
+            }
+            refresh()
+        }
+    }
+
     companion object {
         fun factory(apiService: ApiService): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
