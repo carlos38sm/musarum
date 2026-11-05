@@ -285,8 +285,13 @@ fun ProfileScreen(
                 when {
                     state.scanning && s != null && s.total > 0 -> {
                         val cur = s.currentFile?.take(28) ?: ""
-                        if (cur.isNotEmpty()) "${s.processed}/${s.total} · $cur"
-                        else "${s.processed}/${s.total}"
+                        val label = when (s.phase) {
+                            "hashing" -> "Analizando"
+                            "importing" -> "Importando"
+                            else -> "Escaneando"
+                        }
+                        if (cur.isNotEmpty()) "$label ${s.processed}/${s.total} · $cur"
+                        else "$label ${s.processed}/${s.total}"
                     }
                     state.scanning -> "Preparando…"
                     s?.lastResult != null -> {
@@ -300,9 +305,15 @@ fun ProfileScreen(
                     else -> "Busca canciones nuevas en el servidor"
                 }
             }
+            val scanTitle = when {
+                !state.scanning -> "Rescanear biblioteca"
+                state.scannerStatus?.phase == "hashing" -> "Analizando ficheros…"
+                state.scannerStatus?.phase == "importing" -> "Importando canciones…"
+                else -> "Escaneando…"
+            }
             SettingRow(
                 icon = if (state.scanning) Icons.Filled.Refresh else Icons.Filled.LibraryMusic,
-                title = if (state.scanning) "Escaneando…" else "Rescanear biblioteca",
+                title = scanTitle,
                 subtitle = scanSubtitle,
                 enabled = !state.scanning,
                 onClick = {

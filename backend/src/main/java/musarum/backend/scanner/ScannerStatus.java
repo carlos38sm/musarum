@@ -13,5 +13,9 @@ public record ScannerStatus(
         int processed,
         String currentFile,
         Long startedAt,
-        ImportResult lastResult
+        ImportResult lastResult,
+        // "hashing" durante la fase 1 (lectura de ~1 MB + sha-256 por fichero,
+        // lenta), "importing" durante la fase 2 (crear filas DB), null cuando
+        // no hay escaneo activo. Permite al móvil pintar la etiqueta correcta.
+        String phase
 ) {}

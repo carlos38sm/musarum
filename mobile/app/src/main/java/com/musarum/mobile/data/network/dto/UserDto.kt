@@ -38,7 +38,9 @@ data class ScannerStatusDto(
     val processed: Int,
     val currentFile: String? = null,
     val startedAt: Long? = null,
-    val lastResult: ImportResultDto? = null
+    val lastResult: ImportResultDto? = null,
+    // "hashing" (fase 1: lectura + SHA-256), "importing" (fase 2: DB), null idle.
+    val phase: String? = null
 )
 
 data class ImportResultDto(

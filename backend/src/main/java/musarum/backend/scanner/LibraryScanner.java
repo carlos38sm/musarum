@@ -88,6 +88,8 @@ public class LibraryScanner {
     private volatile String currentFile = null;
     private volatile Long startedAt = null;
     private volatile ImportResult lastResult = null;
+    // "hashing" | "importing" | null — ver ScannerStatus.phase
+    private volatile String phase = null;
 
     public ScannerStatus currentStatus() {
         return new ScannerStatus(
@@ -96,7 +98,8 @@ public class LibraryScanner {
                 processed.get(),
                 currentFile,
                 startedAt,
-                lastResult
+                lastResult,
+                phase
         );
     }
 
@@ -123,6 +126,7 @@ public class LibraryScanner {
         startedAt = System.currentTimeMillis();
         processed.set(0);
         currentFile = null;
+        phase = "hashing";
 
         try {
             log.info("Escaneo iniciado en hilo: {}", Thread.currentThread().getName());
@@ -136,10 +140,14 @@ public class LibraryScanner {
             // idénticos, los contamos como duplicados pero solo importamos
             // uno (UNIQUE sobre content_hash). Explica la típica brecha
             // "la carpeta tiene N y Musarum muestra <N".
+            // Esta fase es la LENTA con bibliotecas grandes (~1 MB de lectura
+            // por fichero), así que actualizamos `processed`/`currentFile`
+            // para que el móvil muestre "Analizando 2345/7037" en vez de 0.
             Map<String, Path> diskHashToPath = new HashMap<>();
             int duplicateFiles = 0;
             int hashErrors = 0;
             for (Path file : diskFiles) {
+                currentFile = file.getFileName().toString();
                 try {
                     String h = fileHasher.hash(file);
                     Path prev = diskHashToPath.put(h, file);
@@ -150,6 +158,8 @@ public class LibraryScanner {
                 } catch (Exception e) {
                     hashErrors++;
                     log.warn("No se pudo hashear {}: {}", file, e.getMessage());
+                } finally {
+                    processed.incrementAndGet();
                 }
             }
             log.info("Hashes únicos: {}. Duplicados por contenido: {}. Errores de hash: {}",
@@ -157,6 +167,12 @@ public class LibraryScanner {
 
             Set<String> dbHashes = songService.findAllContentHashes();
             Set<String> dbPaths = songService.findAllAudioPaths();
+
+            // Fase 2: importar. Reseteamos el contador para que el móvil
+            // muestre "Importando 0/7037" y suba limpio desde cero.
+            phase = "importing";
+            processed.set(0);
+            total = diskHashToPath.size();
 
             int imported = 0;
             int failed = 0;
@@ -218,6 +234,7 @@ public class LibraryScanner {
         } finally {
             running = false;
             currentFile = null;
+            phase = null;
         }
     }
 
