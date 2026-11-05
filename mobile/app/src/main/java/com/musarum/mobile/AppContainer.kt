@@ -46,7 +46,9 @@ class AppContainer(context: Context) {
         .addInterceptor(UnauthorizedInterceptor(tokenManager, applicationScope))
         .addInterceptor(loggingInterceptor)
         .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        // 60 s de read: el endpoint /admin/server/stats recorre _lyrics/_covers
+        // en disco y puede tardar varios segundos con bibliotecas medias.
+        .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
     private val retrofit: Retrofit = Retrofit.Builder()

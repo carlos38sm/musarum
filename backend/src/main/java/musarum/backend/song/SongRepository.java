@@ -100,4 +100,8 @@ public interface SongRepository extends JpaRepository<Song, Long> {
 
     @Query("SELECT s.id FROM Song s WHERE s.lyricsPath IS NOT NULL AND s.lyricsPath <> ''")
     List<Long> findIdsWithLyrics();
+
+    /** Solo los IDs — se usa en las estadísticas para no cargar entidades enteras. */
+    @Query("SELECT s.id FROM Song s")
+    List<Long> findAllIds();
 }

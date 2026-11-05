@@ -13,6 +13,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import musarum.backend.album.AlbumRepository;
 import musarum.backend.artist.ArtistRepository;
@@ -43,6 +44,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class ServerStatsService {
 
     private static final Logger log = LoggerFactory.getLogger(ServerStatsService.class);
+
+    // Pre-compilamos el patrón de línea sincronizada [mm:ss para no recompilar
+    // una regex por cada .lrc que clasifiquemos — con 500+ canciones se nota.
+    private static final Pattern SYNCED_LINE = Pattern.compile("(?s).*\\[\\d{1,2}:\\d{1,2}.*");
 
     private final SongRepository songRepository;
     private final ArtistRepository artistRepository;
@@ -149,7 +154,7 @@ public class ServerStatsService {
                     // Más riguroso: comprobamos que haya al menos un patrón
                     // [N:NN] en el fichero para no contar como synced los que
                     // solo tienen metadata [ar:...]
-                    if (head.matches("(?s).*\\[\\d{1,2}:\\d{1,2}.*")) synced++;
+                    if (SYNCED_LINE.matcher(head).matches()) synced++;
                     else plain++;
                 } else {
                     plain++;
@@ -242,8 +247,9 @@ public class ServerStatsService {
     /** Lista los `.lrc` cuyo nombre {id}.lrc no apunta a una canción existente. */
     public List<Path> orphanLyricPaths() {
         if (!Files.exists(lyricsRoot)) return List.of();
-        List<Long> allIds = songRepository.findAll().stream().map(s -> s.getId()).toList();
-        Set<Long> existing = new HashSet<>(allIds);
+        // Antes usábamos findAll() y pelábamos getId() — cargaba 500+ entidades
+        // completas para quedarnos solo con el id. findAllIds() proyecta directo.
+        Set<Long> existing = new HashSet<>(songRepository.findAllIds());
         try (Stream<Path> files = Files.list(lyricsRoot)) {
             return files
                     .filter(p -> p.getFileName().toString().endsWith(".lrc"))
