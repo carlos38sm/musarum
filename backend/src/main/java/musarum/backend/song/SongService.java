@@ -158,6 +158,17 @@ public class SongService {
     }
 
     /**
+     * Posición 0-based de una canción en la lista paginada por defecto
+     * (title ASC + id como desempate). Devuelve empty si la canción no
+     * existe. Se usa para "ir a la canción que suena" en el móvil.
+     */
+    @Transactional(readOnly = true)
+    public Optional<Long> findPosition(Long songId) {
+        return songRepository.findById(songId)
+                .map(song -> songRepository.countBefore(song.getTitle(), songId));
+    }
+
+    /**
      * Mapa {letra → posición absoluta} para que el móvil haga jump por letra
      * en una lista paginada. Carga solo títulos (proyección), así no instancia
      + 10k entidades para un recorrido lineal corto. Para 10k títulos son

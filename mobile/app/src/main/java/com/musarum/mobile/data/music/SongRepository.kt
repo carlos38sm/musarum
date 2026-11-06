@@ -22,6 +22,10 @@ class SongRepository(
     suspend fun letterOffsets(): Map<String, Int> =
         apiService.getLetterOffsets()
 
+    /** Posición absoluta 0-based de la canción en la lista paginada por defecto. */
+    suspend fun positionOf(id: Long): Long =
+        apiService.getSongPosition(id).index
+
     suspend fun search(query: String): List<SongSummaryDto> =
         apiService.searchSongs(query = query, page = 0, size = 50).content
 

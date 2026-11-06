@@ -79,6 +79,13 @@ interface ApiService {
     @GET("songs/letter-offsets")
     suspend fun getLetterOffsets(): Map<String, Int>
 
+    // Posición absoluta (0-based) de una canción en la vista paginada por
+    // defecto. Se usa para "ir a la canción que suena" desde la lista.
+    @GET("songs/{id}/position")
+    suspend fun getSongPosition(
+        @Path("id") id: Long
+    ): com.musarum.mobile.data.network.dto.SongPositionDto
+
     // Borrado completo (fila DB + fichero del disco). Solo OWNER.
     @DELETE("songs/{id}")
     suspend fun deleteSong(@Path("id") id: Long)

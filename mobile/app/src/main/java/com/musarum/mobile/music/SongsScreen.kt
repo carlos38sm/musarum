@@ -21,9 +21,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -84,6 +86,13 @@ fun SongsScreen(
     val isOwner = me?.userRole == "OWNER"
     val snackbar = LocalSnackbar.current
 
+    // Para "ir a la canción que suena": necesitamos observar el player y
+    // además compartir listState/scope con SongsList (donde vive el LazyColumn).
+    val playerState by container.playerController.state.collectAsState()
+    val currentSongId = playerState.currentSong?.id
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
     // Modal + confirmación. Mantenemos la referencia a la canción
     // seleccionada para evitar recomponer la UI con un id suelto.
     var sheetSong by remember { mutableStateOf<SongSummaryDto?>(null) }
@@ -118,6 +127,8 @@ fun SongsScreen(
                 } else {
                     SongsList(
                         state = s,
+                        listState = listState,
+                        currentSongId = currentSongId,
                         onPlay = { absoluteIndex, song ->
                             // Reproduce la cola con las canciones YA cargadas.
                             // Compactamos a non-null porque PlayerController
@@ -138,11 +149,21 @@ fun SongsScreen(
                         },
                         onEnsureLoaded = { viewModel.ensurePageLoadedFor(it) },
                         onShuffleAll = {
-                            // Shuffle usa el endpoint que trae TODAS las
-                            // canciones aleatorizadas desde el backend.
                             viewModel.loadShuffled { all ->
                                 container.playerController.playShuffleAll(all)
                             }
+                        },
+                        onJumpToCurrent = {
+                            val sid = currentSongId ?: return@SongsList
+                            viewModel.locateSong(
+                                songId = sid,
+                                onFound = { absolute ->
+                                    scope.launch {
+                                        listState.animateScrollToItem(absolute + HEADER_ITEMS)
+                                    }
+                                },
+                                onMissing = { snackbar("No se pudo localizar la canción") }
+                            )
                         }
                     )
                 }
@@ -188,14 +209,31 @@ fun SongsScreen(
 @Composable
 private fun SongsList(
     state: SongsUiState.Ready,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    currentSongId: Long?,
     onPlay: (absoluteIndex: Int, SongSummaryDto) -> Unit,
     onAdd: (SongSummaryDto) -> Unit,
     onJumpToIndex: (absoluteIndex: Int) -> Unit,
     onEnsureLoaded: (absoluteIndex: Int) -> Unit,
-    onShuffleAll: () -> Unit
+    onShuffleAll: () -> Unit,
+    onJumpToCurrent: () -> Unit
 ) {
-    val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    // El FAB solo se muestra si hay canción sonando y NO está visible ya en
+    // el viewport — así no molesta cuando el usuario ya la tiene delante.
+    val currentVisible by remember(currentSongId, state.songs) {
+        derivedStateOf {
+            if (currentSongId == null) return@derivedStateOf false
+            val visible = listState.layoutInfo.visibleItemsInfo
+            visible.any { info ->
+                val absIndex = info.index - HEADER_ITEMS
+                absIndex in state.songs.indices
+                    && state.songs[absIndex]?.id == currentSongId
+            }
+        }
+    }
+    val showJumpFab = currentSongId != null && !currentVisible
 
     // Prefetch: cuando el viewport se mueve, pedimos las páginas vecinas.
     // Usamos derivedStateOf para no recomponer en cada frame.
@@ -272,6 +310,22 @@ private fun SongsList(
             },
             modifier = Modifier.align(Alignment.CenterEnd)
         )
+
+        if (showJumpFab) {
+            SmallFloatingActionButton(
+                onClick = onJumpToCurrent,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 16.dp)
+            ) {
+                Icon(
+                    Icons.Filled.MyLocation,
+                    contentDescription = "Ir a la canción que suena"
+                )
+            }
+        }
     }
 }
 

@@ -79,6 +79,20 @@ class SongController {
     }
 
     /**
+     * Devuelve la posición 0-based de la canción en la lista paginada por
+     * defecto. El móvil la usa para saltar al "ahora sonando" desde la
+     * pantalla Canciones. 404 si no existe.
+     */
+    @GetMapping("/{id}/position")
+    ResponseEntity<PositionDto> position(@PathVariable Long id) {
+        return songService.findPosition(id)
+                .map(idx -> ResponseEntity.ok(new PositionDto(idx)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    public record PositionDto(long index) {}
+
+    /**
      * Modo "radio" desde una canción semilla: devuelve una cola de similares
      * (mismo género/artistas, con algo de aleatorio para que no quede
      * incestuoso). Pensado para que el móvil arranque una escucha infinita

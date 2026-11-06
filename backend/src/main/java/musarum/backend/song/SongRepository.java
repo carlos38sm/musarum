@@ -104,4 +104,15 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     /** Solo los IDs — se usa en las estadísticas para no cargar entidades enteras. */
     @Query("SELECT s.id FROM Song s")
     List<Long> findAllIds();
+
+    /**
+     * Posición 0-based de una canción en la vista paginada por defecto
+     * (ORDER BY title ASC, id ASC como desempate estable). Cuenta cuántas
+     * canciones van ANTES de la dada. Se usa para "ir a la canción que
+     * suena" desde la lista — el móvil hace page = index / size y scroll.
+     */
+    @Query("SELECT COUNT(s) FROM Song s WHERE s.title < :t "
+         + "OR (s.title = :t AND s.id < :i)")
+    long countBefore(@org.springframework.data.repository.query.Param("t") String t,
+                     @org.springframework.data.repository.query.Param("i") Long i);
 }

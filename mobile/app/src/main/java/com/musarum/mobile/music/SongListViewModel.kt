@@ -123,6 +123,52 @@ class SongListViewModel(
     }
 
     /**
+     * Localiza una canción (por id) en la lista: carga la página que la
+     * contiene si hiciera falta y llama a onFound con el índice absoluto.
+     * Si la canción no existe (404 u otro error) llama a onMissing.
+     * Fast-path: si ya está en la lista cargada, devuelve el índice sin
+     * ir al backend.
+     */
+    fun locateSong(songId: Long, onFound: (Int) -> Unit, onMissing: () -> Unit) {
+        val current = _state.value as? SongsUiState.Ready ?: return
+        val cached = current.songs.indexOfFirst { it?.id == songId }
+        if (cached >= 0) {
+            onFound(cached)
+            return
+        }
+        viewModelScope.launch {
+            try {
+                val position = repository.positionOf(songId).toInt()
+                if (position < 0 || position >= current.totalCount) {
+                    onMissing()
+                    return@launch
+                }
+                val page = position / PAGE_SIZE
+                if (loadedPages.add(page)) {
+                    runCatching { repository.page(page, PAGE_SIZE) }
+                        .onSuccess { pageDto ->
+                            val existing = _state.value as? SongsUiState.Ready
+                                ?: return@onSuccess
+                            val updated = existing.songs.toMutableList()
+                            val start = page * PAGE_SIZE
+                            pageDto.content.forEachIndexed { i, song ->
+                                val abs = start + i
+                                if (abs < updated.size) updated[abs] = song
+                            }
+                            _state.value = existing.copy(songs = updated)
+                        }
+                        .onFailure { loadedPages.remove(page) }
+                }
+                onFound(position)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (_: Throwable) {
+                onMissing()
+            }
+        }
+    }
+
+    /**
      * Garantiza que la página que contiene el índice absoluto esté cargada.
      * Idempotente: si ya está pedida, no hace nada. Al terminar, actualiza
      * el estado con las canciones de esa página en su posición absoluta.
