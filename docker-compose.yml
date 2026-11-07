@@ -83,6 +83,18 @@ services:
     restart: unless-stopped
     environment:
       MUSARUM_MUSIC_PATH: /music
+      # Rutas de los binarios dentro del contenedor (sobrescriben el default
+      # Windows de application.properties). La imagen ya los instala, pero
+      # los dejamos explícitos para que un cambio en la base no los mueva.
+      ENRICHER_BINARIES_FFMPEG: /usr/bin/ffmpeg
+      ENRICHER_BINARIES_FPCALC: /usr/bin/fpcalc
+      # Claves de las fuentes de enriquecimiento (opcionales salvo AcoustID,
+      # que es GRATIS en https://acoustid.org/api-key y necesario para
+      # identificar canciones por huella → BPM/key/MBID/replaygain).
+      ACOUSTID_API_KEY: ${ACOUSTID_API_KEY:-}
+      DISCOGS_TOKEN: ${DISCOGS_TOKEN:-}
+      LASTFM_API_KEY: ${LASTFM_API_KEY:-}
+      MUSICBRAINZ_TOKEN: ${MUSICBRAINZ_TOKEN:-}
     volumes:
       - ${MUSARUM_MUSIC_PATH}:/music
     ports:
