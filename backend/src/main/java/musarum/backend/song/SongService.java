@@ -103,8 +103,17 @@ public class SongService {
 
     @Transactional(readOnly = true)
     public Page<SongSummaryDto> findAll(Pageable pageable) {
-        return songRepository.findAll(pageable)
-                .map(songMapper::toSummary);
+        // Ignoramos el sort del Pageable: el orden "humano" (letras primero,
+        // luego números/símbolos/no-latinos) lo fija la query nativa, y tiene
+        // que coincidir con el que usan countBefore y letterOffsets para que
+        // el jumpbar y el FAB "ir a la canción que suena" cuadren.
+        long total = songRepository.count();
+        List<SongSummaryDto> content = songRepository
+                .findPageOrdered(pageable.getPageSize(), (int) pageable.getOffset())
+                .stream()
+                .map(songMapper::toSummary)
+                .toList();
+        return new org.springframework.data.domain.PageImpl<>(content, pageable, total);
     }
 
     @Transactional(readOnly = true)

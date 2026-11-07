@@ -61,13 +61,37 @@ public interface SongRepository extends JpaRepository<Song, Long> {
 
     /**
      * Solo títulos, ordenados igual que la vista paginada por defecto
-     * ({@code sort=title,asc}). Proyección mínima: no cargamos entidades,
-     * solo strings. En Postgres con el collation estándar en_US.UTF-8
-     * mayúsculas y minúsculas quedan intercaladas, que es lo que espera
-     * el móvil al calcular los offsets del AlphabetJumpBar.
+     * (ver {@link #findPageOrdered}). Letras primero (incluidas tildes y Ñ),
+     * luego números/símbolos/no-latinos. Proyección mínima: no cargamos
+     * entidades, solo strings.
      */
-    @Query("SELECT s.title FROM Song s ORDER BY s.title ASC")
+    @Query(value = """
+        SELECT title FROM songs
+        ORDER BY
+          CASE WHEN title ~ '^[[:alpha:]]' THEN 0 ELSE 1 END,
+          UPPER(title),
+          id
+        """, nativeQuery = true)
     List<String> findAllTitlesForIndex();
+
+    /**
+     * Página de canciones con el orden "humano":
+     *   1) Primero las que empiezan por letra (A…Z, incluidas tildes y Ñ).
+     *   2) Después números, símbolos y caracteres no latinos.
+     * Dentro de cada grupo, por título en mayúsculas y id como desempate
+     * estable. Nativo porque {@code [[:alpha:]]} es Postgres-specific y
+     * cubre bien Unicode con la locale UTF-8 del servidor.
+     */
+    @Query(value = """
+        SELECT * FROM songs
+        ORDER BY
+          CASE WHEN title ~ '^[[:alpha:]]' THEN 0 ELSE 1 END,
+          UPPER(title),
+          id
+        LIMIT :size OFFSET :offset
+        """, nativeQuery = true)
+    List<Song> findPageOrdered(@org.springframework.data.repository.query.Param("size") int size,
+                               @org.springframework.data.repository.query.Param("offset") int offset);
 
     Page<Song> findByTitleContainingIgnoreCase(String title, Pageable pageable);
 
@@ -106,13 +130,19 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     List<Long> findAllIds();
 
     /**
-     * Posición 0-based de una canción en la vista paginada por defecto
-     * (ORDER BY title ASC, id ASC como desempate estable). Cuenta cuántas
-     * canciones van ANTES de la dada. Se usa para "ir a la canción que
-     * suena" desde la lista — el móvil hace page = index / size y scroll.
+     * Posición 0-based de una canción en la vista paginada por defecto.
+     * TIENE que usar EXACTAMENTE el mismo ORDER BY que {@link #findPageOrdered}
+     * — si se desalinea, el FAB "ir a la canción que suena" scrollea al
+     * sitio equivocado. Tripla ordenada ({@code CASE}, {@code UPPER(title)},
+     * {@code id}) comparada lexicográficamente con ROW().
      */
-    @Query("SELECT COUNT(s) FROM Song s WHERE s.title < :t "
-         + "OR (s.title = :t AND s.id < :i)")
+    @Query(value = """
+        SELECT COUNT(*) FROM songs
+        WHERE
+          (CASE WHEN title ~ '^[[:alpha:]]' THEN 0 ELSE 1 END, UPPER(title), id)
+          <
+          (CASE WHEN :t ~ '^[[:alpha:]]' THEN 0 ELSE 1 END, UPPER(CAST(:t AS text)), :i)
+        """, nativeQuery = true)
     long countBefore(@org.springframework.data.repository.query.Param("t") String t,
                      @org.springframework.data.repository.query.Param("i") Long i);
 }
