@@ -376,9 +376,8 @@ fun VideoScreen(
         VideoActionsRow(
             isFavorite = vmState.isFavorite,
             onToggleFavorite = {
-                val wasFav = vmState.isFavorite
+                // Sin snackbar: el cambio de color del ♥ ya es feedback claro.
                 viewModel.toggleFavorite()
-                snackbar(if (wasFav) "Quitada de favoritas" else "Añadida a favoritas")
             },
             onAddToPlaylist = { showAddToPlaylist = true },
             miniLyricAvailable = hasSyncedLyrics,
