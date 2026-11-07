@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Lyrics
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
@@ -61,6 +62,8 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -254,7 +257,7 @@ fun NowPlayingScreen(
         }
 
         // Fila de acciones secundarias justo encima de la barra de progreso.
-        // Orden: mini-letra · radio · sleep · descargar · añadir · favorita.
+        // Orden: mini-letra · más (cola/radio/sleep) · descargar · añadir · ♥.
         // Alineadas a la derecha para no competir con la bolita del slider.
         var showSleepSheet by remember { mutableStateOf(false) }
         ActionsRow(
@@ -583,29 +586,54 @@ private fun ActionsRow(
             )
         }
         Spacer(Modifier.width(6.dp))
-        GhostCircleButton(onClick = onStartRadio, contentDescription = "Radio basada en esta canción") {
-            Icon(Icons.Filled.Radio, null, modifier = Modifier.size(22.dp))
-        }
-        Spacer(Modifier.width(6.dp))
-        GhostCircleButton(
-            onClick = onOpenSleepTimer,
-            contentDescription = "Temporizador de apagado"
-        ) {
-            Icon(
-                Icons.Filled.Bedtime,
-                contentDescription = null,
-                tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-        Spacer(Modifier.width(6.dp))
-        GhostCircleButton(onClick = onOpenQueue, contentDescription = "Ver la cola de reproducción") {
-            Icon(
-                Icons.Filled.PlaylistPlay,
-                contentDescription = null,
-                modifier = Modifier.size(22.dp)
-            )
+        // Overflow: antes había 3 iconos (Radio / Sleep / Cola) aquí; ahora
+        // viven en este menú desplegable para no saturar la fila. El icono
+        // se tinta en primary si hay sleep activo, para que el OWNER vea
+        // "hay algo activo ahí dentro" sin abrirlo.
+        Box {
+            var showMore by remember { mutableStateOf(false) }
+            GhostCircleButton(
+                onClick = { showMore = true },
+                contentDescription = "Más acciones"
+            ) {
+                Icon(
+                    Icons.Filled.MoreHoriz,
+                    contentDescription = null,
+                    tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
+                           else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            DropdownMenu(
+                expanded = showMore,
+                onDismissRequest = { showMore = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Cola de reproducción") },
+                    leadingIcon = { Icon(Icons.Filled.PlaylistPlay, null) },
+                    onClick = { showMore = false; onOpenQueue() }
+                )
+                DropdownMenuItem(
+                    text = { Text("Radio basada en esta") },
+                    leadingIcon = { Icon(Icons.Filled.Radio, null) },
+                    onClick = { showMore = false; onStartRadio() }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(if (sleepTimerActive) "Temporizador activo"
+                             else "Temporizador de apagado")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Bedtime,
+                            null,
+                            tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    onClick = { showMore = false; onOpenSleepTimer() }
+                )
+            }
         }
         Spacer(Modifier.width(6.dp))
         GhostCircleButton(onClick = onDownload, contentDescription = downloadContentDescription(downloadState)) {

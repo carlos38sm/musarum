@@ -155,6 +155,10 @@ fun SongsScreen(
                         },
                         onJumpToCurrent = {
                             val sid = currentSongId ?: return@SongsList
+                            // Guardamos el título antes por si entre tanto
+                            // cambia la canción (el mensaje debe citar la que
+                            // estábamos buscando, no la que suena ahora).
+                            val title = playerState.currentSong?.title ?: "la canción"
                             viewModel.locateSong(
                                 songId = sid,
                                 onFound = { absolute ->
@@ -162,7 +166,9 @@ fun SongsScreen(
                                         listState.animateScrollToItem(absolute + HEADER_ITEMS)
                                     }
                                 },
-                                onMissing = { snackbar("No se pudo localizar la canción") }
+                                onMissing = {
+                                    snackbar("No se pudo localizar \"$title\"")
+                                }
                             )
                         }
                     )

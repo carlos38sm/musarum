@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Lyrics
+import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
@@ -35,6 +36,8 @@ import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -513,21 +516,47 @@ private fun VideoActionsRow(
             )
         }
         Spacer(Modifier.size(6.dp))
-        VideoGhostCircleButton(onClick = onStartRadio, contentDescription = "Radio basada en esta canción") {
-            Icon(Icons.Filled.Radio, null, modifier = Modifier.size(22.dp))
-        }
-        Spacer(Modifier.size(6.dp))
-        VideoGhostCircleButton(
-            onClick = onOpenSleepTimer,
-            contentDescription = "Temporizador de apagado"
-        ) {
-            Icon(
-                Icons.Filled.Bedtime,
-                contentDescription = null,
-                tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(22.dp)
-            )
+        // Overflow idéntico al de NowPlaying — radio + sleep aquí dentro
+        // para no saturar la fila sobre el vídeo.
+        androidx.compose.foundation.layout.Box {
+            var showMore by remember { mutableStateOf(false) }
+            VideoGhostCircleButton(
+                onClick = { showMore = true },
+                contentDescription = "Más acciones"
+            ) {
+                Icon(
+                    Icons.Filled.MoreHoriz,
+                    contentDescription = null,
+                    tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
+                           else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            DropdownMenu(
+                expanded = showMore,
+                onDismissRequest = { showMore = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Radio basada en esta") },
+                    leadingIcon = { Icon(Icons.Filled.Radio, null) },
+                    onClick = { showMore = false; onStartRadio() }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(if (sleepTimerActive) "Temporizador activo"
+                             else "Temporizador de apagado")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Bedtime,
+                            null,
+                            tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    onClick = { showMore = false; onOpenSleepTimer() }
+                )
+            }
         }
         Spacer(Modifier.size(6.dp))
         VideoGhostCircleButton(onClick = onDownload, contentDescription = downloadContentDescription(downloadState)) {
