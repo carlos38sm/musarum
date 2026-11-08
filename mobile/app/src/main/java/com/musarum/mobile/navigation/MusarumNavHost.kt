@@ -191,7 +191,8 @@ fun MusarumNavHost(
                     onOpenSongs = { navController.navigate(Routes.SONGS) },
                     onOpenAlbums = { navController.navigate(Routes.ALBUMS) },
                     onOpenArtists = { navController.navigate(Routes.ARTISTS) },
-                    onOpenGenre = { id -> navController.navigate(Routes.genreDetail(id)) }
+                    onOpenGenre = { id -> navController.navigate(Routes.genreDetail(id)) },
+                    onOpenFavorites = { navController.navigate(Routes.FAVORITES) }
                 )
             }
 

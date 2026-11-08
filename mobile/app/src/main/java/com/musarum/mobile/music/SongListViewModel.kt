@@ -129,22 +129,30 @@ class SongListViewModel(
      * Fast-path: si ya está en la lista cargada, devuelve el índice sin
      * ir al backend.
      */
-    fun locateSong(songId: Long, onFound: (Int) -> Unit, onMissing: () -> Unit) {
-        val current = _state.value as? SongsUiState.Ready ?: return
-        val cached = current.songs.indexOfFirst { it?.id == songId }
-        if (cached >= 0) {
-            onFound(cached)
-            return
+    fun locateSong(songId: Long, onFound: (Int) -> Unit, onMissing: (String) -> Unit) {
+        val current = _state.value as? SongsUiState.Ready
+        if (current != null) {
+            val cached = current.songs.indexOfFirst { it?.id == songId }
+            if (cached >= 0) {
+                android.util.Log.d("Musarum/FAB", "locateSong($songId) fast-path → $cached")
+                onFound(cached)
+                return
+            }
         }
         viewModelScope.launch {
             try {
                 val position = repository.positionOf(songId).toInt()
-                if (position < 0 || position >= current.totalCount) {
-                    onMissing()
+                val total = (current?.totalCount ?: Int.MAX_VALUE)
+                android.util.Log.d(
+                    "Musarum/FAB",
+                    "locateSong($songId) backend → position=$position total=$total"
+                )
+                if (position < 0 || position >= total) {
+                    onMissing("Posición fuera de rango ($position/$total)")
                     return@launch
                 }
                 val page = position / PAGE_SIZE
-                if (loadedPages.add(page)) {
+                if (current != null && loadedPages.add(page)) {
                     runCatching { repository.page(page, PAGE_SIZE) }
                         .onSuccess { pageDto ->
                             val existing = _state.value as? SongsUiState.Ready
@@ -162,8 +170,17 @@ class SongListViewModel(
                 onFound(position)
             } catch (ce: CancellationException) {
                 throw ce
-            } catch (_: Throwable) {
-                onMissing()
+            } catch (t: Throwable) {
+                android.util.Log.w("Musarum/FAB", "locateSong($songId) error: ${t.message}", t)
+                val msg = when (t) {
+                    is retrofit2.HttpException ->
+                        if (t.code() == 404) "El servidor no tiene esta canción"
+                        else "El servidor respondió ${t.code()}"
+                    is java.net.SocketTimeoutException -> "El servidor tardó demasiado"
+                    is java.io.IOException -> "Sin conexión con el servidor"
+                    else -> t.message ?: "Error desconocido"
+                }
+                onMissing(msg)
             }
         }
     }

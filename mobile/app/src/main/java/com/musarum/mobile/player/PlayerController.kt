@@ -702,7 +702,23 @@ class PlayerController(
         //    saltar a esa posición → corte audible al empezar el crossfade.
         //    Pre-posicionando antes del prepare, el buffering inicial ya
         //    carga desde donde iba A, sin salto posterior.
-        val aux = ExoPlayer.Builder(appContext).build()
+        // El aux DEBE usar las mismas AudioAttributes que el principal.
+        // Si se instancia con los defaults (USAGE_UNKNOWN), Android lo trata
+        // como una stream de audio nueva al aparecer/liberar → algunos stacks
+        // Bluetooth hacen handshake de ruta (A2DP) y se oye "desconecta/
+        // reconecta" al cambiar de canción. Mismas attrs + wake lock evita
+        // ese parpadeo.
+        val aux = ExoPlayer.Builder(appContext)
+            .setAudioAttributes(
+                androidx.media3.common.AudioAttributes.Builder()
+                    .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                    .build(),
+                false // el aux no pide foco: el principal ya lo tiene.
+            )
+            .setHandleAudioBecomingNoisy(true)
+            .setWakeMode(androidx.media3.common.C.WAKE_MODE_NETWORK)
+            .build()
         val url = uriFor(previousSong.id)
         // DefaultDataSource soporta file:// (descargas offline) además de HTTP.
         val auxDataSourceFactory = DefaultDataSource.Factory(

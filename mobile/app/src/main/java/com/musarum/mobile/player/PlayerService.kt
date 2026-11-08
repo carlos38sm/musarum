@@ -69,6 +69,12 @@ class PlayerService : MediaSessionService() {
                 true
             )
             .setHandleAudioBecomingNoisy(true)
+            // Con la pantalla bloqueada el móvil deja al CPU dormir salvo que
+            // alguien pida wake lock. Sin esto, al llegar al final del buffer
+            // el player entra en STATE_BUFFERING, no puede pedir más bytes y
+            // se "come" segundos → entre canciones Bluetooth hace handshake.
+            // NETWORK cubre streaming y descargas offline sin cambiar nada.
+            .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
         mediaSession = MediaSession.Builder(this, player).build()

@@ -166,8 +166,8 @@ fun SongsScreen(
                                         listState.animateScrollToItem(absolute + HEADER_ITEMS)
                                     }
                                 },
-                                onMissing = {
-                                    snackbar("No se pudo localizar \"$title\"")
+                                onMissing = { reason ->
+                                    snackbar("No se pudo localizar \"$title\": $reason")
                                 }
                             )
                         }

@@ -18,11 +18,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Album
-import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MicExternalOn
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
@@ -38,14 +39,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.data.network.dto.GenreDto
@@ -60,6 +62,7 @@ fun HomeScreen(
     onOpenAlbums: () -> Unit,
     onOpenArtists: () -> Unit,
     onOpenGenre: (Long) -> Unit,
+    onOpenFavorites: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.factory(
             LocalAppContainer.current.playHistoryRepository,
@@ -71,17 +74,12 @@ fun HomeScreen(
     val state by viewModel.state.collectAsState()
     val me by container.userRepository.me.collectAsState()
 
-    // Si el usuario entra directo a Home sin pasar por Perfil, me es null
-    // y el saludo saldría como "Hola". Disparamos un refresh perezoso.
     androidx.compose.runtime.LaunchedEffect(Unit) {
         if (me == null) {
             runCatching { container.userRepository.refresh() }
         }
     }
 
-    // Sin TopAppBar — el header con avatar + saludo hace su función. Deja
-    // más aire visual y hace que Inicio se sienta distinto a las demás
-    // pantallas (Buscar, Biblioteca, Perfil sí tienen top bar).
     Scaffold { padding ->
         when {
             state.loading -> Box(Modifier.fillMaxSize().padding(padding), Alignment.Center) {
@@ -92,61 +90,55 @@ fun HomeScreen(
             }
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(top = 12.dp, bottom = 100.dp),
-                verticalArrangement = Arrangement.spacedBy(18.dp)
+                contentPadding = PaddingValues(top = 4.dp, bottom = 100.dp),
+                verticalArrangement = Arrangement.spacedBy(22.dp)
             ) {
-                item {
-                    GreetingHeader(
-                        nick = me?.nick,
-                        avatarUrl = me?.avatarUrl
-                    )
-                }
-
-                item {
-                    QuickTilesRow(
-                        onOpenSongs = onOpenSongs,
-                        onOpenAlbums = onOpenAlbums,
-                        onOpenArtists = onOpenArtists
-                    )
-                }
+                item { HeroHeader(nick = me?.nick, avatarUrl = me?.avatarUrl) }
 
                 state.lastPlayed?.let { last ->
                     item {
-                        ContinueCard(song = last, onPlay = {
-                            container.playerController.playQueue(listOf(last), 0)
-                        })
+                        ContinueHero(
+                            song = last,
+                            onPlay = { container.playerController.playQueue(listOf(last), 0) }
+                        )
                     }
                 }
 
+                item {
+                    QuickChips(
+                        onOpenSongs = onOpenSongs,
+                        onOpenAlbums = onOpenAlbums,
+                        onOpenArtists = onOpenArtists,
+                        onOpenFavorites = onOpenFavorites
+                    )
+                }
+
                 if (state.topWeek.isNotEmpty()) {
-                    item { SectionTitle("Top de la semana") }
                     item {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            itemsIndexed(state.topWeek) { idx, song ->
-                                TopSongCard(
-                                    rank = idx + 1,
-                                    song = song,
-                                    onClick = {
-                                        container.playerController.playQueue(state.topWeek, idx)
-                                    }
-                                )
+                        SectionBar(
+                            title = "Top de la semana",
+                            onSeeAll = null
+                        )
+                    }
+                    item {
+                        TopPodium(
+                            songs = state.topWeek.take(3),
+                            onPlay = { idx ->
+                                container.playerController.playQueue(state.topWeek, idx)
                             }
-                        }
+                        )
                     }
                 }
 
                 if (state.recent.isNotEmpty()) {
-                    item { SectionTitle("Vuelve a escuchar") }
+                    item { SectionBar(title = "Vuelve a escuchar") }
                     item {
                         LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            contentPadding = PaddingValues(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             itemsIndexed(state.recent) { idx, song ->
-                                RecentSongCard(
+                                RecentCard(
                                     song = song,
                                     onClick = {
                                         container.playerController.playQueue(state.recent, idx)
@@ -158,14 +150,14 @@ fun HomeScreen(
                 }
 
                 if (state.genres.isNotEmpty()) {
-                    item { SectionTitle("Explora por género") }
+                    item { SectionBar(title = "Explora por género") }
                     item {
                         LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            contentPadding = PaddingValues(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(state.genres, key = { it.id }) { genre ->
-                                GenreTile(genre = genre, onClick = { onOpenGenre(genre.id) })
+                                GenreCard(genre = genre, onClick = { onOpenGenre(genre.id) })
                             }
                         }
                     }
@@ -177,7 +169,7 @@ fun HomeScreen(
                             "Reproduce algo para que esto se llene — todo lo que escuches más de 30s pasará por aquí.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp)
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 24.dp)
                         )
                     }
                 }
@@ -187,168 +179,241 @@ fun HomeScreen(
 }
 
 /**
- * Header grande de Inicio: avatar circular + saludo según la hora del
- * sistema + nick. Reemplaza al soso TopAppBar "Inicio". Si el usuario no
- * tiene avatar subido, pintamos la inicial sobre fondo primary — igual
- * convención que la cabecera de Perfil.
+ * Cabecera "hero" de Inicio. Un gradiente muy sutil desde primary hacia
+ * transparente da calidez a la parte alta sin saturar. El avatar es grande
+ * (76dp) con borde dorado como guiño al logo. Dos líneas: saludo corto
+ * en labelLarge + nick en displaySmall para que destaque sin top app bar.
  */
 @Composable
-private fun GreetingHeader(nick: String?, avatarUrl: String?) {
-    // El saludo lo calculamos UNA vez por composición. No queremos que
-    // cambie el texto al scroll, solo a la próxima vez que entres a Inicio.
+private fun HeroHeader(nick: String?, avatarUrl: String?) {
     val greeting = remember { pickGreeting() }
+    val scheme = MaterialTheme.colorScheme
 
-    Row(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 20.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .background(
+                Brush.verticalGradient(
+                    0f to scheme.primary.copy(alpha = 0.10f),
+                    1f to Color.Transparent
+                )
+            )
+            .padding(horizontal = 24.dp, vertical = 20.dp)
     ) {
-        // Avatar 72dp — grandecito pero sin dominar la pantalla.
-        if (avatarUrl != null) {
-            com.musarum.mobile.music.ArtistAvatar(url = avatarUrl, size = 72.dp)
-        } else {
-            Surface(
-                modifier = Modifier.size(72.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(76.dp)
+                    .background(scheme.primary.copy(alpha = 0.22f), CircleShape)
+                    .padding(3.dp)
             ) {
-                Box(contentAlignment = Alignment.Center) {
-                    val initial = nick?.firstOrNull()?.uppercase()
-                    if (initial != null) {
+                if (avatarUrl != null) {
+                    com.musarum.mobile.music.ArtistAvatar(url = avatarUrl, size = 70.dp)
+                } else {
+                    Surface(
+                        shape = CircleShape,
+                        color = scheme.primary.copy(alpha = 0.25f),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            val initial = nick?.firstOrNull()?.uppercase()
+                            if (initial != null) {
+                                Text(
+                                    initial,
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = scheme.primary
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Filled.Person,
+                                    contentDescription = null,
+                                    tint = scheme.primary,
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.width(18.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    greeting,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = scheme.onSurfaceVariant,
+                    maxLines = 1
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    nick ?: "Hola",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontSize = 30.sp,
+                        fontWeight = FontWeight.ExtraBold
+                    ),
+                    color = scheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Hero de "Continúa escuchando". Card grande con el cover ocupando el lado
+ * izquierdo (120dp) y a la derecha el chip accent + título + artista + un
+ * play prominente. Fondo con gradient diagonal que sugiere "este es el
+ * protagonista de Inicio".
+ */
+@Composable
+private fun ContinueHero(song: SongSummaryDto, onPlay: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp)
+            .clickable(onClick = onPlay),
+        shape = RoundedCornerShape(24.dp),
+        color = Color.Transparent,
+        tonalElevation = 0.dp
+    ) {
+        Box(
+            modifier = Modifier
+                .background(
+                    Brush.linearGradient(
+                        0f to scheme.primary.copy(alpha = 0.22f),
+                        1f to scheme.tertiary.copy(alpha = 0.12f)
+                    )
+                )
+                .padding(14.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CoverImage(url = song.coverUrl, size = 112.dp, cornerRadius = 18.dp)
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Surface(
+                        shape = RoundedCornerShape(50),
+                        color = scheme.primary.copy(alpha = 0.22f)
+                    ) {
                         Text(
-                            initial,
-                            style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            "Continúa escuchando",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = scheme.primary,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                         )
-                    } else {
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Text(
+                        song.title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = scheme.onBackground,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        song.artistsLabel,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = scheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Surface(
+                    shape = CircleShape,
+                    color = scheme.primary,
+                    modifier = Modifier.size(52.dp).clickable(onClick = onPlay)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Filled.Person,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(40.dp)
+                            Icons.Filled.PlayArrow,
+                            contentDescription = "Reproducir",
+                            tint = scheme.onPrimary,
+                            modifier = Modifier.size(30.dp)
                         )
                     }
                 }
             }
         }
-
-        Spacer(Modifier.width(16.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                greeting,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                nick ?: "Hola",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
     }
 }
 
-/** Saludo variado según la hora + tono amistoso aleatorio para no repetir. */
-private fun pickGreeting(): String {
-    val hour = java.time.LocalTime.now().hour
-    val timeGreeting = when (hour) {
-        in 6..11  -> "Buenos días"
-        in 12..19 -> "Buenas tardes"
-        else      -> "Buenas noches"
-    }
-    val variants = listOf(
-        timeGreeting,
-        "Bienvenido de nuevo",
-        "Qué suene algo bueno",
-        timeGreeting,  // peso extra: el saludo horario sale más a menudo
-        "Hola otra vez",
-        timeGreeting
-    )
-    return variants.random()
-}
-
-/**
- * Fila de atajos: Canciones · Álbumes · Artistas. Cada tile tiene su propio
- * color (primary / tertiary / secondary) y su propia forma — así dejan de
- * ser "tres cuadrados iguales" y la retina los identifica más rápido.
- */
+/** Fila de 4 chips compactos con icono + etiqueta. Más ligeros que los tiles
+ *  antiguos — funcionan como accesos directos sin robar protagonismo al hero. */
 @Composable
-private fun QuickTilesRow(
+private fun QuickChips(
     onOpenSongs: () -> Unit,
     onOpenAlbums: () -> Unit,
-    onOpenArtists: () -> Unit
+    onOpenArtists: () -> Unit,
+    onOpenFavorites: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        QuickTile(
+        QuickChip(
             modifier = Modifier.weight(1f),
             label = "Canciones",
             icon = Icons.Filled.MusicNote,
             accent = scheme.primary,
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 10.dp, bottomStart = 10.dp, bottomEnd = 24.dp),
             onClick = onOpenSongs
         )
-        QuickTile(
+        QuickChip(
             modifier = Modifier.weight(1f),
             label = "Álbumes",
             icon = Icons.Filled.Album,
             accent = scheme.tertiary,
-            shape = RoundedCornerShape(40.dp),  // píldora
             onClick = onOpenAlbums
         )
-        QuickTile(
+        QuickChip(
             modifier = Modifier.weight(1f),
             label = "Artistas",
             icon = Icons.Filled.MicExternalOn,
             accent = scheme.secondary,
-            shape = RoundedCornerShape(topStart = 10.dp, topEnd = 24.dp, bottomStart = 24.dp, bottomEnd = 10.dp),
             onClick = onOpenArtists
+        )
+        QuickChip(
+            modifier = Modifier.weight(1f),
+            label = "Favoritas",
+            icon = Icons.Filled.Favorite,
+            accent = scheme.error,
+            onClick = onOpenFavorites
         )
     }
 }
 
 @Composable
-private fun QuickTile(
+private fun QuickChip(
     modifier: Modifier = Modifier,
     label: String,
     icon: ImageVector,
     accent: Color,
-    shape: androidx.compose.ui.graphics.Shape,
     onClick: () -> Unit
 ) {
     Surface(
         modifier = modifier
-            .height(110.dp)
+            .height(76.dp)
             .clickable(onClick = onClick),
-        shape = shape,
+        shape = RoundedCornerShape(18.dp),
         color = accent.copy(alpha = 0.14f)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize().padding(10.dp),
+            modifier = Modifier.fillMaxSize().padding(8.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(38.dp)
-            )
-            Spacer(Modifier.height(8.dp))
+            Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.height(4.dp))
             Text(
                 label,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,
@@ -358,67 +423,122 @@ private fun QuickTile(
     }
 }
 
+/** Título de sección + chevron opcional alineado a la derecha (vacío por ahora
+ *  — reservado para cuando los apartados tengan "ver todo"). */
 @Composable
-private fun SectionTitle(title: String) {
-    Text(
-        title,
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.SemiBold,
-        color = MaterialTheme.colorScheme.onBackground,
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
-    )
-}
-
-@Composable
-private fun ContinueCard(song: SongSummaryDto, onPlay: () -> Unit) {
-    Surface(
+private fun SectionBar(
+    title: String,
+    onSeeAll: (() -> Unit)? = null
+) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clickable(onClick = onPlay),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+            .padding(start = 24.dp, end = 20.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CoverImage(url = song.coverUrl, size = 64.dp, cornerRadius = 12.dp)
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp),
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+            modifier = Modifier.weight(1f)
+        )
+        if (onSeeAll != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable(onClick = onSeeAll)
+            ) {
                 Text(
-                    "CONTINÚA ESCUCHANDO",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    "Ver todo",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    song.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    song.artistsLabel,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
                 )
             }
+        }
+    }
+}
+
+/**
+ * Top 3 de la semana en formato "podio": una lista vertical (no carrusel)
+ * donde cada fila lleva un indicador grande con el rank (medalla). La fila
+ * 1 destaca con fondo primary suave, la 2 y 3 con surface.
+ */
+@Composable
+private fun TopPodium(songs: List<SongSummaryDto>, onPlay: (Int) -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        songs.forEachIndexed { idx, song ->
+            val rank = idx + 1
+            val isFirst = rank == 1
             Surface(
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.fillMaxWidth().clickable { onPlay(idx) },
+                shape = RoundedCornerShape(16.dp),
+                color = if (isFirst) scheme.primary.copy(alpha = 0.14f)
+                        else scheme.surfaceVariant.copy(alpha = 0.6f)
             ) {
-                Box(contentAlignment = Alignment.Center) {
+                Row(
+                    modifier = Modifier.padding(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(36.dp)
+                            .background(
+                                color = when (rank) {
+                                    1 -> scheme.primary
+                                    2 -> scheme.tertiary
+                                    else -> scheme.secondary
+                                },
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "$rank",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Black,
+                            color = when (rank) {
+                                1 -> scheme.onPrimary
+                                2 -> scheme.onTertiary
+                                else -> scheme.onSecondary
+                            }
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    CoverImage(url = song.coverUrl, size = 54.dp, cornerRadius = 10.dp)
+                    Spacer(Modifier.width(12.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            song.title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = scheme.onBackground,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            song.artistsLabel,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = scheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Icon(
                         Icons.Filled.PlayArrow,
                         contentDescription = "Reproducir",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(26.dp)
+                        tint = scheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
                     )
                 }
             }
@@ -427,32 +547,17 @@ private fun ContinueCard(song: SongSummaryDto, onPlay: () -> Unit) {
 }
 
 @Composable
-private fun TopSongCard(rank: Int, song: SongSummaryDto, onClick: () -> Unit) {
+private fun RecentCard(song: SongSummaryDto, onClick: () -> Unit) {
     Column(
         modifier = Modifier
-            .width(130.dp)
+            .width(124.dp)
             .clickable(onClick = onClick)
     ) {
-        Box {
-            CoverImage(url = song.coverUrl, size = 130.dp, cornerRadius = 12.dp)
-            Surface(
-                shape = RoundedCornerShape(topStart = 12.dp, bottomEnd = 10.dp),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.align(Alignment.TopStart)
-            ) {
-                Text(
-                    "#$rank",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                )
-            }
-        }
-        Spacer(Modifier.height(6.dp))
+        CoverImage(url = song.coverUrl, size = 124.dp, cornerRadius = 14.dp)
+        Spacer(Modifier.height(8.dp))
         Text(
             song.title,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onBackground,
             maxLines = 1,
@@ -468,68 +573,69 @@ private fun TopSongCard(rank: Int, song: SongSummaryDto, onClick: () -> Unit) {
     }
 }
 
+/**
+ * Tile de género más ambicioso: 150×100, gradient + icono grande semi-
+ * transparente al fondo (como "marca de agua") y el nombre en la esquina
+ * inferior en bold grande.
+ */
 @Composable
-private fun RecentSongCard(song: SongSummaryDto, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .width(110.dp)
-            .clickable(onClick = onClick)
-    ) {
-        CoverImage(url = song.coverUrl, size = 110.dp, cornerRadius = 10.dp)
-        Spacer(Modifier.height(6.dp))
-        Text(
-            song.title,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onBackground,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            song.artistsLabel,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
-
-@Composable
-private fun GenreTile(genre: GenreDto, onClick: () -> Unit) {
+private fun GenreCard(genre: GenreDto, onClick: () -> Unit) {
     val visual = getGenreVisual(genre.name)
     Surface(
         modifier = Modifier
-            .size(width = 130.dp, height = 80.dp)
+            .size(width = 150.dp, height = 100.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
-        color = androidx.compose.ui.graphics.Color.Transparent
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Transparent
     ) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    Brush.verticalGradient(
+                    Brush.linearGradient(
                         0f to visual.colorTop,
                         1f to visual.colorBottom
                     )
                 )
-                .padding(12.dp)
         ) {
             Icon(
                 visual.icon,
                 contentDescription = null,
-                tint = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f),
-                modifier = Modifier.align(Alignment.TopEnd).size(26.dp)
+                tint = Color.White.copy(alpha = 0.18f),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 8.dp)
+                    .size(56.dp)
             )
             Text(
                 genre.name,
                 style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = androidx.compose.ui.graphics.Color.White,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.align(Alignment.BottomStart)
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 12.dp, end = 10.dp, bottom = 10.dp)
             )
         }
     }
+}
+
+private fun pickGreeting(): String {
+    val hour = java.time.LocalTime.now().hour
+    val timeGreeting = when (hour) {
+        in 6..11  -> "Buenos días"
+        in 12..19 -> "Buenas tardes"
+        else      -> "Buenas noches"
+    }
+    val variants = listOf(
+        timeGreeting,
+        "Bienvenido de nuevo",
+        "Qué suene algo bueno",
+        timeGreeting,
+        "Hola otra vez",
+        timeGreeting
+    )
+    return variants.random()
 }
