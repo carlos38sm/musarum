@@ -15,8 +15,13 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Downloading
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.ui.graphics.Color
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -28,6 +33,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -55,10 +63,13 @@ fun SongActionsSheet(
 ) {
     val container = LocalAppContainer.current
     val snackbar = LocalSnackbar.current
+    val scope = rememberCoroutineScope()
     val entries by container.downloadsRepository.entries.collectAsState()
     val inProgress by container.downloadsManager.inProgress.collectAsState()
     val entry = entries[song.id]
     val isDownloading = inProgress.contains(song.id)
+    val favoriteIds by container.favoriteRepository.favoriteIds.collectAsState()
+    val isFavorite = song.id in favoriteIds
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -84,6 +95,22 @@ fun SongActionsSheet(
                 )
             }
             Spacer(Modifier.height(8.dp))
+
+            // Me gusta: primera acción porque es lo que el usuario pide más.
+            // Antes para marcar favorito había que entrar a NowPlaying e
+            // interrumpir lo que estuviera sonando. Ahora long-press →
+            // toggle directo sin salir del contexto.
+            SheetAction(
+                icon = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                label = if (isFavorite) "Quitar de favoritas" else "Me gusta",
+                iconTint = if (isFavorite) MaterialTheme.colorScheme.primary else null,
+                onClick = {
+                    scope.launch {
+                        runCatching { container.favoriteRepository.toggle(song.id) }
+                    }
+                    onDismiss()
+                }
+            )
 
             SheetAction(
                 icon = Icons.Filled.PlaylistAdd,
@@ -156,10 +183,12 @@ private fun SheetAction(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     label: String,
     destructive: Boolean = false,
+    iconTint: Color? = null,
     onClick: () -> Unit
 ) {
-    val tint = if (destructive) MaterialTheme.colorScheme.error
+    val labelColor = if (destructive) MaterialTheme.colorScheme.error
     else MaterialTheme.colorScheme.onSurface
+    val resolvedIconTint = iconTint ?: labelColor
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -167,12 +196,80 @@ private fun SheetAction(
             .padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = null, tint = resolvedIconTint, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(16.dp))
         Text(
             label,
             style = MaterialTheme.typography.bodyLarge,
-            color = tint
+            color = labelColor
+        )
+    }
+}
+
+/**
+ * Helper reutilizable: gestiona el estado del sheet de acciones + los
+ * diálogos derivados (añadir a playlist, confirmar borrado) en un solo
+ * sitio. Las pantallas de lista solo tienen que llamar a `open(song)` en
+ * el long-press y poner `SongActionsHost(...)` en el árbol UI.
+ *
+ * - isOwner se consulta del container (me) para pintar la opción de
+ *   "Borrar canción" solo si procede.
+ * - onDelete por defecto llama a songRepository.delete(id) con snackbar.
+ *   Las pantallas que necesiten un reset local (p. ej. SongsScreen
+ *   quitando la fila al instante) pueden sobrescribirlo.
+ */
+@Composable
+fun SongActionsHost(
+    content: @Composable (open: (SongSummaryDto) -> Unit) -> Unit
+) {
+    val container = LocalAppContainer.current
+    val snackbar = LocalSnackbar.current
+    val scope = rememberCoroutineScope()
+    val me by container.userRepository.me.collectAsState()
+    val isOwner = me?.userRole == "OWNER"
+
+    var sheetSong by remember { mutableStateOf<SongSummaryDto?>(null) }
+    var addToPlaylistSongId by remember { mutableStateOf<Long?>(null) }
+    var confirmDeleteSong by remember { mutableStateOf<SongSummaryDto?>(null) }
+
+    content { song -> sheetSong = song }
+
+    sheetSong?.let { song ->
+        SongActionsSheet(
+            song = song,
+            isOwner = isOwner,
+            onDismiss = { sheetSong = null },
+            onAddToPlaylist = {
+                addToPlaylistSongId = song.id
+                sheetSong = null
+            },
+            onRequestDelete = {
+                confirmDeleteSong = song
+                sheetSong = null
+            }
+        )
+    }
+
+    addToPlaylistSongId?.let { id ->
+        com.musarum.mobile.music.library.AddToPlaylistDialog(
+            songId = id,
+            onDismiss = { addToPlaylistSongId = null }
+        )
+    }
+
+    confirmDeleteSong?.let { song ->
+        ConfirmDeleteSongDialog(
+            song = song,
+            onDismiss = { confirmDeleteSong = null },
+            onConfirm = {
+                val sid = song.id
+                confirmDeleteSong = null
+                scope.launch {
+                    runCatching { container.songRepository.delete(sid) }
+                        .onSuccess { snackbar("Canción eliminada") }
+                        .onFailure { snackbar("No se pudo borrar: ${it.message ?: "error"}") }
+                }
+            }
         )
     }
 }

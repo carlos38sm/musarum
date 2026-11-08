@@ -54,6 +54,7 @@ import com.musarum.mobile.data.network.dto.AlbumCardDto
 import com.musarum.mobile.data.network.dto.ArtistSummaryDto
 import com.musarum.mobile.music.ArtistAvatar
 import com.musarum.mobile.music.CoverImage
+import com.musarum.mobile.music.SongActionsHost
 import com.musarum.mobile.music.SongRow
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -143,6 +144,7 @@ fun SearchScreen(
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
+                SongActionsHost { openSongActions ->
                 when (val s = state) {
                     is SearchUiState.Empty -> RecentSearchesPanel(
                         recent = recent,
@@ -207,7 +209,8 @@ fun SearchScreen(
                                                     songs = r.songs,
                                                     startIndex = idx
                                                 )
-                                            }
+                                            },
+                                            onLongPress = { openSongActions(song) }
                                         )
                                         HorizontalDivider()
                                     }
@@ -216,26 +219,29 @@ fun SearchScreen(
                         }
                     }
                 }
+                }
             }
         }
     }
 }
 
 /**
- * Fila de 4 chips-filtro con identidad. Cada filtro tiene su propio icono y
- * color accent — sin seleccionar queda neutro (fondo surfaceVariant débil
- * + borde onSurface débil), al seleccionar se colorea del accent y
- * aparece una sombra sutil. Píldora completa, altura 44dp. Row (no FlowRow):
- * los 4 caben en 1 línea compartiendo ancho al 25% cada uno.
+ * Chips-filtro con identidad en 2×2 (FlowRow). Cada filtro tiene su propio
+ * icono y color accent — sin seleccionar queda neutro, al seleccionar se
+ * colorea del accent y aparece una sombra sutil. Píldora completa.
+ * El 2×2 deja los nombres a tamaño cómodo (Canciones sin partirse).
  */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun FilterChipRow(current: SearchFilter, onSelect: (SearchFilter) -> Unit) {
     val scheme = MaterialTheme.colorScheme
-    Row(
+    androidx.compose.foundation.layout.FlowRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        maxItemsInEachRow = 2
     ) {
         SearchFilterChip(
             modifier = Modifier.weight(1f),

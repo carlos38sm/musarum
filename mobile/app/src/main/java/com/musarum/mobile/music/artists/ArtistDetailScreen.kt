@@ -52,6 +52,7 @@ import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.data.network.dto.AlbumCardDto
 import com.musarum.mobile.music.ArtistAvatar
 import com.musarum.mobile.music.CoverImage
+import com.musarum.mobile.music.SongActionsHost
 import com.musarum.mobile.music.SongRow
 
 @Composable
@@ -68,6 +69,7 @@ fun ArtistDetailScreen(
     val state by viewModel.state.collectAsState()
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        SongActionsHost { openSongActions ->
         when (val s = state) {
             is ArtistDetailUiState.Loading -> Box(
                 Modifier.fillMaxSize(), Alignment.Center
@@ -119,13 +121,15 @@ fun ArtistDetailScreen(
                                     songs = s.songs,
                                     startIndex = index
                                 )
-                            }
+                            },
+                            onLongPress = { openSongActions(song) }
                         )
                     }
                 }
 
                 item { Spacer(Modifier.height(100.dp)) }
             }
+        }
         }
     }
 }

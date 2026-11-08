@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.music.LibraryStatsHeader
+import com.musarum.mobile.music.SongActionsHost
 import com.musarum.mobile.music.SongRow
 import com.musarum.mobile.music.getGenreVisual
 import com.musarum.mobile.ui.humanizeDurationMs
@@ -71,6 +72,7 @@ fun GenreDetailScreen(
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            SongActionsHost { openSongActions ->
             when (val s = state) {
                 is GenreDetailUiState.Loading -> Box(
                     Modifier.fillMaxSize(), contentAlignment = Alignment.Center
@@ -119,12 +121,14 @@ fun GenreDetailScreen(
                                         songs = s.songs,
                                         startIndex = s.songs.indexOf(song)
                                     )
-                                }
+                                },
+                                onLongPress = { openSongActions(song) }
                             )
                             HorizontalDivider()
                         }
                     }
                 }
+            }
             }
         }
     }

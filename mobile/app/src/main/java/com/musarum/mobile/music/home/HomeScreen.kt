@@ -23,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MicExternalOn
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Person
@@ -108,8 +107,7 @@ fun HomeScreen(
                     QuickChips(
                         onOpenSongs = onOpenSongs,
                         onOpenAlbums = onOpenAlbums,
-                        onOpenArtists = onOpenArtists,
-                        onOpenFavorites = onOpenFavorites
+                        onOpenArtists = onOpenArtists
                     )
                 }
 
@@ -344,14 +342,14 @@ private fun ContinueHero(song: SongSummaryDto, onPlay: () -> Unit) {
     }
 }
 
-/** Fila de 4 chips compactos con icono + etiqueta. Más ligeros que los tiles
- *  antiguos — funcionan como accesos directos sin robar protagonismo al hero. */
+/** Fila de 3 chips con icono + etiqueta. Antes eran 4 (incluía Favoritas)
+ *  pero el texto quedaba muy chico y la fila cargada. Favoritas tiene su
+ *  tile dedicado en Biblioteca y long-press en cualquier fila lo cubre. */
 @Composable
 private fun QuickChips(
     onOpenSongs: () -> Unit,
     onOpenAlbums: () -> Unit,
-    onOpenArtists: () -> Unit,
-    onOpenFavorites: () -> Unit
+    onOpenArtists: () -> Unit
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(
@@ -378,13 +376,6 @@ private fun QuickChips(
             icon = Icons.Filled.MicExternalOn,
             accent = scheme.secondary,
             onClick = onOpenArtists
-        )
-        QuickChip(
-            modifier = Modifier.weight(1f),
-            label = "Favoritas",
-            icon = Icons.Filled.Favorite,
-            accent = scheme.error,
-            onClick = onOpenFavorites
         )
     }
 }
