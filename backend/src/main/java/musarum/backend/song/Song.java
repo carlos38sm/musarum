@@ -10,6 +10,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -81,8 +82,13 @@ public class Song extends BaseEntity {
 
     private String composer;
 
+    // @BatchSize: Hibernate carga las relaciones lazy en lotes de hasta 100,
+    // no una query por fila. Antes cada /songs?page=40 disparaba ~40 queries
+    // a song_artists + 40 a albums + N a artists ("N+1"). Con batch=100 son
+    // ~2-3 queries totales por página — gran impacto en bibliotecas grandes.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "album_id")
+    @BatchSize(size = 100)
     private Album album;
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -92,10 +98,12 @@ public class Song extends BaseEntity {
             inverseJoinColumns = @JoinColumn(name = "artist_id")
     )
     @Builder.Default
+    @BatchSize(size = 100)
     private Set<Artist> artists = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "genre_id")
+    @BatchSize(size = 100)
     private Genre genre;
 
     public void applyEnrichment(Integer bpm, String musicalKey, Double replayGain,

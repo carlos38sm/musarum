@@ -345,12 +345,17 @@ class PlayerController(
         // Si estamos en medio de un crossfade, cancelamos el aux antes de
         // saltar; si no, se quedaría sonando solapado con la nueva pista.
         releaseAuxPlayer()
+        // Cancela también la rampa del sleep timer si estaba en los últimos
+        // 10 s de fade — la nueva canción empezaría al volumen en que estuviera
+        // la rampa (p. ej. 0.3) sin este reset.
+        sleepFadeJob?.cancel()
         controller.volume = currentRgTarget
         controller.seekToNextMediaItem()
     }
 
     fun previous() = whenConnected { controller ->
         releaseAuxPlayer()
+        sleepFadeJob?.cancel()
         controller.volume = currentRgTarget
         if (controller.currentPosition > 3_000) controller.seekTo(0)
         else controller.seekToPreviousMediaItem()
@@ -364,6 +369,7 @@ class PlayerController(
     fun jumpToIndex(index: Int) = whenConnected { controller ->
         if (index !in 0 until controller.mediaItemCount) return@whenConnected
         releaseAuxPlayer()
+        sleepFadeJob?.cancel()
         controller.volume = currentRgTarget
         controller.seekTo(index, 0L)
         controller.play()
@@ -430,6 +436,10 @@ class PlayerController(
     // mecanismo: calculamos un timestamp absoluto y un @Scheduled de ticker
     // comprueba cuándo apagar.
     private var sleepTimerJob: Job? = null
+    // Rampa del sleep timer separada del ticker principal. Así si el usuario
+    // cambia de canción manualmente durante los últimos 10 s podemos cancelar
+    // la rampa sin matar el timer entero.
+    private var sleepFadeJob: Job? = null
 
     /** Minutos fijos desde ahora. 0/negativo = cancelar. */
     fun setSleepTimerMinutes(minutes: Int) {
@@ -448,7 +458,9 @@ class PlayerController(
 
     fun cancelSleepTimer() {
         sleepTimerJob?.cancel()
+        sleepFadeJob?.cancel()
         sleepTimerJob = null
+        sleepFadeJob = null
         // Si el usuario cancela a mitad del fade (los últimos 10 s), el
         // volumen puede haber bajado a cerca de 0 — devolvemos al target.
         mediaController?.volume = currentRgTarget
@@ -457,6 +469,7 @@ class PlayerController(
 
     private fun armSleepTimer(targetTime: Long) {
         sleepTimerJob?.cancel()
+        sleepFadeJob?.cancel()
         _state.update { it.copy(sleepTimerAt = targetTime) }
         sleepTimerJob = scope.launch {
             // Fade de 10 segundos ANTES del target. Un fade de 1s se percibía
@@ -472,7 +485,14 @@ class PlayerController(
                     val c = mediaController
                     if (c != null) {
                         val remaining = (targetTime - now).coerceAtLeast(500L)
-                        runCatching { rampVolume(c, c.volume, 0f, remaining) }
+                        // Lanzamos la rampa en un job separado para que se
+                        // pueda cancelar sin matar el timer entero. Si el
+                        // usuario cambia de canción manualmente, next() /
+                        // previous() cancelan sleepFadeJob y restauran el
+                        // volumen — antes la rampa seguía sobre la nueva.
+                        sleepFadeJob = scope.launch {
+                            runCatching { rampVolume(c, c.volume, 0f, remaining) }
+                        }
                     }
                 }
                 if (now >= targetTime) {
@@ -484,6 +504,7 @@ class PlayerController(
                     }
                     _state.update { it.copy(sleepTimerAt = null) }
                     sleepTimerJob = null
+                    sleepFadeJob = null
                     break
                 }
                 // Tickeamos cada 250 ms cerca del fade para una rampa suave,
