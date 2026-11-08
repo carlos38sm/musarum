@@ -36,13 +36,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        # setup-gradle@v5: evita el "forced to Node 24" que el runner nuevo
+        # imprime con v4 (GitHub va deprecando Node 20). Además la v5 trae
+        # caché de wrapper/dependencies mejorada → arranques más rápidos.
+        uses: gradle/actions/setup-gradle@v5
 
       - name: Make gradlew executable
         # El repo se cloneó desde Windows, el bit +x se pierde. En Linux
