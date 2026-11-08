@@ -3,6 +3,7 @@ package musarum.backend.artist;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -13,6 +14,10 @@ import musarum.backend.shared.BaseEntity;
 @NoArgsConstructor
 @SuperBuilder
 @Table(name = "artists")
+// @BatchSize a nivel clase: lotes de 100 para que Hibernate agrupe la
+// resolución de Artist cuando varias canciones referencian artistas
+// distintos (a través de song_artists).
+@BatchSize(size = 100)
 public class Artist extends BaseEntity{
 
 	@Column(nullable = false)

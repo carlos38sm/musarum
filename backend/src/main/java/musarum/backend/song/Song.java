@@ -82,15 +82,14 @@ public class Song extends BaseEntity {
 
     private String composer;
 
-    // @BatchSize: Hibernate carga las relaciones lazy en lotes de hasta 100,
-    // no una query por fila. Antes cada /songs?page=40 disparaba ~40 queries
-    // a song_artists + 40 a albums + N a artists ("N+1"). Con batch=100 son
-    // ~2-3 queries totales por página — gran impacto en bibliotecas grandes.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "album_id")
-    @BatchSize(size = 100)
     private Album album;
 
+    // @BatchSize sí vale en colecciones: Hibernate carga los artists de hasta
+    // 100 canciones en una sola query en vez de N. Para Album y Genre
+    // (@ManyToOne) la anotación va a nivel de clase en su propio fichero
+    // — Hibernate 6 no permite @BatchSize directo en @ManyToOne.
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
             name = "song_artists",
@@ -103,7 +102,6 @@ public class Song extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "genre_id")
-    @BatchSize(size = 100)
     private Genre genre;
 
     public void applyEnrichment(Integer bpm, String musicalKey, Double replayGain,

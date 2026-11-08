@@ -6,6 +6,7 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.BatchSize;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
@@ -17,6 +18,10 @@ import musarum.backend.shared.BaseEntity;
 @SuperBuilder
 @NoArgsConstructor
 @Table(name = "albums")
+// @BatchSize a nivel clase: cuando Hibernate carga referencias lazy a Album
+// desde varias canciones distintas, las resuelve en lotes de 100 en una sola
+// query en vez de N. Rompe el "N+1" clásico del mapper de SongSummary.
+@BatchSize(size = 100)
 public class Album extends BaseEntity {
 
     @Column(nullable = false)
