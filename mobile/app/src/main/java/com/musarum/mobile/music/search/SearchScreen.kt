@@ -14,17 +14,21 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.size
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MicExternalOn
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.Surface
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -217,43 +221,116 @@ fun SearchScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+/**
+ * Fila de 4 chips-filtro con identidad. Cada filtro tiene su propio icono y
+ * color accent — sin seleccionar queda neutro (fondo surfaceVariant débil
+ * + borde onSurface débil), al seleccionar se colorea del accent y
+ * aparece una sombra sutil. Píldora completa, altura 44dp. Row (no FlowRow):
+ * los 4 caben en 1 línea compartiendo ancho al 25% cada uno.
+ */
 @Composable
 private fun FilterChipRow(current: SearchFilter, onSelect: (SearchFilter) -> Unit) {
-    // 2 columnas / 2 filas con FlowRow(maxItemsInEachRow=2). Antes era una
-    // única fila y "Canciones" se partía en varias líneas por falta de ancho.
-    FlowRow(
+    val scheme = MaterialTheme.colorScheme
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        maxItemsInEachRow = 2
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        FilterChip(
+        SearchFilterChip(
+            modifier = Modifier.weight(1f),
+            label = "Todo",
+            icon = Icons.Filled.Apps,
+            accent = scheme.primary,
             selected = current == SearchFilter.ALL,
-            onClick = { onSelect(SearchFilter.ALL) },
-            label = { Text("Todo") },
-            modifier = Modifier.weight(1f)
+            onClick = { onSelect(SearchFilter.ALL) }
         )
-        FilterChip(
+        SearchFilterChip(
+            modifier = Modifier.weight(1f),
+            label = "Artistas",
+            icon = Icons.Filled.MicExternalOn,
+            accent = scheme.secondary,
             selected = current == SearchFilter.ARTISTS,
-            onClick = { onSelect(SearchFilter.ARTISTS) },
-            label = { Text("Artistas") },
-            modifier = Modifier.weight(1f)
+            onClick = { onSelect(SearchFilter.ARTISTS) }
         )
-        FilterChip(
+        SearchFilterChip(
+            modifier = Modifier.weight(1f),
+            label = "Álbumes",
+            icon = Icons.Filled.Album,
+            accent = scheme.tertiary,
             selected = current == SearchFilter.ALBUMS,
-            onClick = { onSelect(SearchFilter.ALBUMS) },
-            label = { Text("Álbumes") },
-            modifier = Modifier.weight(1f)
+            onClick = { onSelect(SearchFilter.ALBUMS) }
         )
-        FilterChip(
+        SearchFilterChip(
+            modifier = Modifier.weight(1f),
+            label = "Canciones",
+            icon = Icons.Filled.MusicNote,
+            accent = scheme.primary,
             selected = current == SearchFilter.SONGS,
-            onClick = { onSelect(SearchFilter.SONGS) },
-            label = { Text("Canciones") },
-            modifier = Modifier.weight(1f)
+            onClick = { onSelect(SearchFilter.SONGS) }
         )
+    }
+}
+
+@Composable
+private fun SearchFilterChip(
+    modifier: Modifier = Modifier,
+    label: String,
+    icon: ImageVector,
+    accent: Color,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    val bg by animateColorAsState(
+        targetValue = if (selected) accent else scheme.surfaceVariant.copy(alpha = 0.55f),
+        label = "chipBg"
+    )
+    val fg by animateColorAsState(
+        targetValue = if (selected) {
+            // Elegimos onX según el accent para que el contraste sea real,
+            // no un "vemos qué sale". onPrimary para primary, etc.
+            when (accent) {
+                scheme.primary -> scheme.onPrimary
+                scheme.secondary -> scheme.onSecondary
+                scheme.tertiary -> scheme.onTertiary
+                else -> scheme.onPrimary
+            }
+        } else scheme.onSurfaceVariant,
+        label = "chipFg"
+    )
+    Surface(
+        modifier = modifier
+            .height(42.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(50),
+        color = Color.Transparent,
+        tonalElevation = if (selected) 2.dp else 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(bg)
+                .padding(horizontal = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = fg,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                color = fg,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 

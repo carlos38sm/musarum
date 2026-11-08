@@ -236,10 +236,10 @@ private fun SyncedLyricsView(
     LaunchedEffect(activeIndex) {
         if (activeIndex >= 0) {
             val info = listState.layoutInfo
-            // Alineamos la línea activa a ~1/3 del viewport desde arriba
-            // (antes iba al centro y quedaba muy baja — más cómodo leer un
-            // poco por encima del centro, con contexto hacia adelante).
-            val targetOffset = info.viewportSize.height / 3
+            // Alineamos la línea activa a ~1/5 del viewport desde arriba
+            // (iba a 1/3 y aún quedaba a media pantalla — más arriba se
+            // lee mejor y deja más contexto de las siguientes líneas).
+            val targetOffset = info.viewportSize.height / 5
             listState.animateScrollToItem(
                 index = activeIndex.coerceAtLeast(0),
                 scrollOffset = -targetOffset.coerceAtLeast(0)

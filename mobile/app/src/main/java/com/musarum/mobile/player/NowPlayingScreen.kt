@@ -44,6 +44,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Downloading
@@ -62,6 +63,7 @@ import androidx.compose.material.icons.filled.RepeatOne
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,6 +73,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -122,10 +126,15 @@ fun NowPlayingScreen(
     }
 
     var showAddToPlaylist by remember { mutableStateOf(false) }
+    // Para la acción OWNER "eliminar del disco" del dropdown.
+    val me by container.userRepository.me.collectAsState()
+    val isOwner = me?.userRole == "OWNER"
+    var confirmDelete by remember { mutableStateOf(false) }
+    val snackbar = LocalSnackbar.current
+    val scope = rememberCoroutineScope()
     // Toggle de mini-letra persistente mientras no se cambie de sesión. El
     // botón solo responde si hay lyrics sincronizadas en la pista actual.
     var showMiniLyric by rememberSaveable { mutableStateOf(false) }
-    val snackbar = LocalSnackbar.current
 
     // Parseo LRC — vacío si no hay o si no está sincronizada.
     val syncedLines = remember(vmState.lyrics) { LrcParser.parse(vmState.lyrics) }
@@ -279,6 +288,8 @@ fun NowPlayingScreen(
             sleepTimerActive = playerState.sleepTimerAt != null,
             onOpenSleepTimer = { showSleepSheet = true },
             onOpenQueue = onOpenQueue,
+            isOwner = isOwner,
+            onRequestDelete = { confirmDelete = true },
             downloadState = run {
                 val entries by container.downloadsRepository.entries.collectAsState()
                 val inProgress by container.downloadsManager.inProgress.collectAsState()
@@ -343,6 +354,51 @@ fun NowPlayingScreen(
         AddToPlaylistDialog(
             songId = song.id,
             onDismiss = { showAddToPlaylist = false }
+        )
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            icon = {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Eliminar del disco") },
+            text = {
+                Text(
+                    "Se borrará «${song.title}» del servidor (fichero, " +
+                    "favoritos, playlists y reproducciones). " +
+                    "Esta acción no se puede deshacer."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    val idToDelete = song.id
+                    scope.launch {
+                        runCatching { container.songRepository.delete(idToDelete) }
+                            .onSuccess {
+                                snackbar("Eliminada")
+                                // Avanza a la siguiente de la cola; si era la
+                                // única, vuelve a la pantalla anterior.
+                                runCatching { controller.next() }
+                                    .onFailure { onBack() }
+                            }
+                            .onFailure { t ->
+                                snackbar("No se pudo eliminar: ${t.message ?: "error"}")
+                            }
+                    }
+                }) {
+                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDelete = false }) { Text("Cancelar") }
+            }
         )
     }
 }
@@ -559,6 +615,8 @@ private fun ActionsRow(
     sleepTimerActive: Boolean,
     onOpenSleepTimer: () -> Unit,
     onOpenQueue: () -> Unit,
+    isOwner: Boolean,
+    onRequestDelete: () -> Unit,
     downloadState: DownloadState,
     onDownload: () -> Unit
 ) {
@@ -603,9 +661,19 @@ private fun ActionsRow(
                     modifier = Modifier.size(22.dp)
                 )
             }
+            // Offset: el ⋯ vive cerca del centro de la fila y sin este nudge
+            // el popup caía anclado a la izquierda del botón y quedaba feo
+            // pegado al borde. Lo desplazamos ligeramente hacia la derecha +
+            // abajo para que respire sobre el botón. El modifier le da ancho
+            // mínimo, esquinas redondeadas y usa surfaceContainer para que
+            // contraste bien con el gradiente del shell.
             DropdownMenu(
                 expanded = showMore,
-                onDismissRequest = { showMore = false }
+                onDismissRequest = { showMore = false },
+                offset = DpOffset(x = (-8).dp, y = 8.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
                 DropdownMenuItem(
                     text = { Text("Cola de reproducción") },
@@ -632,6 +700,24 @@ private fun ActionsRow(
                     },
                     onClick = { showMore = false; onOpenSleepTimer() }
                 )
+                if (isOwner) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "Eliminar del disco",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Filled.Delete,
+                                null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        },
+                        onClick = { showMore = false; onRequestDelete() }
+                    )
+                }
             }
         }
         Spacer(Modifier.width(6.dp))

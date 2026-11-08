@@ -533,7 +533,11 @@ private fun VideoActionsRow(
             }
             DropdownMenu(
                 expanded = showMore,
-                onDismissRequest = { showMore = false }
+                onDismissRequest = { showMore = false },
+                offset = androidx.compose.ui.unit.DpOffset(x = (-8).dp, y = 8.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
                 DropdownMenuItem(
                     text = { Text("Radio basada en esta") },
