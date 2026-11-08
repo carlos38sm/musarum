@@ -43,14 +43,38 @@ jobs:
 
       - name: Set up Gradle
         # setup-gradle@v5: evita el "forced to Node 24" que el runner nuevo
-        # imprime con v4 (GitHub va deprecando Node 20). Además la v5 trae
-        # caché de wrapper/dependencies mejorada → arranques más rápidos.
+        # imprime con v4 (GitHub va deprecando Node 20). Importante: le
+        # decimos `build-root-directory: mobile` para que encuentre
+        # `mobile/gradle/wrapper/gradle-wrapper.properties` y pre-descargue
+        # Gradle 9.3.1 en el cache. Sin esto, `./gradlew` lo busca él
+        # cuando estamos ya dentro del build y chocaba contra la red lenta
+        # del runner (504 / timeout en services.gradle.org).
         uses: gradle/actions/setup-gradle@v5
+        with:
+          build-root-directory: mobile
 
       - name: Make gradlew executable
         # El repo se cloneó desde Windows, el bit +x se pierde. En Linux
         # ./gradlew da exit 126 (permission denied) sin este chmod.
         run: chmod +x gradlew
+
+      - name: Pre-fetch Gradle distribution (con reintentos)
+        # Red-safety-net: si setup-gradle no cacheó por lo que sea, damos
+        # 5 tiros al `./gradlew --version` antes de atacar el build real,
+        # para que un 504 puntual de services.gradle.org / github.com no
+        # mate el workflow. Cada intento tiene 120 s (networkTimeout del
+        # wrapper); entre reintentos esperamos 20 s.
+        run: |
+          for i in 1 2 3 4 5; do
+            if ./gradlew --version; then
+              echo "Gradle listo en el intento $i."
+              exit 0
+            fi
+            echo "::warning::Intento $i fallido descargando Gradle. Reintento en 20s..."
+            sleep 20
+          done
+          echo "::error::No se pudo descargar Gradle tras 5 intentos."
+          exit 1
 
       - name: Validate release secrets
         # Si falta alguno de los 4 secrets Android, abortamos con mensaje
