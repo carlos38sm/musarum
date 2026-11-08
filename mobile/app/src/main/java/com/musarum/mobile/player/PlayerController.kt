@@ -48,7 +48,11 @@ data class PlayerUiState(
     val sleepTimerAt: Long? = null
 ) {
     val hasPrevious: Boolean get() = currentIndex > 0
-    val hasNext: Boolean get() = currentIndex in 0 until queue.size - 1
+    val hasNext: Boolean get() =
+        currentIndex in 0 until queue.size - 1 ||
+        // Con "repetir lista" activo y al menos una canción, "siguiente" vuelve al
+        // principio — el botón NO debe quedar apagado en la última.
+        (repeatMode == RepeatMode.ALL && queue.isNotEmpty() && currentIndex >= 0)
 }
 
 class PlayerController(
@@ -665,20 +669,33 @@ class PlayerController(
         if (remaining !in 1..(fadeMs + preBufferMs)) return
 
         val state = _state.value
-        val nextIndex = state.currentIndex + 1
-        val nextSong = state.queue.getOrNull(nextIndex)
+        val naturalNext = state.currentIndex + 1
+        // Con "repetir lista" activa, el final de la cola vuelve al principio.
+        // Antes aquí dábamos por "fin de cola" y fade a silencio → Media3
+        // sí saltaba al 0 por REPEAT_ALL, pero el volumen quedaba en 0 y la
+        // primera sonaba "en silencio" → parecía que no volvía.
+        val (nextIndex, nextSong) = if (naturalNext < state.queue.size) {
+            naturalNext to state.queue[naturalNext]
+        } else if (controller.repeatMode == Player.REPEAT_MODE_ALL && state.queue.isNotEmpty()) {
+            0 to state.queue[0]
+        } else {
+            -1 to null
+        }
 
         if (nextSong != null) {
             startRealCrossfade(controller, nextIndex, remaining)
         } else {
-            // Fin de cola: fade-out a silencio sin pretender crossfade.
-            // Solo arranca si estamos ya en los últimos fadeMs (no en
-            // la ventana de pre-buffer, que no aplica aquí).
+            // Fin de cola REAL (REPEAT_OFF o lista vacía): fade-out a silencio.
             if (remaining <= fadeMs) {
                 fadingOut = true
                 fadeJob?.cancel()
                 fadeJob = scope.launch {
                     rampVolume(controller, from = currentRgTarget, to = 0f, durationMs = remaining)
+                    // Al terminar el ramp, restauramos el volumen para que
+                    // si el usuario vuelve a dar play (Media3 reinicia la
+                    // cola en STATE_ENDED) no suene en silencio.
+                    runCatching { controller.volume = currentRgTarget }
+                    fadingOut = false
                 }
             }
         }
@@ -785,9 +802,12 @@ class PlayerController(
 
         // Principal: avanza a B con volumen 0. onMediaItemTransition
         // ve crossfadeInProgress y NO dispara fade-in extra; nosotros
-        // controlamos ambas rampas aquí.
+        // controlamos ambas rampas aquí. Usamos seekTo(nextIndex, 0) en
+        // lugar de seekToNextMediaItem para que el loop de REPEAT_ALL
+        // funcione (nextIndex=0 cuando la "siguiente" es la primera de
+        // la cola — seekToNextMediaItem en la última podía no saltar).
         runCatching { controller.volume = 0f }
-        runCatching { controller.seekToNextMediaItem() }
+        runCatching { controller.seekTo(nextIndex, 0L) }
 
         // Duración efectiva del crossfade = el valor configurado en
         // preferencias. Usamos el valor crudo (no "remaining") porque
