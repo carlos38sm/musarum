@@ -75,6 +75,12 @@ interface ApiService {
     @GET("songs/shuffled")
     suspend fun getShuffledSongs(): List<SongSummaryDto>
 
+    // Catálogo entero ordenado. Lo usa Canciones al tocar una canción para
+    // que la cola del player sea TODO el catálogo (y el shuffle de NowPlaying
+    // barajee las 7000, no solo la ventana cargada).
+    @GET("songs/all")
+    suspend fun getAllSongs(): List<SongSummaryDto>
+
     // Posición absoluta de la primera canción por letra, para el jump bar.
     @GET("songs/letter-offsets")
     suspend fun getLetterOffsets(): Map<String, Int>
@@ -300,6 +306,11 @@ interface ApiService {
     // géneros + referencias). Devuelve cuántos había antes del wipe.
     @retrofit2.http.POST("admin/server/wipe-library")
     suspend fun wipeLibrary(): com.musarum.mobile.data.network.dto.WipeLibrarySummaryDto
+
+    // Re-lanza enriquecimiento Emendatium sobre todo el catálogo. Los datos
+    // nuevos aparecen conforme Emendatium responde (fire-and-forget).
+    @retrofit2.http.POST("admin/server/re-enrich-all")
+    suspend fun reEnrichAll(): com.musarum.mobile.data.network.dto.ReEnrichSummaryDto
 
     // ── Carpetas de biblioteca (solo OWNER) ──
     @GET("admin/folders")

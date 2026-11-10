@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PersonAdd
@@ -246,6 +247,41 @@ fun ProfileScreen(
                 title = "Ecualizador",
                 subtitle = if (eqEnabled) "Activado · 5 bandas" else "Desactivado",
                 onClick = onOpenEqualizer
+            )
+            Spacer(Modifier.height(10.dp))
+            // Permite al OWNER (o a cualquier usuario) abrir los ajustes de
+            // batería para desactivar la optimización. Sin ella, Android/Doze
+            // corta la red con la pantalla apagada y los Bluetooth se quedan
+            // sin bytes → handshake → algunos modelos se apagan.
+            val ctx = LocalContext.current
+            SettingRow(
+                icon = Icons.Filled.BatteryChargingFull,
+                title = "Permitir en segundo plano",
+                subtitle = "Evita cortes de Bluetooth con la pantalla bloqueada",
+                onClick = {
+                    runCatching {
+                        val intent = android.content.Intent(
+                            android.provider.Settings
+                                .ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS
+                        ).apply {
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        ctx.startActivity(intent)
+                    }.onFailure {
+                        // Fallback: abrir ajustes de la app por si el intent
+                        // genérico no existe en algún ROM raro.
+                        runCatching {
+                            val fallback = android.content.Intent(
+                                android.provider.Settings
+                                    .ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.parse("package:${ctx.packageName}")
+                            ).apply {
+                                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            ctx.startActivity(fallback)
+                        }
+                    }
+                }
             )
             Spacer(Modifier.height(10.dp))
 

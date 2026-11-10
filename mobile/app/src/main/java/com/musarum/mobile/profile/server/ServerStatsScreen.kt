@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -122,7 +123,12 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                 )
                 MaintenanceCard(
                     songCount = s.stats.catalog.songs,
-                    onWipeRequested = { showWipeDialog = true }
+                    onWipeRequested = { showWipeDialog = true },
+                    onReEnrichRequested = {
+                        viewModel.reEnrichAll { _, msg ->
+                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
+                    }
                 )
                 Spacer(Modifier.height(8.dp))
             }
@@ -165,8 +171,38 @@ fun ServerStatsScreen(onBack: () -> Unit) {
 }
 
 @Composable
-private fun MaintenanceCard(songCount: Long, onWipeRequested: () -> Unit) {
+private fun MaintenanceCard(
+    songCount: Long,
+    onWipeRequested: () -> Unit,
+    onReEnrichRequested: () -> Unit
+) {
     StatCard(title = "Mantenimiento") {
+        Text(
+            "Re-busca biografías de artistas, BPM, tonalidad y replaygain " +
+                "en Emendatium. Útil si el catálogo se importó antes de " +
+                "activar Emendatium. Los datos aparecen poco a poco.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = onReEnrichRequested,
+            enabled = songCount > 0,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.AutoFixHigh, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (songCount > 0) "Re-enriquecer todo ($songCount canciones)"
+                else "Nada que enriquecer"
+            )
+        }
+
+        Spacer(Modifier.height(18.dp))
         Text(
             "Vacía el catálogo musical del servidor cuando vayas a cargar " +
                 "una carpeta de música nueva. No toca usuarios, playlists ni " +

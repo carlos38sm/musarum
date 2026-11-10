@@ -17,12 +17,14 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import musarum.backend.album.AlbumRepository;
 import musarum.backend.artist.ArtistRepository;
+import musarum.backend.enrichment.EmendatiumAutoEnricher;
 import musarum.backend.favorite.FavoriteRepository;
 import musarum.backend.genre.GenreRepository;
 import musarum.backend.playlist.PlaylistRepository;
 import musarum.backend.reproduction.ReproductionRepository;
 import musarum.backend.scanner.LibraryScanner;
 import musarum.backend.scanner.ScannerStatus;
+import musarum.backend.song.Song;
 import musarum.backend.song.SongRepository;
 import musarum.backend.user.UserRepository;
 import org.slf4j.Logger;
@@ -58,6 +60,7 @@ public class ServerStatsService {
     private final UserRepository userRepository;
     private final ReproductionRepository reproductionRepository;
     private final LibraryScanner libraryScanner;
+    private final EmendatiumAutoEnricher emendatiumEnricher;
 
     private final Path musicRoot;
     private final Path coversRoot;
@@ -77,6 +80,7 @@ public class ServerStatsService {
                        UserRepository userRepository,
                        ReproductionRepository reproductionRepository,
                        LibraryScanner libraryScanner,
+                       EmendatiumAutoEnricher emendatiumEnricher,
                        @Value("${MUSARUM_MUSIC_PATH}") String musicPath,
                        @Value("${MUSARUM_COVERS_PATH:#{null}}") String coversPath,
                        @Value("${MUSARUM_VIDEOS_PATH:#{null}}") String videosPath,
@@ -90,6 +94,7 @@ public class ServerStatsService {
         this.userRepository = userRepository;
         this.reproductionRepository = reproductionRepository;
         this.libraryScanner = libraryScanner;
+        this.emendatiumEnricher = emendatiumEnricher;
 
         this.musicRoot = Path.of(musicPath);
         // Mismo criterio que CoverStorage/VideoStorage/AvatarStorage: si no
@@ -299,6 +304,37 @@ public class ServerStatsService {
     }
 
     public record WipeSummary(long songs, long artists, long albums, long genres) {}
+
+    /**
+     * Relanza el enriquecimiento de Emendatium sobre TODAS las canciones. Se
+     * usa cuando el catálogo lleva tiempo sin biografía / BPM / tonalidad
+     * porque Emendatium no estaba corriendo cuando se importaron. Las llamadas
+     * van fire-and-forget al pool scanner → el OWNER verá los datos aparecer
+     * progresivamente conforme Emendatium responda (puede tardar según nº de
+     * canciones y fuentes externas).
+     */
+    @Transactional(readOnly = true)
+    public ReEnrichSummary reEnrichAll() {
+        long total = songRepository.count();
+        int queued = 0;
+        // Streamear con paginación para no cargar 7000 entidades en memoria.
+        int page = 0;
+        int size = 200;
+        while (true) {
+            var p = songRepository.findAll(
+                    org.springframework.data.domain.PageRequest.of(page, size));
+            for (Song s : p.getContent()) {
+                emendatiumEnricher.enrichAsync(s.getId(), s.getAudioPath());
+                queued++;
+            }
+            if (!p.hasNext()) break;
+            page++;
+        }
+        log.info("reEnrichAll: encoladas {} canciones (de {})", queued, total);
+        return new ReEnrichSummary(queued, total);
+    }
+
+    public record ReEnrichSummary(int queued, long total) {}
 
     /** Borra los `.lrc` huérfanos y devuelve cuántos se eliminaron. */
     public int deleteOrphanLyricFiles() {

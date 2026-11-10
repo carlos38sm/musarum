@@ -98,6 +98,22 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     @Query(value = "SELECT * FROM songs ORDER BY RANDOM()", nativeQuery = true)
     List<Song> findAllShuffled();
 
+    /**
+     * Catálogo entero ordenado igual que la vista paginada (ver
+     * {@link #findPageOrdered}). El móvil lo pide una sola vez al tocar una
+     * canción desde Canciones para que la cola del player sea TODO el catálogo
+     * y el botón shuffle de NowPlaying opere sobre el total, no solo sobre
+     * las páginas ya descargadas.
+     */
+    @Query(value = """
+        SELECT * FROM songs
+        ORDER BY
+          CASE WHEN title ~ '^[[:alpha:]]' THEN 0 ELSE 1 END,
+          UPPER(title),
+          id
+        """, nativeQuery = true)
+    List<Song> findAllOrdered();
+
     // ── Agregados para el panel de servidor (OWNER) ──
 
     @Query("SELECT COUNT(s) FROM Song s WHERE s.lyricsPath IS NOT NULL AND s.lyricsPath <> ''")

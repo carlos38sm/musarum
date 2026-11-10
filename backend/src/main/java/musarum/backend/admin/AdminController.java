@@ -43,5 +43,15 @@ class AdminController {
         return statsService.wipeLibrary();
     }
 
+    /**
+     * Re-lanza enriquecimiento Emendatium sobre todas las canciones. Devuelve
+     * cuántas se encolaron. Los datos (bio, BPM, tonalidad, replaygain) van
+     * apareciendo conforme Emendatium responde (fire-and-forget).
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/re-enrich-all")
+    ServerStatsService.ReEnrichSummary reEnrichAll() {
+        return statsService.reEnrichAll();
+    }
+
     public record DeleteResult(int deleted) {}
 }

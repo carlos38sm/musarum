@@ -130,8 +130,8 @@ fun SongActionsSheet(
                     label = "Descargar",
                     onClick = {
                         container.downloadsManager.download(song)
-                        val temp = container.playerPreferences.downloadsTemporaryByDefault.value
-                        snackbar(if (temp) "Descargando (temporal 24h)" else "Descargando (permanente)")
+                        // Sin snackbar: el badge de descarga en la portada
+                        // aparece al instante (spinner → reloj/check).
                         onDismiss()
                     }
                 )
@@ -141,7 +141,6 @@ fun SongActionsSheet(
                         label = "Mantener permanente",
                         onClick = {
                             container.downloadsManager.setKeepPermanent(song.id, true)
-                            snackbar("Descarga marcada como permanente")
                             onDismiss()
                         }
                     )
@@ -150,7 +149,6 @@ fun SongActionsSheet(
                         label = "Borrar descarga",
                         onClick = {
                             container.downloadsManager.remove(song.id)
-                            snackbar("Descarga eliminada")
                             onDismiss()
                         }
                     )
@@ -160,7 +158,6 @@ fun SongActionsSheet(
                     label = "Borrar descarga",
                     onClick = {
                         container.downloadsManager.remove(song.id)
-                        snackbar("Descarga eliminada")
                         onDismiss()
                     }
                 )
@@ -266,7 +263,8 @@ fun SongActionsHost(
                 confirmDeleteSong = null
                 scope.launch {
                     runCatching { container.songRepository.delete(sid) }
-                        .onSuccess { snackbar("Canción eliminada") }
+                        // Sin snackbar en éxito: la fila desaparece de la
+                        // lista al instante y eso basta como feedback.
                         .onFailure { snackbar("No se pudo borrar: ${it.message ?: "error"}") }
                 }
             }

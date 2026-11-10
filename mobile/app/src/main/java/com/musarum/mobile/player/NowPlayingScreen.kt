@@ -306,19 +306,15 @@ fun NowPlayingScreen(
                 // (que afecta a descargas automáticas desde playlist/sheet).
                 // Aquí: nube → temporal → permanente → nube.
                 val entry = container.downloadsRepository.get(song.id)
+                // Sin snackbar: el icono del botón ya cambia (nube → reloj →
+                // check) y es feedback suficiente. Antes tapaba los controles.
                 when {
-                    entry == null -> {
+                    entry == null ->
                         container.downloadsManager.download(song, forceTemporary = true)
-                        snackbar("Descargando (temporal 24h)")
-                    }
-                    entry.isTemporary -> {
+                    entry.isTemporary ->
                         container.downloadsManager.setKeepPermanent(song.id, true)
-                        snackbar("Descarga marcada como permanente")
-                    }
-                    else -> {
+                    else ->
                         container.downloadsManager.remove(song.id)
-                        snackbar("Descarga eliminada")
-                    }
                 }
             }
         )
@@ -331,19 +327,18 @@ fun NowPlayingScreen(
             SleepTimerSheet(
                 activeAt = playerState.sleepTimerAt,
                 onDismiss = { showSleepSheet = false },
+                // El pill del timer en NowPlaying ya muestra la cuenta atrás
+                // en vivo, así que no mostramos snackbar — tapaba los controles.
                 onPickMinutes = { mins ->
                     controller.setSleepTimerMinutes(mins)
-                    snackbar(if (mins > 0) "Dormirá en $mins min" else "Temporizador cancelado")
                     showSleepSheet = false
                 },
                 onEndOfTrack = {
                     controller.setSleepTimerAtEndOfTrack()
-                    snackbar("Dormirá al terminar la canción")
                     showSleepSheet = false
                 },
                 onCancel = {
                     controller.cancelSleepTimer()
-                    snackbar("Temporizador cancelado")
                     showSleepSheet = false
                 }
             )
@@ -382,9 +377,8 @@ fun NowPlayingScreen(
                     scope.launch {
                         runCatching { container.songRepository.delete(idToDelete) }
                             .onSuccess {
-                                snackbar("Eliminada")
-                                // Avanza a la siguiente de la cola; si era la
-                                // única, vuelve a la pantalla anterior.
+                                // Sin snackbar: el player avanza a la siguiente
+                                // (o vuelve atrás) y eso ya es feedback claro.
                                 runCatching { controller.next() }
                                     .onFailure { onBack() }
                             }

@@ -19,6 +19,9 @@ class SongRepository(
     suspend fun shuffled(): List<SongSummaryDto> =
         apiService.getShuffledSongs()
 
+    suspend fun allOrdered(): List<SongSummaryDto> =
+        apiService.getAllSongs()
+
     suspend fun letterOffsets(): Map<String, Int> =
         apiService.getLetterOffsets()
 

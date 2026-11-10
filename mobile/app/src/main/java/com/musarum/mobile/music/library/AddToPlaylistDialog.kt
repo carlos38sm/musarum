@@ -127,9 +127,9 @@ fun AddToPlaylistDialog(
                                                 val result = runCatching {
                                                     container.playlistRepository.addSong(pl.id, songId)
                                                 }
-                                                if (result.isSuccess) {
-                                                    snackbar("Añadida a ${pl.name}")
-                                                } else {
+                                                // Sin snackbar en éxito: el diálogo se cierra =
+                                                // feedback. En fallo sí, para avisar.
+                                                if (result.isFailure) {
                                                     snackbar("No se pudo añadir")
                                                 }
                                                 onAdded(pl.name)
@@ -175,10 +175,8 @@ fun AddToPlaylistDialog(
                         created.name
                     }
                     result.fold(
-                        onSuccess = { createdName ->
-                            snackbar("Añadida a $createdName")
-                            onAdded(createdName)
-                        },
+                        // Sin snackbar: el diálogo se cierra = feedback.
+                        onSuccess = { createdName -> onAdded(createdName) },
                         onFailure = { snackbar("No se pudo crear la playlist") }
                     )
                     showCreate = false

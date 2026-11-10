@@ -403,18 +403,13 @@ fun VideoScreen(
             onDownload = {
                 val entry = container.downloadsRepository.get(song.id)
                 when {
-                    entry == null -> {
+                    // Sin snackbar: el icono cambia de estado a la vista.
+                    entry == null ->
                         container.downloadsManager.download(song, forceTemporary = true)
-                        snackbar("Descargando (temporal 24h)")
-                    }
-                    entry.isTemporary -> {
+                    entry.isTemporary ->
                         container.downloadsManager.setKeepPermanent(song.id, true)
-                        snackbar("Descarga marcada como permanente")
-                    }
-                    else -> {
+                    else ->
                         container.downloadsManager.remove(song.id)
-                        snackbar("Descarga eliminada")
-                    }
                 }
             }
         )
@@ -447,19 +442,18 @@ fun VideoScreen(
             SleepTimerSheet(
                 activeAt = playerState.sleepTimerAt,
                 onDismiss = { showSleepSheet = false },
+                // El pill del timer en la vista ya muestra la cuenta atrás;
+                // sin snackbars que tapen los controles.
                 onPickMinutes = { mins ->
                     controller.setSleepTimerMinutes(mins)
-                    snackbar(if (mins > 0) "Dormirá en $mins min" else "Temporizador cancelado")
                     showSleepSheet = false
                 },
                 onEndOfTrack = {
                     controller.setSleepTimerAtEndOfTrack()
-                    snackbar("Dormirá al terminar la canción")
                     showSleepSheet = false
                 },
                 onCancel = {
                     controller.cancelSleepTimer()
-                    snackbar("Temporizador cancelado")
                     showSleepSheet = false
                 }
             )

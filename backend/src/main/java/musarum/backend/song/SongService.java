@@ -124,6 +124,13 @@ public class SongService {
     }
 
     @Transactional(readOnly = true)
+    public List<SongSummaryDto> findAllOrdered() {
+        return songRepository.findAllOrdered().stream()
+                .map(songMapper::toSummary)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public Page<SongSummaryDto> search(String query, Pageable pageable) {
         return songRepository.findByTitleContainingIgnoreCase(query, pageable)
         		.map(songMapper::toSummary);

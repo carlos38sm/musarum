@@ -64,6 +64,29 @@ class ServerStatsViewModel(
      * marcamos Loading para no mostrar las cifras viejas mientras llega la
      * respuesta. onResult(cuántas canciones había antes, mensaje).
      */
+    /**
+     * Re-lanza enriquecimiento de Emendatium sobre todas las canciones. El
+     * trabajo va fire-and-forget: los datos nuevos (bio, BPM, tonalidad,
+     * replaygain) aparecen con el tiempo, no de golpe. No refrescamos el panel
+     * en caliente porque las cifras de "Enriquecimiento faltante" no cambian
+     * al instante.
+     */
+    fun reEnrichAll(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val summary = apiService.reEnrichAll()
+                onResult(
+                    true,
+                    "Encoladas ${summary.queued} canciones. Los datos aparecen poco a poco."
+                )
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                onResult(false, t.message ?: "No se pudo re-enriquecer")
+            }
+        }
+    }
+
     fun wipeLibrary(onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             _state.value = ServerStatsUiState.Loading

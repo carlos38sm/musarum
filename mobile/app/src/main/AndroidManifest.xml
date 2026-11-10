@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Para enganchar android.media.audiofx.Equalizer al audio session del ExoPlayer. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- Permite llevar al usuario a los ajustes de "Permitir siempre en segundo
+         plano" (ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS). Sin optimización
+         de batería, Android/Doze no corta la red con la pantalla apagada y
+         los Bluetooth no se quedan sin stream entre canciones. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <application
         android:name=".MusarumApplication"
         android:networkSecurityConfig="@xml/network_security_config"

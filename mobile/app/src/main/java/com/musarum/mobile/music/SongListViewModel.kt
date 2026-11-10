@@ -51,21 +51,40 @@ class SongListViewModel(
     private val _refreshing = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
 
-    private val _shuffleBuilding = MutableStateFlow(false)
-    val shuffleBuilding: StateFlow<Boolean> = _shuffleBuilding.asStateFlow()
+    private val _buildingFullQueue = MutableStateFlow(false)
+    val buildingFullQueue: StateFlow<Boolean> = _buildingFullQueue.asStateFlow()
+
+    // Cache del catálogo entero ordenado. Se llena al primer tap en una
+    // canción y se reutiliza hasta el próximo refresh. Evita golpear
+    // GET /songs/all en cada selección.
+    private var allCached: List<SongSummaryDto>? = null
 
     // Páginas ya pedidas (success o en curso). Evita duplicar peticiones.
     private val loadedPages = mutableSetOf<Int>()
 
     init { refresh() }
 
-    fun loadShuffled(onReady: (List<SongSummaryDto>) -> Unit) {
-        if (_shuffleBuilding.value) return
-        _shuffleBuilding.value = true
+    /**
+     * Carga TODO el catálogo ordenado como lo pinta la lista y llama a
+     * onReady. La primera vez pega al backend; las siguientes reutiliza la
+     * caché local. refresh() la invalida para que tras cambios se vuelva a
+     * pedir.
+     */
+    fun loadAllOrdered(onReady: (List<SongSummaryDto>) -> Unit) {
+        val cached = allCached
+        if (cached != null) {
+            onReady(cached)
+            return
+        }
+        if (_buildingFullQueue.value) return
+        _buildingFullQueue.value = true
         viewModelScope.launch {
-            val result = runCatching { repository.shuffled() }
-            _shuffleBuilding.value = false
-            result.onSuccess(onReady)
+            val result = runCatching { repository.allOrdered() }
+            _buildingFullQueue.value = false
+            result.onSuccess {
+                allCached = it
+                onReady(it)
+            }
         }
     }
 
@@ -73,6 +92,8 @@ class SongListViewModel(
         _refreshing.value = true
         if (_state.value !is SongsUiState.Ready) _state.value = SongsUiState.Loading
         loadedPages.clear()
+        // Al cambiar el catálogo la caché puede quedarse obsoleta.
+        allCached = null
         viewModelScope.launch {
             try {
                 val first = repository.page(0, PAGE_SIZE)

@@ -24,9 +24,7 @@ import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.SmallFloatingActionButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -129,30 +127,27 @@ fun SongsScreen(
                         state = s,
                         listState = listState,
                         currentSongId = currentSongId,
-                        onPlay = { absoluteIndex, song ->
-                            // Reproduce la cola con las canciones YA cargadas.
-                            // Compactamos a non-null porque PlayerController
-                            // no sabe de huecos. Pierde orden absoluto si hay
-                            // nulls intermedios, pero la pulsación siempre
-                            // suena a la canción tocada; el resto va detrás.
-                            val loaded = s.songs.filterNotNull()
-                            val startInLoaded = loaded.indexOfFirst { it.id == song.id }
-                                .coerceAtLeast(0)
-                            container.playerController.playQueue(
-                                songs = loaded,
-                                startIndex = startInLoaded
-                            )
+                        onPlay = { _, song ->
+                            // La cola del player = TODO el catálogo ordenado.
+                            // Así el botón shuffle de NowPlaying barajea de
+                            // verdad las ~7000 canciones y no solo la ventana
+                            // paginada. loadAllOrdered cachea, así que el
+                            // segundo tap es instantáneo.
+                            viewModel.loadAllOrdered { all ->
+                                val idx = all
+                                    .indexOfFirst { it.id == song.id }
+                                    .coerceAtLeast(0)
+                                container.playerController.playQueue(
+                                    songs = all,
+                                    startIndex = idx
+                                )
+                            }
                         },
                         onAdd = { sheetSong = it },
                         onJumpToIndex = { absolute ->
                             viewModel.ensurePageLoadedFor(absolute)
                         },
                         onEnsureLoaded = { viewModel.ensurePageLoadedFor(it) },
-                        onShuffleAll = {
-                            viewModel.loadShuffled { all ->
-                                container.playerController.playShuffleAll(all)
-                            }
-                        },
                         onJumpToCurrent = {
                             val sid = currentSongId ?: return@SongsList
                             // Guardamos el título antes por si entre tanto
@@ -221,7 +216,6 @@ private fun SongsList(
     onAdd: (SongSummaryDto) -> Unit,
     onJumpToIndex: (absoluteIndex: Int) -> Unit,
     onEnsureLoaded: (absoluteIndex: Int) -> Unit,
-    onShuffleAll: () -> Unit,
     onJumpToCurrent: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -248,7 +242,8 @@ private fun SongsList(
             val visible = listState.layoutInfo.visibleItemsInfo
             if (visible.isEmpty()) IntRange.EMPTY
             else {
-                // Las dos primeras entradas son header + chip shuffle.
+                // La primera entrada es el header de stats; las canciones
+                // empiezan después.
                 val first = (visible.first().index - HEADER_ITEMS).coerceAtLeast(0)
                 val last = (visible.last().index - HEADER_ITEMS).coerceAtLeast(0)
                 first..last
@@ -281,9 +276,6 @@ private fun SongsList(
                     secondary = null
                 )
             }
-            item {
-                ShuffleAllChip(onClick = onShuffleAll)
-            }
             // Un item por posición absoluta. key = índice (no song.id) porque
             // los nulls no tienen id.
             items(
@@ -309,8 +301,8 @@ private fun SongsList(
             onJump = { absolute ->
                 onJumpToIndex(absolute)
                 coroutineScope.launch {
-                    // +HEADER_ITEMS porque la LazyColumn tiene header + chip
-                    // antes de la primera canción.
+                    // +HEADER_ITEMS porque la LazyColumn arranca con el
+                    // header de stats antes de la primera canción.
                     listState.animateScrollToItem(absolute + HEADER_ITEMS)
                 }
             },
@@ -335,8 +327,8 @@ private fun SongsList(
     }
 }
 
-/** Header de stats + chip aleatorio = 2 items antes de las canciones. */
-private const val HEADER_ITEMS = 2
+/** Header de stats = 1 item antes de las canciones. */
+private const val HEADER_ITEMS = 1
 
 @Composable
 private fun SongRowSkeleton() {
@@ -368,34 +360,6 @@ private fun SongRowSkeleton() {
                     .height(10.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
-            )
-        }
-    }
-}
-
-@Composable
-private fun ShuffleAllChip(onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(50),
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Filled.Shuffle,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(20.dp)
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                "Aleatorio",
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.SemiBold
             )
         }
     }

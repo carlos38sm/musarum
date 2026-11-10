@@ -64,6 +64,17 @@ class SongController {
     }
 
     /**
+     * Catálogo entero ordenado. El móvil lo usa para construir la cola del
+     * player al tocar una canción desde Canciones, de modo que el botón
+     * shuffle de NowPlaying barajee realmente las ~7000 canciones (y no la
+     * ventana de ~100 ya cargadas).
+     */
+    @GetMapping("/all")
+    ResponseEntity<List<SongSummaryDto>> all() {
+        return ResponseEntity.ok(songService.findAllOrdered());
+    }
+
+    /**
      * Posición absoluta (0-indexed) de la primera canción cuyo título empieza
      * por cada letra, ordenando por título ascendente. Pensado para que el
      * AlphabetJumpBar del móvil pueda saltar a cualquier letra en una lista
