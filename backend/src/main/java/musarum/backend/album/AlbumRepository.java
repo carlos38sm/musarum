@@ -23,4 +23,12 @@ public interface AlbumRepository extends JpaRepository<Album, Long> {
     @Query(value = "UPDATE songs SET album_id = :canonicalId WHERE album_id = :duplicateId",
             nativeQuery = true)
     int reassignSongsAlbum(Long canonicalId, Long duplicateId);
+
+    /**
+     * Proyección para el ScannerCatalog: id, titleKey, artistId. Rompe el
+     * N+1 que haría una iteración de findAll() tocando album.getArtist().
+     */
+    @Query("SELECT a.id, a.titleKey, a.artist.id FROM Album a "
+         + "WHERE a.titleKey IS NOT NULL AND a.artist IS NOT NULL")
+    List<Object[]> findIdTitleKeyAndArtistId();
 }

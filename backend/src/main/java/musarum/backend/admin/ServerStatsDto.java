@@ -10,6 +10,7 @@ public record ServerStatsDto(
         LyricsStats lyrics,
         DiskStats disk,
         EnrichmentStats enrichment,
+        EmendatiumStats emendatium,
         ActivityStats activity,
         TechnicalStats technical
 ) {
@@ -50,6 +51,21 @@ public record ServerStatsDto(
             long missingKey,
             long missingReplayGain,
             long missingMbid
+    ) {}
+
+    /**
+     * Estado del servicio Emendatium (bio artistas, BPM, tonalidad, replaygain,
+     * portadas externas). Si {@code enabled=false} ni siquiera se configuró.
+     * Si {@code reachable=false} está configurado pero el backend no puede
+     * hablar con él (contenedor caído, red, timeout). {@code message} lleva
+     * el motivo para que el OWNER pueda diagnosticar sin logs.
+     */
+    public record EmendatiumStats(
+            boolean enabled,
+            String baseUrl,
+            boolean reachable,
+            String message,
+            Long lastCheckedAtMs
     ) {}
 
     public record ActivityStats(

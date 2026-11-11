@@ -18,6 +18,7 @@ import java.util.stream.Stream;
 import musarum.backend.album.AlbumRepository;
 import musarum.backend.artist.ArtistRepository;
 import musarum.backend.enrichment.EmendatiumAutoEnricher;
+import musarum.backend.enrichment.EmendatiumClient;
 import musarum.backend.favorite.FavoriteRepository;
 import musarum.backend.genre.GenreRepository;
 import musarum.backend.playlist.PlaylistRepository;
@@ -61,6 +62,7 @@ public class ServerStatsService {
     private final ReproductionRepository reproductionRepository;
     private final LibraryScanner libraryScanner;
     private final EmendatiumAutoEnricher emendatiumEnricher;
+    private final EmendatiumClient emendatiumClient;
 
     private final Path musicRoot;
     private final Path coversRoot;
@@ -81,6 +83,7 @@ public class ServerStatsService {
                        ReproductionRepository reproductionRepository,
                        LibraryScanner libraryScanner,
                        EmendatiumAutoEnricher emendatiumEnricher,
+                       EmendatiumClient emendatiumClient,
                        @Value("${MUSARUM_MUSIC_PATH}") String musicPath,
                        @Value("${MUSARUM_COVERS_PATH:#{null}}") String coversPath,
                        @Value("${MUSARUM_VIDEOS_PATH:#{null}}") String videosPath,
@@ -95,6 +98,7 @@ public class ServerStatsService {
         this.reproductionRepository = reproductionRepository;
         this.libraryScanner = libraryScanner;
         this.emendatiumEnricher = emendatiumEnricher;
+        this.emendatiumClient = emendatiumClient;
 
         this.musicRoot = Path.of(musicPath);
         // Mismo criterio que CoverStorage/VideoStorage/AvatarStorage: si no
@@ -118,8 +122,20 @@ public class ServerStatsService {
                 buildLyrics(),
                 buildDisk(),
                 buildEnrichment(),
+                buildEmendatium(),
                 buildActivity(),
                 buildTechnical()
+        );
+    }
+
+    private ServerStatsDto.EmendatiumStats buildEmendatium() {
+        EmendatiumClient.HealthSnapshot h = emendatiumClient.health();
+        return new ServerStatsDto.EmendatiumStats(
+                h.enabled(),
+                emendatiumClient.getBaseUrl(),
+                h.reachable(),
+                h.message(),
+                h.checkedAt() != null ? h.checkedAt().toEpochMilli() : null
         );
     }
 

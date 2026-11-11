@@ -40,4 +40,11 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     @Query(value = "UPDATE albums SET artist_id = :canonicalId WHERE artist_id = :duplicateId",
             nativeQuery = true)
     int reassignAlbumsArtist(Long canonicalId, Long duplicateId);
+
+    /**
+     * Proyección para el ScannerCatalog: solo id + nameKey, sin cargar la
+     * entidad completa. Con 1-2k artistas evita leer biografías gigantes.
+     */
+    @Query("SELECT a.id, a.nameKey FROM Artist a WHERE a.nameKey IS NOT NULL")
+    List<Object[]> findIdAndNameKey();
 }

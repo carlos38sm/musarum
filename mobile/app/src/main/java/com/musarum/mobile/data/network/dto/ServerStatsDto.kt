@@ -11,6 +11,7 @@ data class ServerStatsDto(
     val lyrics: LyricsStats,
     val disk: DiskStats,
     val enrichment: EnrichmentStats,
+    val emendatium: EmendatiumStats?,
     val activity: ActivityStats,
     val technical: TechnicalStats
 ) {
@@ -50,6 +51,19 @@ data class ServerStatsDto(
         val missingKey: Long,
         val missingReplayGain: Long,
         val missingMbid: Long
+    )
+
+    /**
+     * Estado de Emendatium (servicio aparte de enriquecimiento). Si
+     * [enabled] es false, el backend ni siquiera lo tiene configurado. Si
+     * [reachable] es false, está configurado pero no se puede hablar con él.
+     */
+    data class EmendatiumStats(
+        val enabled: Boolean,
+        val baseUrl: String?,
+        val reachable: Boolean,
+        val message: String?,
+        val lastCheckedAtMs: Long?
     )
 
     data class ActivityStats(

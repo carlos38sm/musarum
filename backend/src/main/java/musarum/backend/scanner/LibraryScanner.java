@@ -3,13 +3,16 @@ package musarum.backend.scanner;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -19,12 +22,15 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import musarum.backend.album.Album;
+import musarum.backend.album.AlbumRepository;
 import musarum.backend.album.AlbumService;
 import musarum.backend.artist.Artist;
+import musarum.backend.artist.ArtistRepository;
 import musarum.backend.artist.ArtistService;
 import musarum.backend.enrichment.EmendatiumAutoEnricher;
 import musarum.backend.enrichment.LyricsWriter;
 import musarum.backend.genre.Genre;
+import musarum.backend.genre.GenreRepository;
 import musarum.backend.genre.GenreService;
 import musarum.backend.library.LibraryFolderService;
 import musarum.backend.scanner.exception.ScanFailedException;
@@ -44,6 +50,9 @@ public class LibraryScanner {
     private final ArtistService artistService;
     private final AlbumService albumService;
     private final GenreService genreService;
+    private final ArtistRepository artistRepository;
+    private final AlbumRepository albumRepository;
+    private final GenreRepository genreRepository;
     private final TagReader tagReader;
     private final FileHasher fileHasher;
     private final CoverExtractor coverExtractor;
@@ -57,6 +66,9 @@ public class LibraryScanner {
                           ArtistService artistService,
                           AlbumService albumService,
                           GenreService genreService,
+                          ArtistRepository artistRepository,
+                          AlbumRepository albumRepository,
+                          GenreRepository genreRepository,
                           TagReader tagReader,
                           FileHasher fileHasher,
                           CoverExtractor coverExtractor,
@@ -69,6 +81,9 @@ public class LibraryScanner {
         this.artistService = artistService;
         this.albumService = albumService;
         this.genreService = genreService;
+        this.artistRepository = artistRepository;
+        this.albumRepository = albumRepository;
+        this.genreRepository = genreRepository;
         this.tagReader = tagReader;
         this.fileHasher = fileHasher;
         this.coverExtractor = coverExtractor;
@@ -140,39 +155,67 @@ public class LibraryScanner {
             // idénticos, los contamos como duplicados pero solo importamos
             // uno (UNIQUE sobre content_hash). Explica la típica brecha
             // "la carpeta tiene N y Musarum muestra <N".
+            //
             // Esta fase es la LENTA con bibliotecas grandes (~1 MB de lectura
-            // por fichero), así que actualizamos `processed`/`currentFile`
-            // para que el móvil muestre "Analizando 2345/7037" en vez de 0.
-            Map<String, Path> diskHashToPath = new HashMap<>();
-            int duplicateFiles = 0;
-            int hashErrors = 0;
-            for (Path file : diskFiles) {
-                currentFile = file.getFileName().toString();
-                try {
-                    String h = fileHasher.hash(file);
-                    Path prev = diskHashToPath.put(h, file);
-                    if (prev != null) {
-                        duplicateFiles++;
-                        log.info("Duplicado por contenido: {} ↔ {}", file, prev);
-                    }
-                } catch (Exception e) {
-                    hashErrors++;
-                    log.warn("No se pudo hashear {}: {}", file, e.getMessage());
-                } finally {
-                    processed.incrementAndGet();
-                }
+            // por fichero, 30-80ms SHA-256 cada uno). Paralelizamos con un
+            // pool de 4 hilos — la CPU no es el cuello, es la latencia de I/O
+            // de disco, así que N threads rinden bien incluso en HDD.
+            Map<String, Path> diskHashToPath = new ConcurrentHashMap<>();
+            AtomicInteger duplicateFiles = new AtomicInteger(0);
+            AtomicInteger hashErrors = new AtomicInteger(0);
+            int hashParallelism = Math.min(4, Math.max(2, Runtime.getRuntime().availableProcessors()));
+            ExecutorService hashPool = Executors.newFixedThreadPool(hashParallelism, r -> {
+                Thread t = new Thread(r, "scanner-hash");
+                t.setDaemon(true);
+                return t;
+            });
+            try {
+                List<CompletableFuture<Void>> futures = diskFiles.stream()
+                        .map(file -> CompletableFuture.runAsync(() -> {
+                            // currentFile es volatile — con N hilos solo veremos
+                            // el último; es solo para display, no lógica.
+                            currentFile = file.getFileName().toString();
+                            try {
+                                String h = fileHasher.hash(file);
+                                Path prev = diskHashToPath.putIfAbsent(h, file);
+                                if (prev != null) {
+                                    duplicateFiles.incrementAndGet();
+                                    log.info("Duplicado por contenido: {} ↔ {}", file, prev);
+                                }
+                            } catch (Exception e) {
+                                hashErrors.incrementAndGet();
+                                log.warn("No se pudo hashear {}: {}", file, e.getMessage());
+                            } finally {
+                                processed.incrementAndGet();
+                            }
+                        }, hashPool))
+                        .toList();
+                CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
+            } finally {
+                hashPool.shutdown();
+                try { hashPool.awaitTermination(5, TimeUnit.SECONDS); }
+                catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
             }
             log.info("Hashes únicos: {}. Duplicados por contenido: {}. Errores de hash: {}",
-                    diskHashToPath.size(), duplicateFiles, hashErrors);
+                    diskHashToPath.size(), duplicateFiles.get(), hashErrors.get());
 
             Set<String> dbHashes = songService.findAllContentHashes();
             Set<String> dbPaths = songService.findAllAudioPaths();
 
             // Fase 2: importar. Reseteamos el contador para que el móvil
             // muestre "Importando 0/7037" y suba limpio desde cero.
+            // Pre-cargamos el catálogo (artistas/álbumes/géneros) UNA vez
+            // antes del bucle. Rompe el N+1 que hacía findOrCreate por cada
+            // canción — ver ScannerCatalog para el motivo.
             phase = "importing";
             processed.set(0);
             total = diskHashToPath.size();
+
+            ScannerCatalog catalog = new ScannerCatalog(
+                    artistRepository, albumRepository, genreRepository,
+                    artistService, albumService, genreService
+            );
+            log.info("ScannerCatalog listo. Cache inicial reduce N+1 en resolveArtist/Album/Genre.");
 
             int imported = 0;
             int failed = 0;
@@ -201,7 +244,8 @@ public class LibraryScanner {
                         if (updated) refreshed++;
                     } else {
                         // Cada canción abre su propia transacción corta.
-                        importSingleSong(path, hash);
+                        // La variante con catalog usa el cache pre-cargado.
+                        importSingleSongWithCatalog(path, hash, catalog);
                         imported++;
                         log.debug("Importada: {}", path);
                     }
@@ -221,14 +265,14 @@ public class LibraryScanner {
 
             ImportResult result = new ImportResult(
                     totalOnDisk, imported, failed, deleted,
-                    duplicateFiles, relocated, hashErrors
+                    duplicateFiles.get(), relocated, hashErrors.get()
             );
             lastResult = result;
             log.info("Escaneo terminado. En disco: {}, importadas: {}, fallidas: {}, "
                             + "borradas: {}, duplicadas: {}, reubicadas: {}, "
                             + "hashes refrescados: {}, errores hash: {}",
                     totalOnDisk, imported, failed, deleted,
-                    duplicateFiles, relocated, refreshed, hashErrors);
+                    duplicateFiles.get(), relocated, refreshed, hashErrors.get());
 
             return CompletableFuture.completedFuture(result);
         } finally {
@@ -238,18 +282,46 @@ public class LibraryScanner {
         }
     }
 
+    /**
+     * Versión usada por {@link LibraryWatcher} cuando se detecta un fichero
+     * nuevo en caliente (crear-uno). No pasa por {@link ScannerCatalog}
+     * porque solo importa UNA canción — construir el catálogo sería caro
+     * para un solo insert. Mantiene la ruta simple: findOrCreate directo.
+     */
     @Transactional
     public void importSingleSong(String audioPath, String contentHash) {
+        importSingleSongInternal(audioPath, contentHash, null);
+    }
+
+    /**
+     * Versión usada por el scanner en bulk. {@code catalog} tiene los mapas
+     * id-por-clave pre-cargados; cada resolve* evita el SELECT redundante
+     * contra Postgres salvo cuando hay que crear la entidad.
+     */
+    @Transactional
+    public void importSingleSongWithCatalog(String audioPath, String contentHash,
+                                            ScannerCatalog catalog) {
+        importSingleSongInternal(audioPath, contentHash, catalog);
+    }
+
+    private void importSingleSongInternal(String audioPath, String contentHash,
+                                          ScannerCatalog catalog) {
         AudioMetadata meta = tagReader.read(audioPath);
-        Set<Artist> artists = resolveArtists(meta.artistName());
+        Set<Artist> artists = resolveArtists(meta.artistName(), catalog);
         Album album = null;
         if (meta.albumTitle() != null && !artists.isEmpty()) {
             Artist primaryArtist = artists.iterator().next();
-            album = albumService.findOrCreate(meta.albumTitle(), primaryArtist);
+            album = (catalog != null)
+                    ? catalog.resolveAlbum(meta.albumTitle(), primaryArtist)
+                    : albumService.findOrCreate(meta.albumTitle(), primaryArtist);
         }
 
         Genre genre = null;
-        if (meta.genreName() != null) genre = genreService.findOrCreate(meta.genreName());
+        if (meta.genreName() != null) {
+            genre = (catalog != null)
+                    ? catalog.resolveGenre(meta.genreName())
+                    : genreService.findOrCreate(meta.genreName());
+        }
 
         Song created = songService.create(
                 audioPath,
@@ -318,15 +390,18 @@ public class LibraryScanner {
         });
     }
 
-    private Set<Artist> resolveArtists(String artistField) {
+    private Set<Artist> resolveArtists(String artistField, ScannerCatalog catalog) {
         Set<Artist> artists = new LinkedHashSet<>();
         if (artistField == null || artistField.isBlank()) return artists;
         String[] names = artistField.split(ARTIST_SEPARATOR_REGEX, -1);
         for (String name : names) {
             String cleanName = name.replaceAll("[()\\[\\]]", "").trim();
-            if (!cleanName.isEmpty()) artists.add(artistService.findOrCreate(cleanName));
+            if (cleanName.isEmpty()) continue;
+            Artist a = (catalog != null)
+                    ? catalog.resolveArtist(cleanName)
+                    : artistService.findOrCreate(cleanName);
+            artists.add(a);
         }
-
         return artists;
     }
 

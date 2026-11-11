@@ -116,6 +116,7 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                 LyricsCard(s.stats.lyrics)
                 DiskCard(s.stats.disk)
                 EnrichmentCard(s.stats.enrichment, totalSongs = s.stats.catalog.songs)
+                s.stats.emendatium?.let { EmendatiumCard(it) }
                 ActivityCard(s.stats.activity)
                 TechnicalCard(
                     t = s.stats.technical,
@@ -316,6 +317,38 @@ private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) 
         StatLine("Sin tonalidad", "${e.missingKey} / $totalSongs")
         StatLine("Sin ReplayGain", "${e.missingReplayGain} / $totalSongs")
         StatLine("Sin MusicBrainz ID", "${e.missingMbid} / $totalSongs")
+    }
+}
+
+@Composable
+private fun EmendatiumCard(e: ServerStatsDto.EmendatiumStats) {
+    val titleIcon = when {
+        !e.enabled -> "⚪"   // No configurado
+        e.reachable -> "🟢"   // Vivo
+        else -> "🔴"          // Caído
+    }
+    StatCard(title = "Emendatium $titleIcon") {
+        val lineColor = when {
+            !e.enabled -> MaterialTheme.colorScheme.onSurfaceVariant
+            e.reachable -> MaterialTheme.colorScheme.primary
+            else -> MaterialTheme.colorScheme.error
+        }
+        val statusText = when {
+            !e.enabled -> "No configurado · sin él, el catálogo no recibe BPM, tonalidad, bio de artista ni replaygain."
+            e.reachable -> "Alcanzable · enriqueciendo canciones a medida que llegan."
+            else -> "Configurado pero NO responde. Mientras siga así, BPM/tonalidad/bio no van a aparecer aunque re-escanees."
+        }
+        Text(
+            statusText,
+            style = MaterialTheme.typography.bodySmall,
+            color = lineColor
+        )
+        Spacer(Modifier.height(10.dp))
+        e.baseUrl?.let { StatLine("URL", it) }
+        if (e.enabled && !e.reachable && !e.message.isNullOrBlank()) {
+            StatLine("Motivo", e.message)
+        }
+        e.lastCheckedAtMs?.let { StatLine("Última comprobación", humanInstant(it)) }
     }
 }
 
