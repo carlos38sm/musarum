@@ -10,12 +10,16 @@ import musarum.backend.user.dto.UserResponse;
 import musarum.backend.user.exception.NickAlreadyExistsException;
 import musarum.backend.user.exception.UserNotFoundException;
 import musarum.backend.user.dto.UserAuthDetails;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
@@ -151,6 +155,13 @@ public class UserService {
         String url = avatarStorage.saveAvatar(userId, bytes, mimeType);
         if (url == null) throw new IllegalArgumentException("No se pudo guardar la imagen");
         user.setAvatarUrl(url);
+        // saveAndFlush: fuerza el UPDATE ANTES de salir del método, así si
+        // Hibernate iba a decidir no flushear por optimización (p. ej. porque
+        // nadie más iba a leer esta sesión), aquí ya queda en DB. Sin esto
+        // vimos casos donde el avatar se guardaba en disco pero la URL con
+        // el nuevo "?v=timestamp" nunca llegaba a persistirse.
+        userRepository.saveAndFlush(user);
+        log.info("Avatar actualizado para userId={} → {}", userId, url);
         return userMapper.toResponse(user);
     }
 

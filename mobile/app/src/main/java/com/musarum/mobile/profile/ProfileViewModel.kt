@@ -166,6 +166,14 @@ class ProfileViewModel(private val repository: UserRepository) : ViewModel() {
             runCatching { repository.uploadAvatar(bytes, mime) }
                 .onSuccess {
                     _state.value = _state.value.copy(user = it)
+                    // Hacemos un refresh desde /me para blindarnos: si por lo
+                    // que sea el UPDATE del avatar_url no quedó persistido
+                    // (contención con scanner, etc.), el GET nos devuelve el
+                    // estado real desde DB y la UI no se queda con la foto
+                    // vieja. Idempotente; coste mínimo.
+                    runCatching { repository.refresh() }.onSuccess { fresh ->
+                        _state.value = _state.value.copy(user = fresh)
+                    }
                     onDone(true, "Foto actualizada")
                 }
                 .onFailure { onDone(false, it.message ?: "No se pudo subir la foto") }

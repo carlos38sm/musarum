@@ -118,6 +118,17 @@ fun MusarumNavHost(
                                     launchSingleTop = true
                                     restoreState = true
                                 }
+                            },
+                            onPopToTabRoot = { route ->
+                                // Pop hasta el root del tab SIN restaurar
+                                // estado: así el usuario ve la pantalla
+                                // principal del tab, no la subpantalla en la
+                                // que estaba. navigate(... popUpTo(route) {
+                                // inclusive = false }) hace exactamente eso.
+                                navController.navigate(route) {
+                                    popUpTo(route) { inclusive = false }
+                                    launchSingleTop = true
+                                }
                             }
                         )
                     }

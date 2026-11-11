@@ -44,7 +44,8 @@ private val navItems = listOf(
 @Composable
 fun MusarumBottomNav(
     currentRoute: String?,
-    onNavigate: (String) -> Unit
+    onNavigate: (String) -> Unit,
+    onPopToTabRoot: (String) -> Unit
 ) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.background,
@@ -53,12 +54,24 @@ fun MusarumBottomNav(
     ) {
         navItems.forEach { item ->
             val selected = item.isSelected(currentRoute)
-            // Si el usuario está en un hijo de la sección (p. ej. Canciones
-            // dentro de Inicio) un toque sobre el ítem le lleva de vuelta al
-            // destino raíz; solo se ignora cuando ya está EXACTAMENTE en él.
+            // Comportamiento esperado:
+            //   - Tap sobre un tab distinto → vas a su root restaurando su
+            //     estado (si volvías a él, retomas donde estabas).
+            //   - Tap sobre el tab actual estando dentro de una sub-ruta
+            //     (p. ej. PlaylistDetail bajo Biblioteca) → vuelves al root
+            //     del tab (doble-tap "tab to root" estándar de iOS/Android).
+            //   - Tap sobre el root del tab actual → no-op.
             NavigationBarItem(
                 selected = selected,
-                onClick = { if (currentRoute != item.route) onNavigate(item.route) },
+                onClick = {
+                    val inThisTab = selected
+                    val onTabRoot = currentRoute == item.route
+                    when {
+                        onTabRoot -> { /* ya estás en el root, nada */ }
+                        inThisTab -> onPopToTabRoot(item.route)
+                        else -> onNavigate(item.route)
+                    }
+                },
                 icon = { Icon(item.icon, contentDescription = item.label) },
                 label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
                 colors = NavigationBarItemDefaults.colors(

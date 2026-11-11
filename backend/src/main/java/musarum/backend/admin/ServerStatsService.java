@@ -142,6 +142,16 @@ public class ServerStatsService {
         long without = Math.max(0, total - with);
         double pct = total == 0 ? 0.0 : (with * 100.0) / total;
 
+        // Si el scanner está corriendo, nos saltamos la clasificación synced
+        // vs plain (lo más pesado: fopen por cada .lrc). Mientras hay scan
+        // en curso el disco está ocupado y esto puede tardar >60 s con 7k
+        // canciones, haciendo timeout en el móvil. Volvemos a 0/0 — el panel
+        // sigue mostrando cobertura total, sólo oculta el desglose.
+        ScannerStatus scanner = libraryScanner.currentStatus();
+        if (scanner != null && scanner.running()) {
+            return new ServerStatsDto.LyricsStats(with, without, pct, 0L, 0L);
+        }
+
         // Clasificar synced vs plain = leer la primera línea de cada .lrc.
         // Como mucho leemos "with" ficheros; cada read es un fopen de ~10KB.
         List<Long> idsWithLyrics = songRepository.findIdsWithLyrics();
