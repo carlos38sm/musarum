@@ -33,6 +33,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -48,6 +51,8 @@ import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.music.CoverImage
 import com.musarum.mobile.music.SongActionsHost
 import com.musarum.mobile.music.SongRow
+import com.musarum.mobile.ui.InlineSearchBar
+import com.musarum.mobile.ui.SearchActionIcon
 
 @Composable
 fun AlbumDetailScreen(
@@ -61,6 +66,8 @@ fun AlbumDetailScreen(
         factory = AlbumDetailViewModel.factory(container.albumRepository, albumId)
     )
     val state by viewModel.state.collectAsState()
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         SongActionsHost { openSongActions ->
@@ -73,43 +80,65 @@ fun AlbumDetailScreen(
                 Modifier.fillMaxSize(), Alignment.Center
             ) { Text(s.message, color = MaterialTheme.colorScheme.error) }
 
-            is AlbumDetailUiState.Ready -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                item {
-                    AlbumHero(
-                        coverUrl = s.album.coverUrl,
-                        title = s.album.title,
-                        artistName = s.album.artistName,
-                        artistId = s.album.artistId,
-                        releaseYear = s.album.releaseYear,
-                        type = s.album.inferredType ?: s.album.type,
-                        songCount = s.album.songCount,
-                        totalDurationMs = s.album.totalDurationMs,
-                        onBack = onBack,
-                        onOpenArtist = onOpenArtist,
-                        onPlay = {
-                            if (s.songs.isNotEmpty()) container.playerController.playQueue(s.songs, 0)
-                        },
-                        onShuffle = {
-                            if (s.songs.isNotEmpty()) {
-                                container.playerController.playQueue(s.songs.shuffled(), 0)
+            is AlbumDetailUiState.Ready -> {
+                val filteredSongs = if (query.isBlank()) s.songs else {
+                    val q = query.trim().lowercase()
+                    s.songs.filter {
+                        it.title.lowercase().contains(q) ||
+                            it.artistsLabel.lowercase().contains(q)
+                    }
+                }
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    item {
+                        AlbumHero(
+                            coverUrl = s.album.coverUrl,
+                            title = s.album.title,
+                            artistName = s.album.artistName,
+                            artistId = s.album.artistId,
+                            releaseYear = s.album.releaseYear,
+                            type = s.album.inferredType ?: s.album.type,
+                            songCount = s.album.songCount,
+                            totalDurationMs = s.album.totalDurationMs,
+                            onBack = onBack,
+                            onOpenArtist = onOpenArtist,
+                            onPlay = {
+                                if (s.songs.isNotEmpty()) container.playerController.playQueue(s.songs, 0)
+                            },
+                            onShuffle = {
+                                if (s.songs.isNotEmpty()) {
+                                    container.playerController.playQueue(s.songs.shuffled(), 0)
+                                }
+                            },
+                            searching = searching,
+                            onToggleSearch = {
+                                searching = !searching
+                                if (!searching) query = ""
                             }
-                        }
-                    )
-                }
+                        )
+                    }
+                    item {
+                        InlineSearchBar(
+                            visible = searching,
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholder = "Buscar en el álbum"
+                        )
+                    }
 
-                itemsIndexed(s.songs) { index, song ->
-                    SongRow(
-                        song = song,
-                        onClick = {
-                            container.playerController.playQueue(
-                                songs = s.songs,
-                                startIndex = index
-                            )
-                        },
-                        onLongPress = { openSongActions(song) }
-                    )
+                    itemsIndexed(filteredSongs) { index, song ->
+                        SongRow(
+                            song = song,
+                            onClick = {
+                                container.playerController.playQueue(
+                                    songs = filteredSongs,
+                                    startIndex = index
+                                )
+                            },
+                            onLongPress = { openSongActions(song) }
+                        )
+                    }
+                    item { Spacer(Modifier.height(100.dp)) }
                 }
-                item { Spacer(Modifier.height(100.dp)) }
             }
         }
         }
@@ -129,7 +158,9 @@ private fun AlbumHero(
     onBack: () -> Unit,
     onOpenArtist: (Long) -> Unit,
     onPlay: () -> Unit,
-    onShuffle: () -> Unit
+    onShuffle: () -> Unit,
+    searching: Boolean = false,
+    onToggleSearch: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -169,16 +200,23 @@ private fun AlbumHero(
                         .asPaddingValues().calculateTopPadding()
                 )
         ) {
-            // Botón atrás flotante
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(42.dp)
+            // Botón atrás flotante + lupa simétrica a la derecha.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    Icons.Filled.ArrowBack,
-                    contentDescription = "Atrás",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.size(42.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.ArrowBack,
+                        contentDescription = "Atrás",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                SearchActionIcon(active = searching, onToggle = onToggleSearch)
             }
 
             Spacer(Modifier.weight(1f))

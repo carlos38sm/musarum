@@ -36,6 +36,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -54,6 +57,8 @@ import com.musarum.mobile.music.ArtistAvatar
 import com.musarum.mobile.music.CoverImage
 import com.musarum.mobile.music.SongActionsHost
 import com.musarum.mobile.music.SongRow
+import com.musarum.mobile.ui.InlineSearchBar
+import com.musarum.mobile.ui.SearchActionIcon
 
 @Composable
 fun ArtistDetailScreen(
@@ -67,6 +72,8 @@ fun ArtistDetailScreen(
         factory = ArtistDetailViewModel.factory(container.artistRepository, artistId)
     )
     val state by viewModel.state.collectAsState()
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         SongActionsHost { openSongActions ->
@@ -79,55 +86,84 @@ fun ArtistDetailScreen(
                 Modifier.fillMaxSize(), Alignment.Center
             ) { Text(s.message, color = MaterialTheme.colorScheme.error) }
 
-            is ArtistDetailUiState.Ready -> LazyColumn(modifier = Modifier.fillMaxSize()) {
-                item {
-                    ArtistHero(
-                        imageUrl = s.artist.imageUrl,
-                        name = s.artist.name,
-                        country = s.artist.country,
-                        beginYear = s.artist.beginYear,
-                        songCount = s.artist.songCount,
-                        albumCount = s.artist.albumCount,
-                        totalDurationMs = s.artist.totalDurationMs,
-                        onBack = onBack
-                    )
-                }
-
-                s.artist.biography?.takeIf { it.isNotBlank() }?.let { bio ->
-                    item { BiographyCard(bio) }
-                }
-
-                if (s.albums.isNotEmpty()) {
-                    item { SectionHeader("Discografía") }
+            is ArtistDetailUiState.Ready -> {
+                // Con lupa activa: filtra álbumes (por título) y canciones
+                // (por título o artista) con el mismo texto.
+                val q = query.trim().lowercase()
+                val filteredAlbums = if (q.isBlank()) s.albums
+                    else s.albums.filter { it.title.lowercase().contains(q) }
+                val filteredSongs = if (q.isBlank()) s.songs
+                    else s.songs.filter {
+                        it.title.lowercase().contains(q) ||
+                            it.artistsLabel.lowercase().contains(q)
+                    }
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(s.albums, key = { it.id }) { album ->
-                                AlbumCard(album, onClick = { onOpenAlbum(album.id) })
+                        ArtistHero(
+                            imageUrl = s.artist.imageUrl,
+                            name = s.artist.name,
+                            country = s.artist.country,
+                            beginYear = s.artist.beginYear,
+                            songCount = s.artist.songCount,
+                            albumCount = s.artist.albumCount,
+                            totalDurationMs = s.artist.totalDurationMs,
+                            onBack = onBack,
+                            searching = searching,
+                            onToggleSearch = {
+                                searching = !searching
+                                if (!searching) query = ""
+                            }
+                        )
+                    }
+                    item {
+                        InlineSearchBar(
+                            visible = searching,
+                            query = query,
+                            onQueryChange = { query = it },
+                            placeholder = "Buscar en este artista"
+                        )
+                    }
+
+                    // Biografía solo cuando no hay búsqueda — ocupa mucho
+                    // y no ayuda a centrarse en los resultados.
+                    if (query.isBlank()) {
+                        s.artist.biography?.takeIf { it.isNotBlank() }?.let { bio ->
+                            item { BiographyCard(bio) }
+                        }
+                    }
+
+                    if (filteredAlbums.isNotEmpty()) {
+                        item { SectionHeader("Discografía") }
+                        item {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                items(filteredAlbums, key = { it.id }) { album ->
+                                    AlbumCard(album, onClick = { onOpenAlbum(album.id) })
+                                }
                             }
                         }
                     }
-                }
 
-                if (s.songs.isNotEmpty()) {
-                    item { SectionHeader("Canciones") }
-                    itemsIndexed(s.songs) { index, song ->
-                        SongRow(
-                            song = song,
-                            onClick = {
-                                container.playerController.playQueue(
-                                    songs = s.songs,
-                                    startIndex = index
-                                )
-                            },
-                            onLongPress = { openSongActions(song) }
-                        )
+                    if (filteredSongs.isNotEmpty()) {
+                        item { SectionHeader("Canciones") }
+                        itemsIndexed(filteredSongs) { index, song ->
+                            SongRow(
+                                song = song,
+                                onClick = {
+                                    container.playerController.playQueue(
+                                        songs = filteredSongs,
+                                        startIndex = index
+                                    )
+                                },
+                                onLongPress = { openSongActions(song) }
+                            )
+                        }
                     }
-                }
 
-                item { Spacer(Modifier.height(100.dp)) }
+                    item { Spacer(Modifier.height(100.dp)) }
+                }
             }
         }
         }
@@ -143,7 +179,9 @@ private fun ArtistHero(
     songCount: Long,
     albumCount: Long,
     totalDurationMs: Long,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    searching: Boolean = false,
+    onToggleSearch: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -176,12 +214,19 @@ private fun ArtistHero(
                 .padding(horizontal = 16.dp)
                 .padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding())
         ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(42.dp)) {
-                Icon(
-                    Icons.Filled.ArrowBack,
-                    contentDescription = "Atrás",
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack, modifier = Modifier.size(42.dp)) {
+                    Icon(
+                        Icons.Filled.ArrowBack,
+                        contentDescription = "Atrás",
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+                Spacer(Modifier.weight(1f))
+                SearchActionIcon(active = searching, onToggle = onToggleSearch)
             }
 
             Spacer(Modifier.weight(1f))

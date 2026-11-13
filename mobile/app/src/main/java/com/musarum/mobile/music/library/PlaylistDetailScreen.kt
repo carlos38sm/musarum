@@ -62,6 +62,8 @@ import com.musarum.mobile.data.network.dto.CollaboratorRefDto
 import com.musarum.mobile.data.network.dto.PlaylistEntryDto
 import com.musarum.mobile.data.network.dto.UserResponseDto
 import com.musarum.mobile.music.CoverImage
+import com.musarum.mobile.ui.InlineSearchBar
+import com.musarum.mobile.ui.SearchActionIcon
 import com.musarum.mobile.ui.humanizeDurationMs
 import kotlinx.coroutines.delay
 
@@ -79,17 +81,35 @@ fun PlaylistDetailScreen(
     )
     val state by viewModel.state.collectAsState()
     var showInvite by remember { mutableStateOf(false) }
+    // Lupa integrada: solo aparece el icono en la TopAppBar; al tocarlo se
+    // despliega la InlineSearchBar y la lista filtra por title/artistsLabel.
+    var searching by remember { mutableStateOf(false) }
+    var query by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Playlist") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+            Column {
+                TopAppBar(
+                    title = { Text("Playlist") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                        }
+                    },
+                    actions = {
+                        SearchActionIcon(active = searching, onToggle = {
+                            searching = !searching
+                            if (!searching) query = ""
+                        })
                     }
-                }
-            )
+                )
+                InlineSearchBar(
+                    visible = searching,
+                    query = query,
+                    onQueryChange = { query = it },
+                    placeholder = "Buscar en la playlist"
+                )
+            }
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -103,7 +123,22 @@ fun PlaylistDetailScreen(
                 ) { Text(s.message, color = MaterialTheme.colorScheme.error) }
 
                 is PlaylistDetailUiState.Ready -> {
-                    val entries = s.playlist.entries.content
+                    val allEntries = s.playlist.entries.content
+                    // Filtro case-insensitive sobre título + artistas. La lupa
+                    // siempre busca sobre el conjunto completo, aunque el
+                    // backend haya paginado — para las 7k canciones una
+                    // playlist rara vez pasa de unos cientos, es viable en
+                    // memoria. Si el usuario cerró la lupa (searching=false),
+                    // la query ya se limpió → filter no cambia nada.
+                    val entries = if (query.isBlank()) allEntries else {
+                        val q = query.trim().lowercase()
+                        remember(query, allEntries) {
+                            allEntries.filter {
+                                it.songTitle.lowercase().contains(q) ||
+                                    it.artists.any { a -> a.name.lowercase().contains(q) }
+                            }
+                        }
+                    }
                     val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
                     // Reorderable: capturamos los movimientos durante el drag
                     // y los aplicamos optimistamente al VM. El VM re-emite el
@@ -112,16 +147,16 @@ fun PlaylistDetailScreen(
                     val reorderableState = rememberReorderableLazyListState(
                         lazyListState = lazyListState
                     ) { from, to ->
-                        // Los índices from/to son ABSOLUTOS en la LazyColumn
-                        // (incluyen la cabecera `item { ... }` con el header).
-                        // Hay que descontar esa cabecera para mapear al índice
-                        // de 'entries'. Usamos el key para encontrar el entryId.
+                        // Si hay query activa la lista mostrada es un subset.
+                        // No reordenamos en ese estado porque los índices
+                        // filtrados no coinciden con los reales en DB — el
+                        // handle también se oculta, así que este bloqueo es
+                        // una red de seguridad extra.
+                        if (query.isNotBlank()) return@rememberReorderableLazyListState
                         val fromKey = from.key as? Long ?: return@rememberReorderableLazyListState
-                        @Suppress("UNUSED_VARIABLE")
-                        val _toKey = to.key as? Long ?: return@rememberReorderableLazyListState
-                        val toKey = _toKey
-                        val fromIdx = entries.indexOfFirst { it.entryId == fromKey }
-                        val toIdx = entries.indexOfFirst { it.entryId == toKey }
+                        val toKey = to.key as? Long ?: return@rememberReorderableLazyListState
+                        val fromIdx = allEntries.indexOfFirst { it.entryId == fromKey }
+                        val toIdx = allEntries.indexOfFirst { it.entryId == toKey }
                         if (fromIdx >= 0 && toIdx >= 0) {
                             viewModel.moveEntry(fromKey, fromIdx, toIdx)
                         }
@@ -254,7 +289,8 @@ fun PlaylistDetailScreen(
                                         },
                                         onRemove = { viewModel.removeEntry(entry.entryId) },
                                         isDragging = isDragging,
-                                        dragHandleModifier = Modifier.draggableHandle()
+                                        dragHandleModifier = Modifier.draggableHandle(),
+                                        dragEnabled = query.isBlank()
                                     )
                                 }
                                 HorizontalDivider()
@@ -431,7 +467,8 @@ private fun EntryRow(
     onClick: () -> Unit,
     onRemove: () -> Unit,
     isDragging: Boolean = false,
-    dragHandleModifier: Modifier = Modifier
+    dragHandleModifier: Modifier = Modifier,
+    dragEnabled: Boolean = true
 ) {
     val elevation = if (isDragging) 8.dp else 0.dp
     androidx.compose.material3.Surface(
@@ -481,12 +518,17 @@ private fun EntryRow(
             }
             // Handle de arrastre — modifier.draggableHandle() lo inyecta
             // ReorderableItem desde el call site, aquí solo lo aplicamos.
-            Icon(
-                imageVector = Icons.Filled.DragIndicator,
-                contentDescription = "Arrastrar para reordenar",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = dragHandleModifier.padding(start = 4.dp)
-            )
+            // Oculto cuando dragEnabled=false (p. ej. con lupa activa):
+            // reordenar sobre un subset filtrado produciría posiciones
+            // inconsistentes con DB.
+            if (dragEnabled) {
+                Icon(
+                    imageVector = Icons.Filled.DragIndicator,
+                    contentDescription = "Arrastrar para reordenar",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = dragHandleModifier.padding(start = 4.dp)
+                )
+            }
         }
     }
 }

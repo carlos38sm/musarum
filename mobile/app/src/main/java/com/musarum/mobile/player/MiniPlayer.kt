@@ -3,6 +3,7 @@ package com.musarum.mobile.player
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -38,11 +39,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import com.musarum.mobile.music.CoverImage
 import kotlin.math.abs
 import kotlinx.coroutines.launch
@@ -79,9 +85,47 @@ fun MiniPlayer(
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 6.dp),
         shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant,
+        // Dejamos el Surface transparente: el fondo con blur de la portada
+        // se pinta dentro del Box de abajo. Así tenemos degradé suave de la
+        // canción actual tras los textos y el play, pero el contorno del
+        // Surface + shadowElevation + clip a RoundedCornerShape siguen
+        // definiendo la pastilla.
+        color = androidx.compose.ui.graphics.Color.Transparent,
         shadowElevation = 10.dp
     ) {
+        Box(modifier = Modifier.clip(RoundedCornerShape(22.dp))) {
+            // Fondo blur de la portada actual. Si no hay cover, fallback a
+            // surfaceVariant plano para mantener contraste sobre el fondo.
+            val cover = state.currentCoverUrl
+            if (cover != null) {
+                AsyncImage(
+                    model = cover,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .matchParentSize()
+                        .blur(28.dp)
+                )
+                // Velo para asegurar legibilidad de textos y controles: el
+                // blur solo no basta si la portada es muy clara. Degradé
+                // vertical sutil para no aplastar completamente los colores.
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(
+                            Brush.verticalGradient(
+                                0f to MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
+                                1f to MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f)
+                            )
+                        )
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                )
+            }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -202,6 +246,7 @@ fun MiniPlayer(
                     tint = MaterialTheme.colorScheme.onSurface
                 )
             }
+        }
         }
     }
 }
