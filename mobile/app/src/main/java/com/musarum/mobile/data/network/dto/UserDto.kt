@@ -3,7 +3,9 @@ package com.musarum.mobile.data.network.dto
 data class UserResponseDto(
     val id: Long,
     val nick: String,
-    val userRole: String,
+    // Nullable porque /users/search (público entre users) devuelve null
+    // para no revelar quién es OWNER. /users/me y /users/admin sí lo traen.
+    val userRole: String? = null,
     val createdAt: String? = null,
     val avatarUrl: String? = null,
     val blocked: Boolean = false

@@ -171,7 +171,7 @@ private fun UserRow(
                 when (user.userRole) {
                     "OWNER" -> "Propietario"
                     "MEMBER" -> "Oyente"
-                    else -> user.userRole
+                    else -> user.userRole ?: "Oyente"
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

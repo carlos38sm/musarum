@@ -19,7 +19,6 @@ import musarum.backend.shared.security.CurrentUserResolver;
  */
 @RestController
 @RequestMapping("/admin/version")
-@PreAuthorize("hasRole('OWNER')")
 class AppUpdateController {
 
     private final AppUpdateService service;
@@ -30,7 +29,10 @@ class AppUpdateController {
         this.currentUser = currentUser;
     }
 
+    // @PreAuthorize por método (no a nivel clase) por la misma razón que
+    // AdminController: evaluación inconsistente con CGLIB + package-private.
     @GetMapping
+    @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<AppUpdateDto> current() {
         return service.current()
                 .map(AppUpdateDto::from)
@@ -39,6 +41,7 @@ class AppUpdateController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('OWNER')")
     AppUpdateDto publish(@RequestBody PublishRequest req) {
         Long userId = currentUser.currentUserId();
         AppUpdate updated = service.publish(req.latestApk(), req.apkUrl(), req.mandatory(), userId);

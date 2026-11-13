@@ -42,7 +42,7 @@ class PlaylistController {
 
     @GetMapping("/{id}")
     ResponseEntity<PlaylistDetailsDto> findById(@PathVariable Long id, Pageable pageable) {
-        return ResponseEntity.ok(playlistService.findById(id, pageable));
+        return ResponseEntity.ok(playlistService.findById(id, currentUser.currentUserId(), pageable));
     }
 
     @PostMapping

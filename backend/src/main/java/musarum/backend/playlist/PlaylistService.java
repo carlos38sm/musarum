@@ -52,9 +52,15 @@ public class PlaylistService {
     }
 
     @Transactional(readOnly = true)
-    public PlaylistDetailsDto findById(Long id, Pageable pageable) {
+    public PlaylistDetailsDto findById(Long id, Long requesterId, Pageable pageable) {
         Playlist playlist = playlistRepository.findById(id)
                 .orElseThrow(() -> new PlaylistNotFoundException(id));
+        // Si no se puede ver, devolvemos 404 en vez de 403 — así no revelamos
+        // la existencia de playlists privadas ajenas a usuarios que sólo
+        // prueban IDs. canView cubre: isPublic || owner || colaborador.
+        if (!playlist.canView(requesterId)) {
+            throw new PlaylistNotFoundException(id);
+        }
         Page<PlaylistEntry> entriesPage = entryRepository.findByPlaylistIdOrderByPositionAsc(id, pageable);
         return playlistMapper.toDetails(playlist, entriesPage);
     }

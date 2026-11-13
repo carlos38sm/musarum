@@ -22,10 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
  * móvil permite al OWNER ver qué carpetas se están escaneando, añadir/
  * desactivar sub-carpetas y descubrir nuevas sub-carpetas físicas bajo la
  * carpeta paraguas.
+ *
+ * <p>{@code @PreAuthorize} va en cada método (no a nivel clase) para evitar
+ * la evaluación inconsistente que vimos en AdminController con CGLIB + clase
+ * package-private.
  */
 @RestController
 @RequestMapping("/admin/folders")
-@PreAuthorize("hasRole('OWNER')")
 class LibraryFolderController {
 
     private final LibraryFolderService service;
@@ -35,28 +38,33 @@ class LibraryFolderController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<List<LibraryFolderDto>> list() {
         return ResponseEntity.ok(service.listAll());
     }
 
     /** Sub-carpetas del paraguas aún no registradas en DB. */
     @GetMapping("/available")
+    @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<List<DiscoveredFolderDto>> available() {
         return ResponseEntity.ok(service.listDiscoverable());
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<LibraryFolderDto> add(@Valid @RequestBody AddFolderRequest request) {
         return ResponseEntity.ok(service.add(request));
     }
 
     @PatchMapping("/{id}")
+    @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<LibraryFolderDto> toggle(@PathVariable Long id,
                                             @RequestParam("active") boolean active) {
         return ResponseEntity.ok(service.setActive(id, active));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<Void> delete(@PathVariable Long id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

@@ -72,6 +72,15 @@ class Playlist extends BaseEntity {
         return owner.getId().equals(userId) || isCollaborator(userId);
     }
 
+    /**
+     * Puede ver la playlist: el owner, los colaboradores, o cualquiera si
+     * la playlist es pública. Sin esto, GET /playlists/{id} dejaba que
+     * cualquier autenticado leyera playlists privadas ajenas si conocía su ID.
+     */
+    boolean canView(Long userId) {
+        return isPublic || owner.getId().equals(userId) || isCollaborator(userId);
+    }
+
     void addCollaborator(User user) { collaborators.add(user); }
     void removeCollaborator(Long userId) {
         collaborators.removeIf(u -> u.getId().equals(userId));

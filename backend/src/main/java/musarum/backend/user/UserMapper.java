@@ -19,4 +19,23 @@ class UserMapper {
 				user.isBlocked()
 		);
 	}
+
+	/**
+	 * Variante para búsquedas entre usuarios no-OWNER: oculta role y
+	 * blocked para no filtrar info interna (quién es OWNER, quién está
+	 * bloqueado). Se usa en /users/search. OWNER no gana nada con esto
+	 * pero tampoco pierde — para ver la info real, va a /users/admin.
+	 */
+	UserResponse toPublicResponse(User user) {
+		return new UserResponse(
+				user.getId(),
+				user.getNick(),
+				// Role null → el móvil nunca lo pinta en pantallas de búsqueda,
+				// pero si lo hiciera, no revela OWNER.
+				null,
+				user.getCreatedAt(),
+				user.getAvatarUrl(),
+				false
+		);
+	}
 }

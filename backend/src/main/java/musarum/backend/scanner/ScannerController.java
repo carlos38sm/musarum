@@ -2,6 +2,7 @@ package musarum.backend.scanner;
 
 import java.util.concurrent.CompletableFuture;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -17,7 +18,13 @@ class ScannerController {
         this.libraryScanner = libraryScanner;
     }
 
+    /**
+     * Lanzar escaneo es operación pesada (hash SHA-256 de miles de ficheros
+     * + INSERTs). Solo OWNER. Antes era abierta → cualquier MEMBER podía
+     * saturar el servidor pulsando "Rescanear" en bucle.
+     */
     @PostMapping("/import")
+    @PreAuthorize("hasRole('OWNER')")
     ResponseEntity<String> importSongs() {
         CompletableFuture<ImportResult> future = libraryScanner.importNewSongs();
 

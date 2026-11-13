@@ -49,10 +49,14 @@ public class UserService {
     public List<UserResponse> searchByNick(String query, int limit) {
         if (query == null || query.isBlank()) return List.of();
         int capped = Math.max(1, Math.min(limit, 25));
+        // Devuelve response PÚBLICA: oculta role y blocked para que un
+        // MEMBER no pueda listar quién es OWNER ni ver a quién tiene
+        // bloqueado el admin. Para ver esos campos existen /users/admin
+        // (OWNER-only) y /users/me (yo mismo).
         return userRepository.findByNickContainingIgnoreCaseOrderByNickAsc(
                 query.trim(),
                 org.springframework.data.domain.PageRequest.of(0, capped)
-        ).stream().map(userMapper::toResponse).toList();
+        ).stream().map(userMapper::toPublicResponse).toList();
     }
 
     @Transactional(readOnly = true)
