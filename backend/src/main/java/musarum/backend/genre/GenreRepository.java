@@ -13,4 +13,9 @@ public interface GenreRepository extends JpaRepository<Genre, Long>{
     /** Proyección para el ScannerCatalog: solo id + name. */
     @Query("SELECT g.id, g.name FROM Genre g")
     List<Object[]> findIdAndName();
+
+    /** Géneros sin canciones asociadas. */
+    @Query("SELECT g.id FROM Genre g "
+         + "WHERE NOT EXISTS (SELECT 1 FROM Song s WHERE s.genre.id = g.id)")
+    List<Long> findOrphanIds();
 }

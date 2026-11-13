@@ -61,6 +61,22 @@ public class CoverStorage {
         return findFirst("artist-" + artistId);
     }
 
+    /** Borra todas las variantes (.jpg/.png/.webp) de un cover. Idempotente. */
+    public void deleteAlbumCover(Long albumId) {
+        deleteAll("album-" + albumId);
+    }
+
+    public void deleteArtistImage(Long artistId) {
+        deleteAll("artist-" + artistId);
+    }
+
+    private void deleteAll(String baseName) {
+        for (String ext : new String[]{".jpg", ".jpeg", ".png", ".webp"}) {
+            Path candidate = baseDir.resolve(baseName + ext);
+            try { Files.deleteIfExists(candidate); } catch (IOException ignored) {}
+        }
+    }
+
     private Optional<Path> save(String baseName, byte[] bytes, String mimeType) {
         try {
             String ext = extensionFor(mimeType);

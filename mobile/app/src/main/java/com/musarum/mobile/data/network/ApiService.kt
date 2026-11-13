@@ -312,6 +312,11 @@ interface ApiService {
     @retrofit2.http.POST("admin/server/re-enrich-all")
     suspend fun reEnrichAll(): com.musarum.mobile.data.network.dto.ReEnrichSummaryDto
 
+    // Barre artistas / álbumes / géneros que quedaron sin canciones.
+    @retrofit2.http.POST("admin/server/clean-orphan-entities")
+    suspend fun cleanOrphanEntities():
+            com.musarum.mobile.data.network.dto.CleanOrphansSummaryDto
+
     // ── Carpetas de biblioteca (solo OWNER) ──
     @GET("admin/folders")
     suspend fun listLibraryFolders(): List<com.musarum.mobile.data.network.dto.LibraryFolderDto>

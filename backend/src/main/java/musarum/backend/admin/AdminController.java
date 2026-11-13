@@ -72,6 +72,17 @@ class AdminController {
         return statsService.reEnrichAll();
     }
 
+    /**
+     * Barre artistas / álbumes / géneros sin canciones. Útiles tras borrados
+     * masivos: aparecían "fantasmas" en ArtistsScreen con 0 canciones.
+     */
+    @PostMapping("/clean-orphan-entities")
+    @PreAuthorize("hasRole('OWNER')")
+    ServerStatsService.CleanOrphansSummary cleanOrphanEntities() {
+        logCaller("clean-orphan-entities");
+        return statsService.cleanOrphanEntities();
+    }
+
     /** Traza quién llamó y con qué authorities — útil para diagnosticar 403. */
     private void logCaller(String action) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

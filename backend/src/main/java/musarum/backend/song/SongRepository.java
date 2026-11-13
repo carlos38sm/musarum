@@ -145,6 +145,30 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     @Query("SELECT s.id FROM Song s")
     List<Long> findAllIds();
 
+    // ── Enrichment tracking (V6) ──────────────────────────────────────────
+
+    /**
+     * Candidatas a re-enriquecer: sin status (nunca intentada) o con
+     * FAILED_TRANSIENT (fallo temporal). Las OK y FAILED_NO_MATCH se saltan
+     * — repetirlas da el mismo resultado.
+     */
+    @Query("SELECT s FROM Song s "
+         + "WHERE s.enrichStatus IS NULL OR s.enrichStatus = musarum.backend.song.EnrichStatus.FAILED_TRANSIENT")
+    org.springframework.data.domain.Page<Song> findReenqueueable(
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT COUNT(s) FROM Song s WHERE s.enrichStatus IS NULL")
+    long countEnrichPending();
+
+    @Query("SELECT COUNT(s) FROM Song s WHERE s.enrichStatus = musarum.backend.song.EnrichStatus.OK")
+    long countEnrichOk();
+
+    @Query("SELECT COUNT(s) FROM Song s WHERE s.enrichStatus = musarum.backend.song.EnrichStatus.FAILED_NO_MATCH")
+    long countEnrichNoMatch();
+
+    @Query("SELECT COUNT(s) FROM Song s WHERE s.enrichStatus = musarum.backend.song.EnrichStatus.FAILED_TRANSIENT")
+    long countEnrichTransient();
+
     /**
      * Posición 0-based de una canción en la vista paginada por defecto.
      * TIENE que usar EXACTAMENTE el mismo ORDER BY que {@link #findPageOrdered}

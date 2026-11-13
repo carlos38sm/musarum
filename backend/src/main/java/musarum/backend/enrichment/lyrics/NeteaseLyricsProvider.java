@@ -10,6 +10,8 @@ import java.text.Normalizer;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.annotation.Order;
@@ -41,6 +43,10 @@ class NeteaseLyricsProvider implements LyricsProvider {
     private static final String LYRIC_URL  = "https://music.163.com/api/song/lyric";
     private static final Duration CONNECT_TIMEOUT = Duration.ofSeconds(3);
     private static final Duration READ_TIMEOUT    = Duration.ofSeconds(5);
+    // Rate limit compartido para TODA la clase (search + lyric son dos
+    // requests por canción). 4 permits = máx 4 enrichs concurrentes
+    // hablando con NetEase, suficiente sin que nos baneen por IP.
+    private static final Semaphore RATE_LIMIT = new Semaphore(4);
 
     private final RestClient http = RestClient.builder()
             .requestFactory(buildRequestFactory())
@@ -67,13 +73,28 @@ class NeteaseLyricsProvider implements LyricsProvider {
         if (artist == null || title == null || artist.isBlank() || title.isBlank()) {
             return Optional.empty();
         }
-        log.info("  🔹 NetEase buscando '{} - {}'", artist, title);
-        Optional<Long> songId = findSongId(artist, title);
-        if (songId.isEmpty()) {
-            log.info("  ✗ NetEase: sin canción tras verificar artista");
+        boolean acquired;
+        try {
+            acquired = RATE_LIMIT.tryAcquire(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return Optional.empty();
         }
-        return fetchLyric(songId.get());
+        if (!acquired) {
+            log.warn("NetEase rate limit: no hueco en 10s para {} - {}", artist, title);
+            return Optional.empty();
+        }
+        try {
+            log.info("  🔹 NetEase buscando '{} - {}'", artist, title);
+            Optional<Long> songId = findSongId(artist, title);
+            if (songId.isEmpty()) {
+                log.info("  ✗ NetEase: sin canción tras verificar artista");
+                return Optional.empty();
+            }
+            return fetchLyric(songId.get());
+        } finally {
+            RATE_LIMIT.release();
+        }
     }
 
     private Optional<Long> findSongId(String artist, String title) {

@@ -50,7 +50,13 @@ data class ServerStatsDto(
         val missingBpm: Long,
         val missingKey: Long,
         val missingReplayGain: Long,
-        val missingMbid: Long
+        val missingMbid: Long,
+        // Desglose por status Emendatium (V6). Nullable para compatibilidad
+        // con backends < 1.0.14 que aún no publicaban estos campos.
+        val enrichPending: Long? = null,
+        val enrichOk: Long? = null,
+        val enrichNoMatch: Long? = null,
+        val enrichTransient: Long? = null
     )
 
     /**

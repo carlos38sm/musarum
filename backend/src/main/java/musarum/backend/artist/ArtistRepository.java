@@ -47,4 +47,9 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
      */
     @Query("SELECT a.id, a.nameKey FROM Artist a WHERE a.nameKey IS NOT NULL")
     List<Object[]> findIdAndNameKey();
+
+    /** Artistas sin canciones asociadas — fantasmas tras borrar canciones. */
+    @Query("SELECT a.id FROM Artist a "
+         + "WHERE NOT EXISTS (SELECT 1 FROM Song s JOIN s.artists sa WHERE sa.id = a.id)")
+    List<Long> findOrphanIds();
 }

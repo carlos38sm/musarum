@@ -116,6 +116,17 @@ public class SongService {
         return new org.springframework.data.domain.PageImpl<>(content, pageable, total);
     }
 
+    /**
+     * Marca la canción con el status del último intento de enriquecimiento
+     * Emendatium. Silenciosamente no-op si el id ya no existe (la canción
+     * pudo ser borrada entre el enrichAsync y aquí). Tx corta propia porque
+     * se llama desde {@code EmendatiumAutoEnricher} que no tiene tx externa.
+     */
+    @Transactional
+    public void markEnrichment(Long songId, EnrichStatus status) {
+        songRepository.findById(songId).ifPresent(s -> s.markEnrichment(status));
+    }
+
     @Transactional(readOnly = true)
     public List<SongSummaryDto> findAllShuffled() {
         return songRepository.findAllShuffled().stream()

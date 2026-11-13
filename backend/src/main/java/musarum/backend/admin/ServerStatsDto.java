@@ -50,7 +50,16 @@ public record ServerStatsDto(
             long missingBpm,
             long missingKey,
             long missingReplayGain,
-            long missingMbid
+            long missingMbid,
+            // Desglose por status Emendatium (V6):
+            //   enrichPending  = NULL (nunca intentadas, se re-encolan)
+            //   enrichOk       = OK (ya enriquecidas)
+            //   enrichNoMatch  = FAILED_NO_MATCH (Emendatium corrió pero no identificó)
+            //   enrichTransient= FAILED_TRANSIENT (timeout/red, reintentables)
+            long enrichPending,
+            long enrichOk,
+            long enrichNoMatch,
+            long enrichTransient
     ) {}
 
     /**

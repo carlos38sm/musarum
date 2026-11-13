@@ -87,6 +87,28 @@ class ServerStatsViewModel(
         }
     }
 
+    /**
+     * Barre artistas / álbumes / géneros sin canciones. Tras borrar
+     * canciones pueden quedar como "fantasmas" en las listas. Refresca el
+     * panel al terminar para que el OWNER vea el nuevo conteo.
+     */
+    fun cleanOrphanEntities(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val s = apiService.cleanOrphanEntities()
+                onResult(
+                    true,
+                    "Limpiado · ${s.artists} artistas · ${s.albums} álbumes · ${s.genres} géneros"
+                )
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                onResult(false, t.message ?: "No se pudo limpiar")
+            }
+            refresh()
+        }
+    }
+
     fun wipeLibrary(onResult: (Boolean, String) -> Unit) {
         viewModelScope.launch {
             _state.value = ServerStatsUiState.Loading

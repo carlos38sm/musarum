@@ -63,6 +63,7 @@ public class ServerStatsService {
     private final LibraryScanner libraryScanner;
     private final EmendatiumAutoEnricher emendatiumEnricher;
     private final EmendatiumClient emendatiumClient;
+    private final musarum.backend.shared.CoverStorage coverStorage;
 
     private final Path musicRoot;
     private final Path coversRoot;
@@ -84,6 +85,7 @@ public class ServerStatsService {
                        LibraryScanner libraryScanner,
                        EmendatiumAutoEnricher emendatiumEnricher,
                        EmendatiumClient emendatiumClient,
+                       musarum.backend.shared.CoverStorage coverStorage,
                        @Value("${MUSARUM_MUSIC_PATH}") String musicPath,
                        @Value("${MUSARUM_COVERS_PATH:#{null}}") String coversPath,
                        @Value("${MUSARUM_VIDEOS_PATH:#{null}}") String videosPath,
@@ -99,6 +101,7 @@ public class ServerStatsService {
         this.libraryScanner = libraryScanner;
         this.emendatiumEnricher = emendatiumEnricher;
         this.emendatiumClient = emendatiumClient;
+        this.coverStorage = coverStorage;
 
         this.musicRoot = Path.of(musicPath);
         // Mismo criterio que CoverStorage/VideoStorage/AvatarStorage: si no
@@ -225,7 +228,11 @@ public class ServerStatsService {
                 songRepository.countMissingBpm(),
                 songRepository.countMissingKey(),
                 songRepository.countMissingReplayGain(),
-                songRepository.countMissingMbid()
+                songRepository.countMissingMbid(),
+                songRepository.countEnrichPending(),
+                songRepository.countEnrichOk(),
+                songRepository.countEnrichNoMatch(),
+                songRepository.countEnrichTransient()
         );
     }
 
@@ -332,22 +339,22 @@ public class ServerStatsService {
     public record WipeSummary(long songs, long artists, long albums, long genres) {}
 
     /**
-     * Relanza el enriquecimiento de Emendatium sobre TODAS las canciones. Se
-     * usa cuando el catálogo lleva tiempo sin biografía / BPM / tonalidad
-     * porque Emendatium no estaba corriendo cuando se importaron. Las llamadas
-     * van fire-and-forget al pool scanner → el OWNER verá los datos aparecer
-     * progresivamente conforme Emendatium responda (puede tardar según nº de
-     * canciones y fuentes externas).
+     * Relanza el enriquecimiento de Emendatium SOLO sobre canciones
+     * elegibles (nunca intentadas o con fallo transitorio). Las que ya
+     * están OK o marcadas FAILED_NO_MATCH no se re-encolan — el resultado
+     * sería idéntico y sería tiempo desperdiciado.
+     *
+     * <p>Las llamadas van fire-and-forget al pool scanner → el OWNER verá
+     * los datos aparecer progresivamente conforme Emendatium responda.
      */
     @Transactional(readOnly = true)
     public ReEnrichSummary reEnrichAll() {
         long total = songRepository.count();
         int queued = 0;
-        // Streamear con paginación para no cargar 7000 entidades en memoria.
         int page = 0;
         int size = 200;
         while (true) {
-            var p = songRepository.findAll(
+            var p = songRepository.findReenqueueable(
                     org.springframework.data.domain.PageRequest.of(page, size));
             for (Song s : p.getContent()) {
                 emendatiumEnricher.enrichAsync(s.getId(), s.getAudioPath());
@@ -356,11 +363,47 @@ public class ServerStatsService {
             if (!p.hasNext()) break;
             page++;
         }
-        log.info("reEnrichAll: encoladas {} canciones (de {})", queued, total);
+        log.info("reEnrichAll: encoladas {} canciones elegibles (de {} totales)", queued, total);
         return new ReEnrichSummary(queued, total);
     }
 
     public record ReEnrichSummary(int queued, long total) {}
+
+    /**
+     * Barre artistas, álbumes y géneros que quedaron SIN canciones. Pensado
+     * para el OWNER tras borrar muchas canciones a mano, o cuando el scanner
+     * las quita por renombrados masivos. También borra las imágenes locales
+     * de los artistas/álbumes huérfanos para no dejar ficheros muertos.
+     */
+    @Transactional
+    public CleanOrphansSummary cleanOrphanEntities() {
+        java.util.List<Long> orphanArtists = artistRepository.findOrphanIds();
+        for (Long id : orphanArtists) {
+            coverStorage.deleteArtistImage(id);
+            artistRepository.deleteById(id);
+        }
+
+        java.util.List<Long> orphanAlbums = albumRepository.findOrphanIds();
+        for (Long id : orphanAlbums) {
+            coverStorage.deleteAlbumCover(id);
+            albumRepository.deleteById(id);
+        }
+
+        java.util.List<Long> orphanGenres = genreRepository.findOrphanIds();
+        for (Long id : orphanGenres) {
+            genreRepository.deleteById(id);
+        }
+
+        log.info("cleanOrphanEntities: borrados {} artistas, {} álbumes, {} géneros",
+                orphanArtists.size(), orphanAlbums.size(), orphanGenres.size());
+        return new CleanOrphansSummary(
+                orphanArtists.size(),
+                orphanAlbums.size(),
+                orphanGenres.size()
+        );
+    }
+
+    public record CleanOrphansSummary(int artists, int albums, int genres) {}
 
     /** Borra los `.lrc` huérfanos y devuelve cuántos se eliminaron. */
     public int deleteOrphanLyricFiles() {

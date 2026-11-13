@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
@@ -129,6 +130,11 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                         viewModel.reEnrichAll { _, msg ->
                             scope.launch { snackbarHostState.showSnackbar(msg) }
                         }
+                    },
+                    onCleanOrphansRequested = {
+                        viewModel.cleanOrphanEntities { _, msg ->
+                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
                     }
                 )
                 Spacer(Modifier.height(8.dp))
@@ -175,13 +181,15 @@ fun ServerStatsScreen(onBack: () -> Unit) {
 private fun MaintenanceCard(
     songCount: Long,
     onWipeRequested: () -> Unit,
-    onReEnrichRequested: () -> Unit
+    onReEnrichRequested: () -> Unit,
+    onCleanOrphansRequested: () -> Unit
 ) {
     StatCard(title = "Mantenimiento") {
         Text(
             "Re-busca biografías de artistas, BPM, tonalidad y replaygain " +
-                "en Emendatium. Útil si el catálogo se importó antes de " +
-                "activar Emendatium. Los datos aparecen poco a poco.",
+                "en Emendatium. Solo re-encola canciones nunca intentadas " +
+                "o con fallos temporales — las que ya se sabe que Emendatium " +
+                "no identifica no se repiten.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -198,9 +206,30 @@ private fun MaintenanceCard(
             Icon(Icons.Filled.AutoFixHigh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(
-                if (songCount > 0) "Re-enriquecer todo ($songCount canciones)"
+                if (songCount > 0) "Re-enriquecer pendientes"
                 else "Nada que enriquecer"
             )
+        }
+
+        Spacer(Modifier.height(18.dp))
+        Text(
+            "Borra artistas, álbumes y géneros que quedaron sin canciones " +
+                "tras un borrado (fantasmas en listas).",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = onCleanOrphansRequested,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.CleaningServices, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Limpiar huérfanos de catálogo")
         }
 
         Spacer(Modifier.height(18.dp))
@@ -317,6 +346,27 @@ private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) 
         StatLine("Sin tonalidad", "${e.missingKey} / $totalSongs")
         StatLine("Sin ReplayGain", "${e.missingReplayGain} / $totalSongs")
         StatLine("Sin MusicBrainz ID", "${e.missingMbid} / $totalSongs")
+
+        // Desglose por status del intento Emendatium (si el backend lo trae).
+        // Útil para diagnosticar: si ok=0 aunque Emendatium esté verde →
+        // está respondiendo pero sin metadata (fpcalc no instalado, etc.).
+        val pending = e.enrichPending
+        val ok = e.enrichOk
+        val noMatch = e.enrichNoMatch
+        val transient = e.enrichTransient
+        if (pending != null && ok != null) {
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "Último intento Emendatium",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(6.dp))
+            StatLine("Enriquecidas", ok.toString())
+            StatLine("Nunca intentadas", pending.toString())
+            if ((noMatch ?: 0) > 0) StatLine("Sin match", noMatch.toString())
+            if ((transient ?: 0) > 0) StatLine("Fallo temporal", transient.toString())
+        }
     }
 }
 

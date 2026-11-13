@@ -1,9 +1,12 @@
 package musarum.backend.song;
 
+import java.time.Instant;
 import java.util.HashSet;
 import java.util.Set;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
@@ -104,6 +107,19 @@ public class Song extends BaseEntity {
     @JoinColumn(name = "genre_id")
     private Genre genre;
 
+    /** Momento del último intento de enriquecimiento Emendatium (éxito o fallo). */
+    @Column(name = "enriched_at")
+    private Instant enrichedAt;
+
+    /**
+     * Estado del enriquecimiento. null = nunca intentada; ver {@link EnrichStatus}
+     * para el resto. Guardado como String para que un cambio de enum no requiera
+     * migración.
+     */
+    @Column(name = "enrich_status", length = 32)
+    @Enumerated(EnumType.STRING)
+    private EnrichStatus enrichStatus;
+
     public void applyEnrichment(Integer bpm, String musicalKey, Double replayGain,
                                 String lyricsPath, String mbId, String isrc) {
         if (bpm != null) this.bpm = bpm;
@@ -124,5 +140,10 @@ public class Song extends BaseEntity {
 
     public void setLyricsPath(String path) {
         this.lyricsPath = path;
+    }
+
+    public void markEnrichment(EnrichStatus status) {
+        this.enrichStatus = status;
+        this.enrichedAt = Instant.now();
     }
 }

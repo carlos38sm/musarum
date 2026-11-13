@@ -31,4 +31,9 @@ public interface AlbumRepository extends JpaRepository<Album, Long> {
     @Query("SELECT a.id, a.titleKey, a.artist.id FROM Album a "
          + "WHERE a.titleKey IS NOT NULL AND a.artist IS NOT NULL")
     List<Object[]> findIdTitleKeyAndArtistId();
+
+    /** Álbumes sin canciones asociadas. */
+    @Query("SELECT a.id FROM Album a "
+         + "WHERE NOT EXISTS (SELECT 1 FROM Song s WHERE s.album.id = a.id)")
+    List<Long> findOrphanIds();
 }
