@@ -10,8 +10,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import musarum.backend.home.dto.DiscoveryPageDto;
 import musarum.backend.home.dto.NowPlayingUserDto;
+import musarum.backend.home.dto.SmartPlaylistInfoDto;
 import musarum.backend.home.dto.TasteProfileDto;
 import musarum.backend.shared.security.CurrentUserResolver;
+import musarum.backend.song.dto.SongSummaryDto;
+import org.springframework.web.bind.annotation.PathVariable;
 
 /**
  * Endpoints de las tres secciones de "convivencia" del Home del móvil.
@@ -54,5 +57,25 @@ class HomeController {
     @GetMapping("/taste-profiles")
     ResponseEntity<List<TasteProfileDto>> tasteProfiles() {
         return ResponseEntity.ok(service.tasteProfiles(currentUser.currentUserId()));
+    }
+
+    /** Lista de las listas inteligentes disponibles (metadatos). */
+    @GetMapping("/smart")
+    ResponseEntity<List<SmartPlaylistInfoDto>> smartPlaylists() {
+        return ResponseEntity.ok(service.listSmartPlaylists());
+    }
+
+    /**
+     * Genera y devuelve una lista inteligente al vuelo para el user actual.
+     * {@code size} capado en 5..100 por el service.
+     */
+    @GetMapping("/smart/{slug}")
+    ResponseEntity<List<SongSummaryDto>> smartPlaylist(
+            @PathVariable String slug,
+            @RequestParam(defaultValue = "30") int size
+    ) {
+        return ResponseEntity.ok(
+                service.smartPlaylist(slug, currentUser.currentUserId(), size)
+        );
     }
 }

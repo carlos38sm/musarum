@@ -367,5 +367,15 @@ interface ApiService {
 
     @GET("home/taste-profiles")
     suspend fun getHomeTasteProfiles(): List<com.musarum.mobile.data.network.dto.TasteProfileDto>
+
+    @GET("home/smart")
+    suspend fun getSmartPlaylists():
+            List<com.musarum.mobile.data.network.dto.SmartPlaylistInfoDto>
+
+    @GET("home/smart/{slug}")
+    suspend fun getSmartPlaylistSongs(
+        @Path("slug") slug: String,
+        @Query("size") size: Int = 30
+    ): List<SongSummaryDto>
 }
 

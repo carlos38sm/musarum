@@ -20,6 +20,7 @@ import musarum.backend.genre.Genre;
 import musarum.backend.genre.GenreRepository;
 import musarum.backend.home.dto.DiscoveryPageDto;
 import musarum.backend.home.dto.NowPlayingUserDto;
+import musarum.backend.home.dto.SmartPlaylistInfoDto;
 import musarum.backend.home.dto.TasteProfileDto;
 import musarum.backend.reproduction.Reproduction;
 import musarum.backend.reproduction.ReproductionRepository;
@@ -149,6 +150,50 @@ public class HomeService {
             ));
         }
         return out;
+    }
+
+    /**
+     * Metadatos de las listas inteligentes disponibles. Los subtítulos los
+     * calcula el móvil si quiere (aquí damos un copy genérico), pero el
+     * slug es contrato — el móvil lo manda de vuelta a {@link #smartPlaylist}.
+     */
+    public List<SmartPlaylistInfoDto> listSmartPlaylists() {
+        return List.of(
+                new SmartPlaylistInfoDto("party",
+                        "Fiesta",
+                        "BPM alto · géneros movidos",
+                        "party"),
+                new SmartPlaylistInfoDto("focus",
+                        "Concentración",
+                        "BPM bajo · ambient y acústico",
+                        "focus"),
+                new SmartPlaylistInfoDto("undiscovered",
+                        "Por descubrir",
+                        "Canciones del catálogo que nunca escuchaste",
+                        "undiscovered"),
+                new SmartPlaylistInfoDto("forgotten",
+                        "Olvidadas",
+                        "Tuyas, pero sin escuchar hace meses",
+                        "forgotten")
+        );
+    }
+
+    /**
+     * Genera una lista inteligente al vuelo. {@code size} capado a [5, 100].
+     * Un slug desconocido devuelve lista vacía — así el móvil puede ignorar
+     * sin tratar excepciones.
+     */
+    @Transactional(readOnly = true)
+    public List<SongSummaryDto> smartPlaylist(String slug, Long userId, int size) {
+        int capped = Math.max(5, Math.min(size, 100));
+        List<Song> songs = switch (slug == null ? "" : slug) {
+            case "party"        -> songRepository.findPartySongs(capped);
+            case "focus"        -> songRepository.findFocusSongs(capped);
+            case "undiscovered" -> songRepository.findUndiscoveredForUser(userId, capped);
+            case "forgotten"    -> songRepository.findForgottenForUser(userId, capped);
+            default             -> List.of();
+        };
+        return songs.stream().map(songMapper::toSummary).toList();
     }
 
     // ── Helpers internos ──────────────────────────────────────────────────

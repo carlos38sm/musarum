@@ -8,6 +8,7 @@ import com.musarum.mobile.data.network.ApiService
 import com.musarum.mobile.data.network.dto.DiscoveryPageDto
 import com.musarum.mobile.data.network.dto.GenreDto
 import com.musarum.mobile.data.network.dto.NowPlayingUserDto
+import com.musarum.mobile.data.network.dto.SmartPlaylistInfoDto
 import com.musarum.mobile.data.network.dto.SongSummaryDto
 import com.musarum.mobile.data.network.dto.TasteProfileDto
 import kotlinx.coroutines.CancellationException
@@ -27,6 +28,8 @@ data class HomeUiState(
     val presence: List<NowPlayingUserDto> = emptyList(),
     val discoveries: DiscoveryPageDto? = null,
     val tasteProfiles: List<TasteProfileDto> = emptyList(),
+    val smartPlaylists: List<SmartPlaylistInfoDto> = emptyList(),
+    val smartLoadingSlug: String? = null,
     val error: String? = null
 )
 
@@ -57,6 +60,7 @@ class HomeViewModel(
                     val presenceDef = async { safeList { api.getHomePresence() } }
                     val discoveriesDef = async { safeNullable { api.getHomeDiscoveries() } }
                     val tasteDef = async { safeList { api.getHomeTasteProfiles() } }
+                    val smartDef = async { safeList { api.getSmartPlaylists() } }
 
                     _state.value = HomeUiState(
                         loading = false,
@@ -66,13 +70,42 @@ class HomeViewModel(
                         genres = genresDef.await(),
                         presence = presenceDef.await(),
                         discoveries = discoveriesDef.await(),
-                        tasteProfiles = tasteDef.await()
+                        tasteProfiles = tasteDef.await(),
+                        smartPlaylists = smartDef.await()
                     )
                 }
             } catch (ce: CancellationException) {
                 throw ce
             } catch (t: Throwable) {
                 _state.value = HomeUiState(loading = false, error = t.message ?: "Error")
+            }
+        }
+    }
+
+    /**
+     * Pide las canciones de una lista inteligente y las reproduce. Si el
+     * backend devuelve lista vacía (p. ej. "Olvidadas" sin candidatos),
+     * invoca onEmpty en vez de reproducir — así la UI puede mostrar snackbar
+     * sin encallar el player con cola vacía. El slug "loading" bloquea
+     * taps duplicados mientras llega la respuesta.
+     */
+    fun loadSmartPlaylist(
+        slug: String,
+        onReady: (List<SongSummaryDto>) -> Unit,
+        onEmpty: () -> Unit = {}
+    ) {
+        if (_state.value.smartLoadingSlug != null) return
+        _state.value = _state.value.copy(smartLoadingSlug = slug)
+        viewModelScope.launch {
+            try {
+                val songs = api.getSmartPlaylistSongs(slug, size = 50)
+                if (songs.isEmpty()) onEmpty() else onReady(songs)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (_: Throwable) {
+                onEmpty()
+            } finally {
+                _state.value = _state.value.copy(smartLoadingSlug = null)
             }
         }
     }

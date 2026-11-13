@@ -23,13 +23,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MicExternalOn
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -53,9 +57,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
+import com.musarum.mobile.LocalSnackbar
 import com.musarum.mobile.data.network.dto.DiscoveryPageDto
 import com.musarum.mobile.data.network.dto.GenreDto
 import com.musarum.mobile.data.network.dto.NowPlayingUserDto
+import com.musarum.mobile.data.network.dto.SmartPlaylistInfoDto
 import com.musarum.mobile.data.network.dto.SongSummaryDto
 import com.musarum.mobile.data.network.dto.TasteProfileDto
 import com.musarum.mobile.music.ArtistAvatar
@@ -83,6 +89,7 @@ fun HomeScreen(
     val container = LocalAppContainer.current
     val state by viewModel.state.collectAsState()
     val me by container.userRepository.me.collectAsState()
+    val snackbar = LocalSnackbar.current
 
     androidx.compose.runtime.LaunchedEffect(Unit) {
         if (me == null) {
@@ -197,6 +204,37 @@ fun HomeScreen(
                                     song = song,
                                     onClick = {
                                         container.playerController.playQueue(page.items, idx)
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // ── Hecho para ti: listas inteligentes generadas al vuelo ──
+                if (state.smartPlaylists.isNotEmpty()) {
+                    item { SectionBar(title = "Hecho para ti") }
+                    item {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 20.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(state.smartPlaylists, key = { it.slug }) { info ->
+                                SmartPlaylistCard(
+                                    info = info,
+                                    loading = state.smartLoadingSlug == info.slug,
+                                    onClick = {
+                                        viewModel.loadSmartPlaylist(
+                                            slug = info.slug,
+                                            onReady = { songs ->
+                                                container.playerController.playQueue(songs, 0)
+                                            },
+                                            onEmpty = {
+                                                snackbar(
+                                                    "Nada que mostrar en \"${info.title}\" por ahora"
+                                                )
+                                            }
+                                        )
                                     }
                                 )
                             }
@@ -837,6 +875,149 @@ private fun formatAgo(seconds: Long): String {
     if (minutes < 60) return "hace ${minutes}m"
     val hours = minutes / 60
     return "hace ${hours}h"
+}
+
+/**
+ * Tarjeta de lista inteligente. Fondo con gradient temático + icono grande
+ * tras un halo + título bold + subtítulo. Mientras {@code loading=true} se
+ * superpone un spinner para indicar que el fetch está en marcha. Clickable
+ * en toda la superficie — un solo tap = reproducir.
+ */
+@Composable
+private fun SmartPlaylistCard(
+    info: SmartPlaylistInfoDto,
+    loading: Boolean,
+    onClick: () -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    val visual = smartVisualFor(info.iconHint, scheme)
+    Surface(
+        modifier = Modifier
+            .size(width = 220.dp, height = 132.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = Color.Transparent
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.linearGradient(
+                        0f to visual.top,
+                        1f to visual.bottom
+                    )
+                )
+        ) {
+            // Icono grande semitransparente tipo "marca de agua" a la derecha.
+            Icon(
+                visual.icon,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.22f),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 10.dp, end = 10.dp)
+                    .size(64.dp)
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.Bottom
+            ) {
+                Text(
+                    info.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    info.subtitle,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.82f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            if (loading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.18f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.5.dp,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            } else {
+                // Botón play circular como affordance clara. No interactivo
+                // por separado: toda la tarjeta ya es clickable.
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.22f),
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(10.dp)
+                        .size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.Filled.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private data class SmartVisual(
+    val icon: ImageVector,
+    val top: Color,
+    val bottom: Color
+)
+
+/**
+ * Mapeo semántico iconHint → icono + paleta. Lo fija el móvil, no el
+ * backend — así podemos cambiar la estética sin tocar API.
+ */
+@Composable
+private fun smartVisualFor(iconHint: String, scheme: androidx.compose.material3.ColorScheme): SmartVisual {
+    return when (iconHint) {
+        "party" -> SmartVisual(
+            icon = Icons.Filled.Celebration,
+            top = Color(0xFFE91E63),     // rosa fuerte
+            bottom = Color(0xFF9C27B0)   // morado
+        )
+        "focus" -> SmartVisual(
+            icon = Icons.Filled.SelfImprovement,
+            top = Color(0xFF26A69A),     // teal
+            bottom = Color(0xFF1565C0)   // azul profundo
+        )
+        "undiscovered" -> SmartVisual(
+            icon = Icons.Filled.Explore,
+            top = Color(0xFFFFB300),     // ámbar
+            bottom = Color(0xFFEF6C00)   // naranja
+        )
+        "forgotten" -> SmartVisual(
+            icon = Icons.Filled.History,
+            top = Color(0xFF5E35B1),     // púrpura calmo
+            bottom = Color(0xFF283593)   // añil
+        )
+        else -> SmartVisual(
+            icon = Icons.Filled.AutoAwesome,
+            top = scheme.primary,
+            bottom = scheme.tertiary
+        )
+    }
 }
 
 /**

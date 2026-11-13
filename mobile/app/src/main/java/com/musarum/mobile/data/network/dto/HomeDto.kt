@@ -21,6 +21,21 @@ data class DiscoveryPageDto(
 )
 
 /**
+ * Metadatos de una lista inteligente del Home. Las canciones no vienen
+ * aqu&iacute;: se piden a demanda en {@code getSmartPlaylistSongs(slug)}.
+ *
+ * {@code iconHint} es un token sem&aacute;ntico ("party", "focus", "undiscovered",
+ * "forgotten") que el m&oacute;vil mapea a icono + color — el backend no decide
+ * la presentaci&oacute;n.
+ */
+data class SmartPlaylistInfoDto(
+    val slug: String,
+    val title: String,
+    val subtitle: String,
+    val iconHint: String
+)
+
+/**
  * Mini-perfil semanal de otro usuario. Cualquiera de los tres top-* puede
  * ser null si no hay dato suficiente en la ventana.
  */

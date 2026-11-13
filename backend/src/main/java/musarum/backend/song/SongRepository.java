@@ -179,6 +179,71 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     @Query("SELECT COUNT(s) FROM Song s WHERE s.createdAt >= :since")
     long countSince(java.time.Instant since);
 
+    // ── Home / Smart playlists ────────────────────────────────────────────
+
+    /**
+     * "Fiesta": BPM &gt;= 120 o géneros movidos. El fallback por género es
+     * clave mientras muchas canciones aún no tienen BPM (Emendatium no ha
+     * pasado todavía). Shuffle para variedad entre peticiones.
+     */
+    @Query(value = """
+        SELECT s.* FROM songs s
+        LEFT JOIN genres g ON g.id = s.genre_id
+        WHERE s.bpm >= 120
+           OR LOWER(COALESCE(g.name, '')) ~ '(dance|reggaet|electron|house|techno|salsa|bachata|latin|hip.?hop|rap|funk)'
+        ORDER BY RANDOM()
+        LIMIT :size
+        """, nativeQuery = true)
+    List<Song> findPartySongs(int size);
+
+    /**
+     * "Concentración": BPM &lt;= 90 o géneros tranquilos. Mismo patrón que
+     * party pero al revés.
+     */
+    @Query(value = """
+        SELECT s.* FROM songs s
+        LEFT JOIN genres g ON g.id = s.genre_id
+        WHERE (s.bpm BETWEEN 1 AND 90)
+           OR LOWER(COALESCE(g.name, '')) ~ '(classic|ambient|instrument|jazz|lofi|lo.?fi|chill|acoust|piano|bossa|new.?age|soundtrack)'
+        ORDER BY RANDOM()
+        LIMIT :size
+        """, nativeQuery = true)
+    List<Song> findFocusSongs(int size);
+
+    /**
+     * "Por descubrir": canciones que este user jamás ha reproducido. Útil
+     * cuando la biblioteca crece pero cada uno escucha siempre lo mismo.
+     */
+    @Query(value = """
+        SELECT s.* FROM songs s
+        WHERE NOT EXISTS (
+          SELECT 1 FROM reproductions r
+          WHERE r.song_id = s.id AND r.user_id = :userId
+        )
+        ORDER BY RANDOM()
+        LIMIT :size
+        """, nativeQuery = true)
+    List<Song> findUndiscoveredForUser(Long userId, int size);
+
+    /**
+     * "Olvidadas": el user las escuchó al menos 2 veces en su historia pero
+     * no las toca desde hace &gt;60 días. Nostalgia dirigida — no incluye
+     * canciones que no conoce.
+     */
+    @Query(value = """
+        SELECT s.* FROM songs s
+        WHERE s.id IN (
+          SELECT r.song_id FROM reproductions r
+          WHERE r.user_id = :userId
+          GROUP BY r.song_id
+          HAVING MAX(r.created_at) < NOW() - INTERVAL '60 days'
+             AND COUNT(*) >= 2
+        )
+        ORDER BY RANDOM()
+        LIMIT :size
+        """, nativeQuery = true)
+    List<Song> findForgottenForUser(Long userId, int size);
+
     /**
      * Posición 0-based de una canción en la vista paginada por defecto.
      * TIENE que usar EXACTAMENTE el mismo ORDER BY que {@link #findPageOrdered}
