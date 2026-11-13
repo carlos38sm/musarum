@@ -146,4 +146,12 @@ public class Song extends BaseEntity {
         this.enrichStatus = status;
         this.enrichedAt = Instant.now();
     }
+
+    // ── Edición manual de tags (TagEditor del móvil) ──────────────────────
+    public void setTitle(String title) { this.title = title; }
+    public void setAlbum(Album album) { this.album = album; }
+    public void setGenre(Genre genre) { this.genre = genre; }
+    public void setYear(Integer year) { this.year = year; }
+    public void setTrackNumber(Integer trackNumber) { this.trackNumber = trackNumber; }
+    public void setArtists(Set<Artist> artists) { this.artists = artists; }
 }

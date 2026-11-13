@@ -56,4 +56,14 @@ class SongRepository(
     /** Cola de canciones similares a la semilla. */
     suspend fun radio(seedId: Long, size: Int = 50): List<SongSummaryDto> =
         apiService.getRadioFrom(seedId, size)
+
+    /**
+     * Edición manual de tags ID3 + metadatos JPA (OWNER). El backend
+     * reescribe el fichero del disco con jaudiotagger ANTES de tocar DB,
+     * así si hay fallo quedamos consistentes.
+     */
+    suspend fun editTags(
+        id: Long,
+        request: com.musarum.mobile.data.network.dto.TagEditRequest
+    ): SongDetailsDto = apiService.editTags(id, request)
 }

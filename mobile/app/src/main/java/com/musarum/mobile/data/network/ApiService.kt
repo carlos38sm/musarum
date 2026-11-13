@@ -96,6 +96,14 @@ interface ApiService {
     @DELETE("songs/{id}")
     suspend fun deleteSong(@Path("id") id: Long)
 
+    // Edición manual de tags ID3 + metadatos JPA. OWNER-only; el backend
+    // reescribe el fichero del disco con jaudiotagger antes de tocar la DB.
+    @PATCH("songs/{id}/tags")
+    suspend fun editTags(
+        @Path("id") id: Long,
+        @Body request: com.musarum.mobile.data.network.dto.TagEditRequest
+    ): SongDetailsDto
+
     // Cola "radio" basada en una canción semilla.
     @GET("songs/{id}/radio")
     suspend fun getRadioFrom(

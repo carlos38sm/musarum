@@ -31,6 +31,10 @@ import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.LocalSnackbar
 import com.musarum.mobile.data.network.dto.SongDetailsDto
 import com.musarum.mobile.music.library.AddToPlaylistDialog
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 
 @Composable
 fun InfoScreen(
@@ -97,6 +101,10 @@ fun InfoScreen(
 
         Spacer(Modifier.height(20.dp))
 
+        val me by container.userRepository.me.collectAsState()
+        val snackbar = LocalSnackbar.current
+        var showEditTags by remember { mutableStateOf(false) }
+
         Box(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
             when {
                 vmState.detailsLoading -> Center {
@@ -105,8 +113,29 @@ fun InfoScreen(
                 vmState.detailsError != null -> Center {
                     Text(vmState.detailsError ?: "", color = MaterialTheme.colorScheme.error)
                 }
-                vmState.details != null -> InfoSections(vmState.details!!)
+                vmState.details != null -> InfoSections(
+                    details = vmState.details!!,
+                    showEditButton = me?.userRole == "OWNER",
+                    onEdit = { showEditTags = true }
+                )
             }
+        }
+
+        if (showEditTags && vmState.details != null) {
+            EditTagsDialog(
+                details = vmState.details!!,
+                onDismiss = { showEditTags = false },
+                onSave = { req ->
+                    viewModel.editTags(req) { ok, msg ->
+                        if (ok) {
+                            showEditTags = false
+                            snackbar(msg)
+                        } else {
+                            snackbar(msg)
+                        }
+                    }
+                }
+            )
         }
     }
 
@@ -118,7 +147,11 @@ fun InfoScreen(
  * álbum, compositor, identificadores) siguen a ancho completo.
  */
 @Composable
-private fun InfoSections(details: SongDetailsDto) {
+private fun InfoSections(
+    details: SongDetailsDto,
+    showEditButton: Boolean = false,
+    onEdit: () -> Unit = {}
+) {
     val camelot = CamelotWheel.toCamelot(details.musicalKey)
 
     Column(
@@ -126,7 +159,18 @@ private fun InfoSections(details: SongDetailsDto) {
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
         // ── Metadata ──
-        Section("Metadata") {
+        Section(
+            title = "Metadata",
+            action = if (showEditButton) {
+                { IconButton(onClick = onEdit) {
+                    Icon(
+                        Icons.Filled.Edit,
+                        contentDescription = "Editar tags",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                } }
+            } else null
+        ) {
             InfoLine("Título", details.title)
             if (details.artists.isNotEmpty()) {
                 InfoLine("Artistas", details.artists.joinToString(", ") { it.name })
@@ -215,15 +259,26 @@ private fun InfoSections(details: SongDetailsDto) {
  * para que el ojo las separe claramente — era un bloque corrido antes.
  */
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
+private fun Section(
+    title: String,
+    action: (@Composable () -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            title.uppercase(),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                title.uppercase(),
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 4.dp, bottom = 2.dp)
+            )
+            Spacer(Modifier.weight(1f))
+            action?.invoke()
+        }
         androidx.compose.material3.Surface(
             shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),

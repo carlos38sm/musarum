@@ -9,6 +9,7 @@ import musarum.backend.shared.VideoStorage;
 import musarum.backend.shared.security.CurrentUserResolver;
 import musarum.backend.song.dto.SongDetailsDto;
 import musarum.backend.song.dto.SongSummaryDto;
+import musarum.backend.song.dto.TagEditRequest;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -29,15 +30,18 @@ class SongController {
 
     private final SongService songService;
     private final SongDeletionService songDeletionService;
+    private final TagEditService tagEditService;
     private final CurrentUserResolver currentUser;
     private final VideoStorage videoStorage;
 
     SongController(SongService songService,
                    SongDeletionService songDeletionService,
+                   TagEditService tagEditService,
                    CurrentUserResolver currentUser,
                    VideoStorage videoStorage) {
         this.songService = songService;
         this.songDeletionService = songDeletionService;
+        this.tagEditService = tagEditService;
         this.currentUser = currentUser;
         this.videoStorage = videoStorage;
     }
@@ -127,6 +131,21 @@ class SongController {
     ResponseEntity<Void> delete(@PathVariable Long id) {
         songDeletionService.deleteCompletely(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Edición manual de tags ID3 + metadatos JPA. Solo OWNER puede hacerlo
+     * porque un cambio de artista crea uno nuevo si no existía — y los
+     * MEMBER no deberían poder contaminar el catálogo con typos.
+     * Reescribe el fichero del disco con jaudiotagger antes de tocar DB,
+     * así si la reescritura falla la DB no queda desalineada.
+     */
+    @org.springframework.web.bind.annotation.PatchMapping("/{id}/tags")
+    @PreAuthorize("hasRole('OWNER')")
+    ResponseEntity<SongDetailsDto> editTags(@PathVariable Long id,
+                                            @org.springframework.web.bind.annotation.RequestBody TagEditRequest request) {
+        Long requesterId = currentUser.currentUserId();
+        return ResponseEntity.ok(tagEditService.editTags(id, requesterId, request));
     }
 
     /**

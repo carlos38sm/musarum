@@ -117,6 +117,29 @@ class NowPlayingViewModel(
      * Devuelve el callback onFinished(found, message) para que la UI
      * muestre un snackbar apropiado.
      */
+    /**
+     * Patch de tags ID3 + metadatos. En éxito actualizamos el {@code details}
+     * del state con lo devuelto por el backend para que la InfoScreen pinte
+     * los nuevos valores sin recargar. Si el patch incluía renameFile y el
+     * backend lo hizo, el nuevo audio_path llega en el details.
+     */
+    fun editTags(
+        request: com.musarum.mobile.data.network.dto.TagEditRequest,
+        onFinished: (Boolean, String) -> Unit
+    ) {
+        val songId = _state.value.details?.id ?: return
+        viewModelScope.launch {
+            runCatching { songRepository.editTags(songId, request) }
+                .onSuccess { updated ->
+                    _state.value = _state.value.copy(details = updated)
+                    onFinished(true, "Tags actualizados")
+                }
+                .onFailure { e ->
+                    onFinished(false, e.message ?: "No se pudo actualizar")
+                }
+        }
+    }
+
     fun refreshLyrics(onFinished: (Boolean, String) -> Unit) {
         val songId = _state.value.details?.id ?: return
         viewModelScope.launch {
