@@ -110,6 +110,19 @@ public class UserService {
         );
     }
 
+    /**
+     * Actualiza los toggles de privacidad. Solo tocamos los que vienen no-null
+     * para que el móvil pueda mandar PATCH parcial sin preocuparse del otro.
+     */
+    @Transactional
+    public UserResponse updatePrivacy(Long userId, Boolean shareNowPlaying, Boolean shareTaste) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (shareNowPlaying != null) user.setShareNowPlaying(shareNowPlaying);
+        if (shareTaste != null) user.setShareTaste(shareTaste);
+        return userMapper.toResponse(userRepository.save(user));
+    }
+
     @Transactional
     public UserResponse updateNick(Long userId, String newNick) {
         String trimmed = newNick.trim();

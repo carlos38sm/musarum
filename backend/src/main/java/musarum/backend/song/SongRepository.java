@@ -169,6 +169,16 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     @Query("SELECT COUNT(s) FROM Song s WHERE s.enrichStatus = musarum.backend.song.EnrichStatus.FAILED_TRANSIENT")
     long countEnrichTransient();
 
+    // ── Home / Nuevos descubrimientos ─────────────────────────────────────
+
+    /** Página de canciones creadas desde :since, orden desc por createdAt. */
+    @Query("SELECT s FROM Song s WHERE s.createdAt >= :since ORDER BY s.createdAt DESC")
+    Page<Song> findSinceOrderByCreatedDesc(java.time.Instant since, Pageable pageable);
+
+    /** Cuántas canciones entraron al catálogo desde :since (para el badge). */
+    @Query("SELECT COUNT(s) FROM Song s WHERE s.createdAt >= :since")
+    long countSince(java.time.Instant since);
+
     /**
      * Posición 0-based de una canción en la vista paginada por defecto.
      * TIENE que usar EXACTAMENTE el mismo ORDER BY que {@link #findPageOrdered}

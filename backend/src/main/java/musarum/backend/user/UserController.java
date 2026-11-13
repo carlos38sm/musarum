@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 import musarum.backend.shared.AvatarStorage;
 import musarum.backend.shared.security.CurrentUserResolver;
 import musarum.backend.user.dto.ChangePasswordRequest;
+import musarum.backend.user.dto.PrivacyUpdateRequest;
 import musarum.backend.user.dto.UpdateUserRequest;
 import musarum.backend.user.dto.UserCreateRequest;
 import musarum.backend.user.dto.UserResponse;
@@ -68,6 +69,17 @@ class UserController {
     ResponseEntity<UserResponse> updateMe(@Valid @RequestBody UpdateUserRequest request) {
         return ResponseEntity.ok(
                 userService.updateNick(currentUser.currentUserId(), request.nick())
+        );
+    }
+
+    @PatchMapping("/me/privacy")
+    ResponseEntity<UserResponse> updatePrivacy(@RequestBody PrivacyUpdateRequest request) {
+        return ResponseEntity.ok(
+                userService.updatePrivacy(
+                        currentUser.currentUserId(),
+                        request.shareNowPlaying(),
+                        request.shareTaste()
+                )
         );
     }
 

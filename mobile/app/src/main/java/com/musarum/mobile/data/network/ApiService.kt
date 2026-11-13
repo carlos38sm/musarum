@@ -242,6 +242,11 @@ interface ApiService {
     @PATCH("users/me")
     suspend fun updateMe(@Body request: UpdateUserRequest): UserResponseDto
 
+    @PATCH("users/me/privacy")
+    suspend fun updateMyPrivacy(
+        @Body request: com.musarum.mobile.data.network.dto.UpdatePrivacyRequest
+    ): UserResponseDto
+
     @PATCH("users/me/password")
     suspend fun changePassword(@Body request: ChangePasswordRequest)
 
@@ -348,5 +353,19 @@ interface ApiService {
         @Query("size") size: Int = 500,
         @Query("sort") sort: String = "title,asc"
     ): PageDto<SongSummaryDto>
+
+    // ── Home — convivencia ──
+
+    @GET("home/presence")
+    suspend fun getHomePresence(): List<com.musarum.mobile.data.network.dto.NowPlayingUserDto>
+
+    @GET("home/discoveries")
+    suspend fun getHomeDiscoveries(
+        @Query("windowDays") windowDays: Int = 30,
+        @Query("size") size: Int = 12
+    ): com.musarum.mobile.data.network.dto.DiscoveryPageDto
+
+    @GET("home/taste-profiles")
+    suspend fun getHomeTasteProfiles(): List<com.musarum.mobile.data.network.dto.TasteProfileDto>
 }
 

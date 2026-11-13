@@ -37,6 +37,24 @@ class UserRepository(private val apiService: ApiService) {
         apiService.changePassword(ChangePasswordRequest(current, new))
     }
 
+    /**
+     * Actualiza los toggles de privacidad del Home. Cada argumento nullable
+     * para poder tocar solo uno; el backend ignora los null.
+     */
+    suspend fun updatePrivacy(
+        shareNowPlaying: Boolean? = null,
+        shareTaste: Boolean? = null
+    ): UserResponseDto {
+        val updated = apiService.updateMyPrivacy(
+            com.musarum.mobile.data.network.dto.UpdatePrivacyRequest(
+                shareNowPlaying = shareNowPlaying,
+                shareTaste = shareTaste
+            )
+        )
+        _me.value = updated
+        return updated
+    }
+
     suspend fun stats(): UserStatsDto = apiService.getMyStats()
 
     /**

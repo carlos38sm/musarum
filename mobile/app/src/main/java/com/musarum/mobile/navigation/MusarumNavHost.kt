@@ -203,7 +203,15 @@ fun MusarumNavHost(
                     onOpenAlbums = { navController.navigate(Routes.ALBUMS) },
                     onOpenArtists = { navController.navigate(Routes.ARTISTS) },
                     onOpenGenre = { id -> navController.navigate(Routes.genreDetail(id)) },
+                    onOpenArtist = { id -> navController.navigate(Routes.artistDetail(id)) },
+                    onOpenDiscoveries = { navController.navigate(Routes.DISCOVERIES) },
                     onOpenFavorites = { navController.navigate(Routes.FAVORITES) }
+                )
+            }
+
+            composable(Routes.DISCOVERIES) {
+                com.musarum.mobile.music.home.NewDiscoveriesScreen(
+                    onBack = { navController.popBackStack() }
                 )
             }
 

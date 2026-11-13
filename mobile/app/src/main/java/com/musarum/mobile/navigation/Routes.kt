@@ -14,6 +14,7 @@ object Routes {
     const val QUEUE = "queue"
     const val FAVORITES = "favorites"
     const val DOWNLOADS = "downloads"
+    const val DISCOVERIES = "home/discoveries"
     const val LIBRARY = "library"
     const val PROFILE = "profile"
     const val LIBRARY_FOLDERS = "profile/folders"

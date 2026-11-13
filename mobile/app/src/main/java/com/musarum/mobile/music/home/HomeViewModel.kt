@@ -5,14 +5,18 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.musarum.mobile.data.music.PlayHistoryRepository
 import com.musarum.mobile.data.network.ApiService
+import com.musarum.mobile.data.network.dto.DiscoveryPageDto
 import com.musarum.mobile.data.network.dto.GenreDto
+import com.musarum.mobile.data.network.dto.NowPlayingUserDto
 import com.musarum.mobile.data.network.dto.SongSummaryDto
+import com.musarum.mobile.data.network.dto.TasteProfileDto
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 data class HomeUiState(
     val loading: Boolean = true,
@@ -20,6 +24,9 @@ data class HomeUiState(
     val topWeek: List<SongSummaryDto> = emptyList(),
     val recent: List<SongSummaryDto> = emptyList(),
     val genres: List<GenreDto> = emptyList(),
+    val presence: List<NowPlayingUserDto> = emptyList(),
+    val discoveries: DiscoveryPageDto? = null,
+    val tasteProfiles: List<TasteProfileDto> = emptyList(),
     val error: String? = null
 )
 
@@ -37,20 +44,31 @@ class HomeViewModel(
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                // supervisorScope-like: cada apartado va en su propio try para
-                // que un fallo parcial (p. ej. /me/plays vacío) no tumbe el
-                // Home entero y no cancele las otras llamadas.
-                val lastPlayed = safeCall { playHistory.lastPlayed(1) }.firstOrNull()
-                val topWeek = safeCall { playHistory.topPlays("week", 15) }
-                val recent = safeCall { playHistory.recentPlays(20) }
-                val genres = safeCall { api.getGenres() }
-                _state.value = HomeUiState(
-                    loading = false,
-                    lastPlayed = lastPlayed,
-                    topWeek = topWeek,
-                    recent = recent,
-                    genres = genres
-                )
+                // supervisorScope: cada apartado va en su propio async y si
+                // uno falla el resto no se cancela (bug conocido documentado
+                // en CLAUDE.md §4). Paralelo porque son 7 llamadas
+                // independientes al backend y bloquearlas en serie mataba
+                // el tiempo de carga del Home.
+                supervisorScope {
+                    val lastDef = async { safeList { playHistory.lastPlayed(1) }.firstOrNull() }
+                    val topDef = async { safeList { playHistory.topPlays("week", 15) } }
+                    val recentDef = async { safeList { playHistory.recentPlays(20) } }
+                    val genresDef = async { safeList { api.getGenres() } }
+                    val presenceDef = async { safeList { api.getHomePresence() } }
+                    val discoveriesDef = async { safeNullable { api.getHomeDiscoveries() } }
+                    val tasteDef = async { safeList { api.getHomeTasteProfiles() } }
+
+                    _state.value = HomeUiState(
+                        loading = false,
+                        lastPlayed = lastDef.await(),
+                        topWeek = topDef.await(),
+                        recent = recentDef.await(),
+                        genres = genresDef.await(),
+                        presence = presenceDef.await(),
+                        discoveries = discoveriesDef.await(),
+                        tasteProfiles = tasteDef.await()
+                    )
+                }
             } catch (ce: CancellationException) {
                 throw ce
             } catch (t: Throwable) {
@@ -59,8 +77,13 @@ class HomeViewModel(
         }
     }
 
-    private suspend fun <T> safeCall(block: suspend () -> List<T>): List<T> =
-        try { coroutineScope { block() } } catch (_: Throwable) { emptyList() }
+    private suspend fun <T> safeList(block: suspend () -> List<T>): List<T> =
+        try { block() } catch (ce: CancellationException) { throw ce }
+        catch (_: Throwable) { emptyList() }
+
+    private suspend fun <T> safeNullable(block: suspend () -> T): T? =
+        try { block() } catch (ce: CancellationException) { throw ce }
+        catch (_: Throwable) { null }
 
     companion object {
         fun factory(playHistory: PlayHistoryRepository, api: ApiService): ViewModelProvider.Factory =

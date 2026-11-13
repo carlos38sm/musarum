@@ -27,9 +27,11 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.MusicNote
@@ -239,6 +241,27 @@ fun ProfileScreen(
                 onCheckedChange = {
                     container.playerPreferences.setReplayGainEnabled(it)
                 }
+            )
+            Spacer(Modifier.height(10.dp))
+            // Convivencia: cada toggle controla una sección del Home de los
+            // demás. shareNowPlaying → "En Musarum ahora"; shareTaste →
+            // "Gustos de la casa". El backend ya los respeta; aquí solo
+            // mostramos el estado actual y disparamos el PATCH.
+            val me by container.userRepository.me.collectAsState()
+            SettingRowSwitch(
+                icon = Icons.Filled.Headphones,
+                title = "Compartir qué escucho",
+                subtitle = "Aparezco en \"En Musarum ahora\" de los demás",
+                checked = me?.shareNowPlaying != false,
+                onCheckedChange = { value -> viewModel.updatePrivacyNowPlaying(value) }
+            )
+            Spacer(Modifier.height(10.dp))
+            SettingRowSwitch(
+                icon = Icons.Filled.Visibility,
+                title = "Mostrar mis gustos",
+                subtitle = "Aparezco en los mini-perfiles de la casa",
+                checked = me?.shareTaste != false,
+                onCheckedChange = { value -> viewModel.updatePrivacyTaste(value) }
             )
             Spacer(Modifier.height(10.dp))
             val eqEnabled by container.playerPreferences.equalizerEnabled.collectAsState()

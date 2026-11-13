@@ -191,6 +191,23 @@ class ProfileViewModel(private val repository: UserRepository) : ViewModel() {
         }
     }
 
+    /**
+     * Toggle optimista para "compartir qué escucho" y "mostrar mis gustos".
+     * Si el PATCH falla, {@code UserRepository.updatePrivacy} ya no mutará
+     * _me; el switch volverá al valor del backend en el siguiente recompose.
+     */
+    fun updatePrivacyNowPlaying(value: Boolean) {
+        viewModelScope.launch {
+            runCatching { repository.updatePrivacy(shareNowPlaying = value) }
+        }
+    }
+
+    fun updatePrivacyTaste(value: Boolean) {
+        viewModelScope.launch {
+            runCatching { repository.updatePrivacy(shareTaste = value) }
+        }
+    }
+
     companion object {
         fun factory(repository: UserRepository): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {

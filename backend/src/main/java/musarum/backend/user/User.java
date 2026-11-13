@@ -37,4 +37,20 @@ public class User extends BaseEntity{
 	@Column(nullable = false)
 	@lombok.Builder.Default
 	private boolean blocked = false;
+
+	/**
+	 * Toggle de privacidad: si false, el usuario no aparece en la sección
+	 * "En Musarum ahora" (presencia en vivo) de los demás.
+	 */
+	@Column(name = "share_now_playing", nullable = false)
+	@lombok.Builder.Default
+	private boolean shareNowPlaying = true;
+
+	/**
+	 * Toggle de privacidad: si false, el usuario no aparece en los
+	 * "Mini-perfiles" que muestran top artista / canción de la semana.
+	 */
+	@Column(name = "share_taste", nullable = false)
+	@lombok.Builder.Default
+	private boolean shareTaste = true;
 }

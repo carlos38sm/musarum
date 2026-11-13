@@ -9,5 +9,8 @@ public record UserResponse(
         UserRole userRole,
         Instant createdAt,
         String avatarUrl,
-        boolean blocked
+        boolean blocked,
+        // Toggles de privacidad del usuario (Home — convivencia).
+        Boolean shareNowPlaying,
+        Boolean shareTaste
 ) {}

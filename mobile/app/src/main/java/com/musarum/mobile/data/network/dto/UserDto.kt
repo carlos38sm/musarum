@@ -8,7 +8,16 @@ data class UserResponseDto(
     val userRole: String? = null,
     val createdAt: String? = null,
     val avatarUrl: String? = null,
-    val blocked: Boolean = false
+    val blocked: Boolean = false,
+    // Toggles de privacidad (Home — convivencia). Nullable: /users/search
+    // los deja fuera para no filtrar preferencias ajenas.
+    val shareNowPlaying: Boolean? = null,
+    val shareTaste: Boolean? = null
+)
+
+data class UpdatePrivacyRequest(
+    val shareNowPlaying: Boolean? = null,
+    val shareTaste: Boolean? = null
 )
 
 data class UpdateUserRequest(val nick: String)
