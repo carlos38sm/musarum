@@ -17,9 +17,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,6 +32,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -56,9 +59,11 @@ fun LoginScreen(
         factory = LoginViewModel.factory(LocalAppContainer.current.authRepository)
     )
 ) {
+    val container = LocalAppContainer.current
     var nick by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
+    var showServerDialog by remember { mutableStateOf(false) }
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(state) {
@@ -82,6 +87,22 @@ fun LoginScreen(
                 )
             )
     ) {
+        // Icono "⚙ servidor" arriba a la derecha. Útil cuando la IP Tailscale
+        // del backend cambia y el user quiere entrar antes de ningún login.
+        IconButton(
+            onClick = { showServerDialog = true },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .padding(8.dp)
+        ) {
+            Icon(
+                Icons.Filled.Dns,
+                contentDescription = "Configurar servidor",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -208,5 +229,97 @@ fun LoginScreen(
                 }
             }
         }
+
+        if (showServerDialog) {
+            ServerUrlDialog(
+                current = container.baseUrlStore.current(),
+                default = container.baseUrlStore.defaultUrl(),
+                hasOverride = container.baseUrlStore.hasOverride(),
+                onDismiss = { showServerDialog = false },
+                onSave = { url ->
+                    container.baseUrlStore.save(url)
+                    showServerDialog = false
+                    killAppForRestart()
+                },
+                onReset = {
+                    container.baseUrlStore.clear()
+                    showServerDialog = false
+                    killAppForRestart()
+                }
+            )
+        }
     }
+}
+
+/**
+ * Di&aacute;logo para cambiar la URL del backend desde el Login. Guarda en
+ * SharedPreferences y mata el proceso para que AppContainer se reconstruya
+ * con la nueva URL en el pr&oacute;ximo arranque.
+ */
+@Composable
+private fun ServerUrlDialog(
+    current: String,
+    default: String,
+    hasOverride: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit,
+    onReset: () -> Unit
+) {
+    var input by remember { mutableStateOf(current) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Servidor de Musarum") },
+        text = {
+            Column {
+                Text(
+                    "URL del backend al que conectar. Cambiarla cierra la " +
+                        "app para aplicar; vuélvela a abrir para entrar con la nueva.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = input,
+                    onValueChange = { input = it },
+                    label = { Text("URL") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    if (hasOverride) "Por defecto: $default" else "Por defecto activo",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (input.isNotBlank() && input.trim() != current) {
+                        onSave(input)
+                    } else {
+                        onDismiss()
+                    }
+                }
+            ) { Text("Guardar") }
+        },
+        dismissButton = {
+            if (hasOverride) {
+                TextButton(onClick = onReset) { Text("Usar por defecto") }
+            } else {
+                TextButton(onClick = onDismiss) { Text("Cancelar") }
+            }
+        }
+    )
+}
+
+/**
+ * Mata el proceso para forzar que AppContainer se reconstruya con la nueva
+ * baseUrl. No hay forma limpia de cambiar la baseUrl de Retrofit en caliente
+ * (el {@link retrofit2.Retrofit} es inmutable tras {@code build()}). El user
+ * pulsa el icono de la app en el launcher para reentrar.
+ */
+private fun killAppForRestart() {
+    android.os.Process.killProcess(android.os.Process.myPid())
 }

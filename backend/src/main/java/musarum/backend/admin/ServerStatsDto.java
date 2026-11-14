@@ -92,6 +92,9 @@ public record ServerStatsDto(
             long memoryUsedBytes,
             long memoryTotalBytes,
             long memoryMaxBytes,
-            long orphanLyricFiles
+            long orphanLyricFiles,
+            // Hasta 100 errores recientes del scanner (path → motivo).
+            // Buffer en memoria del LibraryScanner; se vacía al reiniciar.
+            java.util.List<String> recentScanErrors
     ) {}
 }

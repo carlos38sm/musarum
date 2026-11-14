@@ -1,7 +1,6 @@
 package com.musarum.mobile.data.downloads
 
 import android.util.Log
-import com.musarum.mobile.BuildConfig
 import com.musarum.mobile.data.network.dto.SongSummaryDto
 import com.musarum.mobile.data.preferences.PlayerPreferences
 import kotlinx.coroutines.CoroutineScope
@@ -37,7 +36,9 @@ class DownloadsManager(
     private val repository: DownloadsRepository,
     private val okHttpClient: OkHttpClient,
     private val preferences: PlayerPreferences,
-    private val applicationScope: CoroutineScope
+    private val applicationScope: CoroutineScope,
+    /** URL del backend ya resuelta (BaseUrlStore.current). */
+    private val baseUrl: String
 ) {
 
     companion object {
@@ -84,7 +85,7 @@ class DownloadsManager(
 
     private suspend fun doDownload(song: SongSummaryDto, forceKeep: Boolean, forceTemporary: Boolean) {
         withContext(Dispatchers.IO) {
-            val url = BuildConfig.MUSARUM_BASE_URL.trimEnd('/') + "/stream/" + song.id
+            val url = baseUrl.trimEnd('/') + "/stream/" + song.id
             val request = Request.Builder().url(url).build()
             okHttpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {

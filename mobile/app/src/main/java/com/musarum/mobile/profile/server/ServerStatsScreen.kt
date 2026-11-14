@@ -435,6 +435,29 @@ private fun TechnicalCard(
                 Text("Limpiar ${t.orphanLyricFiles} ficheros .lrc huérfanos")
             }
         }
+        val errors = t.recentScanErrors.orEmpty()
+        if (errors.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            androidx.compose.material3.HorizontalDivider()
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Errores del último scan (últimos ${errors.size})",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(Modifier.height(6.dp))
+            // Mostramos los 10 más recientes; el usuario cuenta con el total
+            // en la cabecera y puede abrir logs del contenedor para el resto.
+            errors.takeLast(10).reversed().forEach { line ->
+                Text(
+                    "• $line",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(vertical = 1.dp)
+                )
+            }
+        }
     }
 }
 

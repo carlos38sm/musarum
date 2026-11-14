@@ -84,10 +84,15 @@ class PlayerService : MediaSessionService() {
         // prepare la primera pista) con un listener de eventos; cuando sea
         // válido, instanciamos el Equalizer y nos suscribimos a cambios de
         // preferencias para re-aplicar bandas en caliente.
+        val container = app.container
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
                 if (audioSessionId == C.AUDIO_SESSION_ID_UNSET) return
                 initEqualizer(audioSessionId)
+                // Publicamos el sessionId para que el visualizador FFT de la
+                // UI (NowPlayingScreen) pueda engancharse. Distinto de 0 y
+                // de UNSET.
+                container.audioSessionIdFlow.value = audioSessionId
             }
         })
 

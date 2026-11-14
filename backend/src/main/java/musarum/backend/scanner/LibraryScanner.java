@@ -105,6 +105,28 @@ public class LibraryScanner {
     private volatile ImportResult lastResult = null;
     // "hashing" | "importing" | null — ver ScannerStatus.phase
     private volatile String phase = null;
+    // Últimos ficheros que dieron error durante el scan. Buffer en memoria
+    // de tamaño limitado (últimos 100) para que el OWNER pueda ver desde el
+    // móvil qué está fallando sin tener que leer logs del contenedor.
+    private final java.util.Deque<String> recentErrors = new java.util.ArrayDeque<>();
+    private static final int MAX_RECENT_ERRORS = 100;
+
+    /** Buffer de errores recientes (añade al final, recorta por el principio). */
+    private void recordError(String message) {
+        synchronized (recentErrors) {
+            recentErrors.addLast(message);
+            while (recentErrors.size() > MAX_RECENT_ERRORS) {
+                recentErrors.removeFirst();
+            }
+        }
+    }
+
+    /** Snapshot ordenado (más antiguos primero). */
+    public java.util.List<String> recentErrorsSnapshot() {
+        synchronized (recentErrors) {
+            return new java.util.ArrayList<>(recentErrors);
+        }
+    }
 
     public ScannerStatus currentStatus() {
         return new ScannerStatus(
@@ -251,6 +273,9 @@ public class LibraryScanner {
                     }
                 } catch (Exception e) {
                     failed++;
+                    String reason = e.getClass().getSimpleName() + ": "
+                            + (e.getMessage() != null ? e.getMessage() : "sin detalle");
+                    recordError(path + " → " + reason);
                     log.warn("Error importando {}: {}", path, e.getMessage());
                 } finally {
                     processed.incrementAndGet();

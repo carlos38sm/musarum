@@ -18,6 +18,7 @@ import coil3.ImageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
+import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.music.resolveCoverUrl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -39,10 +40,11 @@ fun rememberDominantCoverColor(
     fallback: Color
 ): State<Color> {
     val context = LocalContext.current
+    val baseUrl = LocalAppContainer.current.baseUrl
     var extracted by remember { mutableStateOf(fallback) }
 
     LaunchedEffect(coverUrl) {
-        val resolved = resolveCoverUrl(coverUrl)
+        val resolved = resolveCoverUrl(coverUrl, baseUrl)
         if (resolved.isNullOrBlank()) {
             extracted = fallback
             return@LaunchedEffect

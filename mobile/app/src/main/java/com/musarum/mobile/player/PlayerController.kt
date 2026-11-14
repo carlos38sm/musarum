@@ -12,7 +12,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import com.musarum.mobile.BuildConfig
 import com.musarum.mobile.data.downloads.DownloadsRepository
 import com.musarum.mobile.data.music.PlayHistoryRepository
 import com.musarum.mobile.data.music.SongRepository
@@ -61,7 +60,9 @@ class PlayerController(
     private val playHistoryRepository: PlayHistoryRepository,
     private val playerPreferences: PlayerPreferences,
     private val okHttpClient: OkHttpClient,
-    private val downloadsRepository: DownloadsRepository
+    private val downloadsRepository: DownloadsRepository,
+    /** URL del backend resuelta por AppContainer. */
+    private val baseUrl: String
 ) {
 
     private val appContext = context.applicationContext
@@ -602,7 +603,7 @@ class PlayerController(
     private fun uriFor(songId: Long): String {
         val local = downloadsRepository.fileFor(songId)
         if (local != null) return local.toURI().toString()
-        return BuildConfig.MUSARUM_BASE_URL.trimEnd('/') + "/stream/" + songId
+        return baseUrl.trimEnd('/') + "/stream/" + songId
     }
 
     private fun fetchCoverFor(songId: Long) {

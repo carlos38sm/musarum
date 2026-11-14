@@ -18,7 +18,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
-import com.musarum.mobile.BuildConfig
+import com.musarum.mobile.LocalAppContainer
 
 @Composable
 fun CoverImage(
@@ -28,7 +28,8 @@ fun CoverImage(
     cornerRadius: Dp = 6.dp,
     placeholder: ImageVector = Icons.Filled.Album
 ) {
-    val resolved = resolveCoverUrl(url)
+    val baseUrl = LocalAppContainer.current.baseUrl
+    val resolved = resolveCoverUrl(url, baseUrl)
     Surface(
         modifier = modifier.size(size),
         shape = RoundedCornerShape(cornerRadius),
@@ -75,10 +76,10 @@ fun ArtistAvatar(
  *   - URL absoluta ("http...") → se usa tal cual (ej. CoverArtArchive)
  *   - URL relativa ("/albums/1/cover") → prepone el baseUrl del backend
  */
-fun resolveCoverUrl(url: String?): String? {
+fun resolveCoverUrl(url: String?, baseUrl: String): String? {
     if (url.isNullOrBlank()) return null
     if (url.startsWith("http://") || url.startsWith("https://")) return url
-    val base = BuildConfig.MUSARUM_BASE_URL.trimEnd('/')
+    val base = baseUrl.trimEnd('/')
     val path = url.trimStart('/')
     return "$base/$path"
 }

@@ -271,10 +271,14 @@ public class ServerStatsService {
         Runtime jvm = Runtime.getRuntime();
         long used = jvm.totalMemory() - jvm.freeMemory();
         long orphans = countOrphanLyricFiles();
+        java.util.List<String> scanErrors = libraryScanner != null
+                ? libraryScanner.recentErrorsSnapshot()
+                : java.util.List.of();
         return new ServerStatsDto.TechnicalStats(
                 rt.getUptime(),
                 used, jvm.totalMemory(), jvm.maxMemory(),
-                orphans
+                orphans,
+                scanErrors
         );
     }
 

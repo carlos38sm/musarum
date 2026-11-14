@@ -51,7 +51,9 @@ import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Lyrics
+import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
@@ -109,6 +111,7 @@ fun NowPlayingScreen(
     val container = LocalAppContainer.current
     val controller = container.playerController
     val playerState by controller.state.collectAsState()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     val viewModel: NowPlayingViewModel = viewModel(
         factory = NowPlayingViewModel.factory(
@@ -135,6 +138,8 @@ fun NowPlayingScreen(
     // Toggle de mini-letra persistente mientras no se cambie de sesión. El
     // botón solo responde si hay lyrics sincronizadas en la pista actual.
     var showMiniLyric by rememberSaveable { mutableStateOf(false) }
+    var showVisualizer by rememberSaveable { mutableStateOf(false) }
+    val audioSessionId by container.audioSessionIdFlow.collectAsState()
 
     // Parseo LRC — vacío si no hay o si no está sincronizada.
     val syncedLines = remember(vmState.lyrics) { LrcParser.parse(vmState.lyrics) }
@@ -262,6 +267,20 @@ fun NowPlayingScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 32.dp)
                 )
+            } else if (showVisualizer && audioSessionId > 0) {
+                // Visualizador FFT estilo Ares pintado en el hueco central
+                // sobre el gradient dominante. 32 barras + caps que caen con
+                // gravedad. Si el usuario no concede RECORD_AUDIO, el widget
+                // se queda en blanco sin crashear.
+                AudioVisualizer(
+                    sessionId = audioSessionId,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .padding(horizontal = 32.dp),
+                    barColor = MaterialTheme.colorScheme.primary,
+                    capColor = MaterialTheme.colorScheme.tertiary
+                )
             }
         }
 
@@ -290,6 +309,9 @@ fun NowPlayingScreen(
             onOpenQueue = onOpenQueue,
             isOwner = isOwner,
             onRequestDelete = { confirmDelete = true },
+            onSearchYouTube = { openYouTubeSearch(context, song) },
+            visualizerActive = showVisualizer,
+            onToggleVisualizer = { showVisualizer = !showVisualizer },
             downloadState = run {
                 val entries by container.downloadsRepository.entries.collectAsState()
                 val inProgress by container.downloadsManager.inProgress.collectAsState()
@@ -611,6 +633,9 @@ private fun ActionsRow(
     onOpenQueue: () -> Unit,
     isOwner: Boolean,
     onRequestDelete: () -> Unit,
+    onSearchYouTube: () -> Unit,
+    visualizerActive: Boolean,
+    onToggleVisualizer: () -> Unit,
     downloadState: DownloadState,
     onDownload: () -> Unit
 ) {
@@ -678,6 +703,26 @@ private fun ActionsRow(
                     text = { Text("Radio basada en esta") },
                     leadingIcon = { Icon(Icons.Filled.Radio, null) },
                     onClick = { showMore = false; onStartRadio() }
+                )
+                DropdownMenuItem(
+                    text = { Text("Buscar en YouTube") },
+                    leadingIcon = { Icon(Icons.Filled.OpenInNew, null) },
+                    onClick = { showMore = false; onSearchYouTube() }
+                )
+                DropdownMenuItem(
+                    text = {
+                        Text(if (visualizerActive) "Ocultar visualizador"
+                             else "Visualizador de audio")
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Equalizer,
+                            null,
+                            tint = if (visualizerActive) MaterialTheme.colorScheme.primary
+                                   else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    onClick = { showMore = false; onToggleVisualizer() }
                 )
                 DropdownMenuItem(
                     text = {
@@ -1019,5 +1064,30 @@ internal fun QuarterNoteThumb() {
                 size = Size(w * 0.80f, h * 0.28f)
             )
         }
+    }
+}
+
+/**
+ * Abre el navegador externo en la página de resultados de YouTube buscando
+ * "{artista} {título}". No usa la API de YouTube — es una búsqueda web
+ * pura — para no tener que lidiar con API keys ni cuotas. Pensado como
+ * fallback cuando no hay vídeo local o el OWNER quiere ver una versión
+ * en vivo / videoclip.
+ */
+internal fun openYouTubeSearch(
+    context: android.content.Context,
+    song: com.musarum.mobile.data.network.dto.SongSummaryDto
+) {
+    val query = listOf(song.artistsLabel, song.title)
+        .joinToString(" ") { it.trim() }
+        .trim()
+    val encoded = android.net.Uri.encode(query)
+    val url = "https://www.youtube.com/results?search_query=$encoded"
+    runCatching {
+        val intent = android.content.Intent(
+            android.content.Intent.ACTION_VIEW,
+            android.net.Uri.parse(url)
+        ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+        context.startActivity(intent)
     }
 }

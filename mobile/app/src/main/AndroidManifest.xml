@@ -8,6 +8,11 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <!-- Para enganchar android.media.audiofx.Equalizer al audio session del ExoPlayer. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <!-- android.media.audiofx.Visualizer (visualizador FFT) exige RECORD_AUDIO
+         desde Android M. No se graba nada real: la API lo pide para evitar
+         que una app pueda derivar el audio del sistema. Pedimos el permiso
+         en runtime dentro de la propia UI del visualizador. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Permite llevar al usuario a los ajustes de "Permitir siempre en segundo
          plano" (ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS). Sin optimización
          de batería, Android/Doze no corta la red con la pantalla apagada y

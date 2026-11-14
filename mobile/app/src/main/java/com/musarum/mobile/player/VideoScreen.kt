@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.RepeatOne
@@ -75,7 +76,6 @@ import androidx.media3.common.VideoSize
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import com.musarum.mobile.BuildConfig
 import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.LocalSnackbar
 import com.musarum.mobile.music.ClickableArtists
@@ -148,7 +148,7 @@ fun VideoScreen(
     val exoPlayer = remember {
         val dataSourceFactory = OkHttpDataSource.Factory(container.okHttpClient)
         ExoPlayer.Builder(context).build().apply {
-            val url = BuildConfig.MUSARUM_BASE_URL.trimEnd('/') + "/songs/" + song.id + "/video"
+            val url = container.baseUrl.trimEnd('/') + "/songs/" + song.id + "/video"
             val source = ProgressiveMediaSource.Factory(dataSourceFactory)
                 .createMediaSource(MediaItem.fromUri(url))
             setMediaSource(source)
@@ -166,7 +166,7 @@ fun VideoScreen(
         durationMs = 0L
         positionMs = 0L
         val dataSourceFactory = OkHttpDataSource.Factory(container.okHttpClient)
-        val url = BuildConfig.MUSARUM_BASE_URL.trimEnd('/') + "/songs/" + song.id + "/video"
+        val url = container.baseUrl.trimEnd('/') + "/songs/" + song.id + "/video"
         val source = ProgressiveMediaSource.Factory(dataSourceFactory)
             .createMediaSource(MediaItem.fromUri(url))
         exoPlayer.setMediaSource(source)
@@ -390,6 +390,7 @@ fun VideoScreen(
             },
             sleepTimerActive = playerState.sleepTimerAt != null,
             onOpenSleepTimer = { showSleepSheet = true },
+            onSearchYouTube = { openYouTubeSearch(context, song) },
             downloadState = run {
                 val entries by container.downloadsRepository.entries.collectAsState()
                 val inProgress by container.downloadsManager.inProgress.collectAsState()
@@ -483,6 +484,7 @@ private fun VideoActionsRow(
     onStartRadio: () -> Unit,
     sleepTimerActive: Boolean,
     onOpenSleepTimer: () -> Unit,
+    onSearchYouTube: () -> Unit,
     downloadState: DownloadState,
     onDownload: () -> Unit
 ) {
@@ -537,6 +539,11 @@ private fun VideoActionsRow(
                     text = { Text("Radio basada en esta") },
                     leadingIcon = { Icon(Icons.Filled.Radio, null) },
                     onClick = { showMore = false; onStartRadio() }
+                )
+                DropdownMenuItem(
+                    text = { Text("Buscar en YouTube") },
+                    leadingIcon = { Icon(Icons.Filled.OpenInNew, null) },
+                    onClick = { showMore = false; onSearchYouTube() }
                 )
                 DropdownMenuItem(
                     text = {

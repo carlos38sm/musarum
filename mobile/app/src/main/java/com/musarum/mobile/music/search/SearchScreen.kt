@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicExternalOn
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Search
@@ -50,12 +51,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
+import com.musarum.mobile.LocalSnackbar
 import com.musarum.mobile.data.network.dto.AlbumCardDto
 import com.musarum.mobile.data.network.dto.ArtistSummaryDto
 import com.musarum.mobile.music.ArtistAvatar
 import com.musarum.mobile.music.CoverImage
 import com.musarum.mobile.music.SongActionsHost
 import com.musarum.mobile.music.SongRow
+import com.musarum.mobile.voice.VoiceCommandRouter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,6 +77,43 @@ fun SearchScreen(
     val filter by viewModel.filter.collectAsState()
     val recent by viewModel.recentSearches.collectAsState()
     val container = LocalAppContainer.current
+    val snackbar = LocalSnackbar.current
+    val voiceScope = androidx.compose.runtime.rememberCoroutineScope()
+
+    // Router de comandos reutilizado entre invocaciones. Lo recordamos
+    // porque instanciarlo en cada voz lanzada reseteaba estado futuro.
+    val voiceRouter = androidx.compose.runtime.remember {
+        VoiceCommandRouter(
+            controller = container.playerController,
+            searchRepository = container.searchRepository,
+            playlistRepository = container.playlistRepository,
+            scope = voiceScope
+        )
+    }
+
+    // Launcher del reconocedor de voz del SO: devuelve el texto en el result.
+    // No usamos SpeechRecognizer directo para no tener que montar UI propia
+    // ni manejar RECORD_AUDIO aquí — la pantalla del sistema ya se encarga.
+    val voiceLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_OK) {
+            val results = result.data?.getStringArrayListExtra(
+                android.speech.RecognizerIntent.EXTRA_RESULTS
+            )
+            val spoken = results?.firstOrNull()?.trim().orEmpty()
+            if (spoken.isNotEmpty()) {
+                voiceRouter.route(
+                    rawText = spoken,
+                    onFallbackSearch = { q ->
+                        viewModel.onQueryChange(q)
+                        viewModel.commitSearch()
+                    },
+                    report = { msg -> snackbar(msg) }
+                )
+            }
+        }
+    }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Buscar") }) }
@@ -109,6 +149,42 @@ fun SearchScreen(
                                 Icons.Filled.Clear,
                                 contentDescription = "Limpiar",
                                 modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    } else {
+                        IconButton(onClick = {
+                            // Lanza el reconocedor de voz del sistema. ACTION_
+                            // RECOGNIZE_SPEECH abre su propia UI; el usuario no
+                            // necesita conceder RECORD_AUDIO a Musarum. El idioma
+                            // se fija en "es-ES" para que acierte con acentos
+                            // estañoles; si el dispositivo tiene otro,
+                            // el SO degrada al que tenga disponible.
+                            val intent = android.content.Intent(
+                                android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH
+                            ).apply {
+                                putExtra(
+                                    android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                                    android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM
+                                )
+                                putExtra(
+                                    android.speech.RecognizerIntent.EXTRA_LANGUAGE,
+                                    "es-ES"
+                                )
+                                putExtra(
+                                    android.speech.RecognizerIntent.EXTRA_PROMPT,
+                                    "Di \"pon Rihanna\", \"pausa\", \"siguiente\", …"
+                                )
+                            }
+                            runCatching { voiceLauncher.launch(intent) }
+                                .onFailure {
+                                    snackbar("Reconocimiento de voz no disponible")
+                                }
+                        }) {
+                            Icon(
+                                Icons.Filled.Mic,
+                                contentDescription = "Búsqueda por voz",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     }

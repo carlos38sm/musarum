@@ -87,6 +87,8 @@ data class ServerStatsDto(
         val memoryUsedBytes: Long,
         val memoryTotalBytes: Long,
         val memoryMaxBytes: Long,
-        val orphanLyricFiles: Long
+        val orphanLyricFiles: Long,
+        // Nullable: backend < 1.0.17 no incluía esta lista.
+        val recentScanErrors: List<String>? = null
     )
 }

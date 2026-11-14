@@ -1,6 +1,7 @@
 package com.musarum.mobile
 
 import android.content.Context
+import com.musarum.mobile.data.BaseUrlStore
 import com.musarum.mobile.data.TokenManager
 import com.musarum.mobile.data.auth.AuthRepository
 import com.musarum.mobile.data.downloads.DownloadsManager
@@ -34,6 +35,21 @@ class AppContainer(context: Context) {
 
     val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * audioSessionId del ExoPlayer del PlayerService. Lo publica el service
+     * cuando el player cambia de sessionId (incluida la primera vez). El
+     * visualizador FFT de la NowPlayingScreen lo lee para enganchar su
+     * {@code android.media.audiofx.Visualizer}.
+     */
+    val audioSessionIdFlow: kotlinx.coroutines.flow.MutableStateFlow<Int> =
+        kotlinx.coroutines.flow.MutableStateFlow(0)
+
+    val baseUrlStore: BaseUrlStore = BaseUrlStore(context)
+    /** URL del backend resuelta UNA vez al construir AppContainer. Todos
+     *  los callers (CoverImage, DownloadsManager, PlayerController, …) leen
+     *  de aquí en vez de BuildConfig para respetar el override del user. */
+    val baseUrl: String = baseUrlStore.current()
+
     val tokenManager: TokenManager = TokenManager(context, applicationScope)
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -53,7 +69,7 @@ class AppContainer(context: Context) {
         .build()
 
     private val retrofit: Retrofit = Retrofit.Builder()
-        .baseUrl(BuildConfig.MUSARUM_BASE_URL)
+        .baseUrl(baseUrl)
         .client(okHttpClient)
         .addConverterFactory(ScalarsConverterFactory.create())
         .addConverterFactory(GsonConverterFactory.create())
@@ -80,7 +96,8 @@ class AppContainer(context: Context) {
         repository = downloadsRepository,
         okHttpClient = okHttpClient,
         preferences = playerPreferences,
-        applicationScope = applicationScope
+        applicationScope = applicationScope,
+        baseUrl = baseUrl
     ).also {
         // Al arrancar, barre las caducadas. El currentPlayingId es null porque
         // el controller aún no ha arrancado reproducción alguna.
@@ -97,6 +114,7 @@ class AppContainer(context: Context) {
         playHistoryRepository = playHistoryRepository,
         playerPreferences = playerPreferences,
         okHttpClient = okHttpClient,
-        downloadsRepository = downloadsRepository
+        downloadsRepository = downloadsRepository,
+        baseUrl = baseUrl
     )
 }
