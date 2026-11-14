@@ -104,6 +104,14 @@ interface ApiService {
         @Body request: com.musarum.mobile.data.network.dto.TagEditRequest
     ): SongDetailsDto
 
+    // Resolución del videoId de YouTube para la canción (cacheado en DB).
+    // 204 → no se encontró vídeo; el móvil ocultará el botón.
+    @GET("songs/{id}/youtube-video")
+    suspend fun getYoutubeVideo(
+        @Path("id") id: Long,
+        @Query("refresh") refresh: Boolean = false
+    ): retrofit2.Response<com.musarum.mobile.data.network.dto.YoutubeVideoDto>
+
     // Cola "radio" basada en una canción semilla.
     @GET("songs/{id}/radio")
     suspend fun getRadioFrom(

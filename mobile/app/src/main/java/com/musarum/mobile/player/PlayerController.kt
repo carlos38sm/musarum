@@ -173,6 +173,50 @@ class PlayerController(
                 })
             }
         }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            // Caso típico: el usuario tenía la canción descargada como file://
+            // y la borra desde Descargas o Perfil mientras suena. ExoPlayer
+            // falla con SOURCE_UNSPECIFIED / IO_FILE_NOT_FOUND al no encontrar
+            // el fichero. Antes el audio simplemente paraba sin mensaje.
+            // Ahora: si la canción actual tiene URI file:// y el fichero ya
+            // no existe, la rearmamos con el endpoint de streaming del backend
+            // y seguimos. Con la pista bien, la próxima canción de la cola
+            // puede tener el mismo problema — mantenemos el mismo fix.
+            val controller = mediaController ?: return
+            val song = _state.value.currentSong ?: return
+            val isFileMissing = error.errorCode ==
+                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
+            val streamingUri = baseUrl.trimEnd('/') + "/stream/" + song.id
+            val currentIsLocal = downloadsRepository.fileFor(song.id) == null
+                    && controller.currentMediaItem?.localConfiguration?.uri?.scheme == "file"
+            if (isFileMissing || currentIsLocal) {
+                android.util.Log.w(
+                    "PlayerController",
+                    "Fichero local ausente para songId=${song.id}, cayendo a streaming"
+                )
+                val index = controller.currentMediaItemIndex
+                val pos = controller.currentPosition.coerceAtLeast(0L)
+                runCatching {
+                    controller.replaceMediaItem(
+                        index,
+                        MediaItem.Builder()
+                            .setUri(streamingUri)
+                            .setMediaId(song.id.toString())
+                            .setMediaMetadata(
+                                MediaMetadata.Builder()
+                                    .setTitle(song.title)
+                                    .setArtist(song.artistsLabel)
+                                    .build()
+                            )
+                            .build()
+                    )
+                    controller.prepare()
+                    controller.seekTo(pos)
+                    controller.playWhenReady = true
+                }
+            }
+        }
     }
 
     fun connect() {

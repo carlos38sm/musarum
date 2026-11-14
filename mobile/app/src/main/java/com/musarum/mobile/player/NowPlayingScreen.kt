@@ -106,7 +106,8 @@ fun NowPlayingScreen(
     onOpenVideo: () -> Unit,
     onOpenFavorites: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
-    onOpenArtist: (Long) -> Unit = {}
+    onOpenArtist: (Long) -> Unit = {},
+    onOpenYoutubeEmbed: (songId: Long, videoId: String) -> Unit = { _, _ -> }
 ) {
     val container = LocalAppContainer.current
     val controller = container.playerController
@@ -309,7 +310,23 @@ fun NowPlayingScreen(
             onOpenQueue = onOpenQueue,
             isOwner = isOwner,
             onRequestDelete = { confirmDelete = true },
-            onSearchYouTube = { openYouTubeSearch(context, song) },
+            onSearchYouTube = {
+                // Primero intentamos resolver el videoId en el backend y
+                // abrir el embed dentro de la app. Si el backend devuelve 204
+                // (no se encontró), caemos al navegador externo (comportamiento
+                // viejo) como fallback.
+                scope.launch {
+                    val result = runCatching {
+                        container.apiService.getYoutubeVideo(song.id)
+                    }
+                    val body = result.getOrNull()
+                    if (body != null && body.isSuccessful && body.body() != null) {
+                        onOpenYoutubeEmbed(song.id, body.body()!!.videoId)
+                    } else {
+                        openYouTubeSearch(context, song)
+                    }
+                }
+            },
             visualizerActive = showVisualizer,
             onToggleVisualizer = { showVisualizer = !showVisualizer },
             downloadState = run {

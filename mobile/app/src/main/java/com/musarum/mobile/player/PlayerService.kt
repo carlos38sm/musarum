@@ -81,7 +81,13 @@ class PlayerService : MediaSessionService() {
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
                 if (audioSessionId == C.AUDIO_SESSION_ID_UNSET) return
-                initEqualizer(audioSessionId)
+                // Si ya hay un Equalizer apuntando a OTRO sessionId (Android
+                // puede renovar el id al cambiar de pipeline de audio o tras
+                // pausas largas con la pantalla bloqueada), lo liberamos y
+                // creamos uno nuevo. Antes se instanciaba una sola vez y
+                // dejaba de aplicar las bandas al viejo id → EQ se "apagaba"
+                // sin motivo aparente.
+                rebindEqualizer(audioSessionId)
                 // Publicamos el sessionId para que el visualizador FFT de la
                 // UI (NowPlayingScreen) pueda engancharse. Distinto de 0 y
                 // de UNSET.
@@ -106,14 +112,20 @@ class PlayerService : MediaSessionService() {
         }
     }
 
-    private fun initEqualizer(audioSessionId: Int) {
-        if (equalizer != null) return
+    private var equalizerSessionId: Int = 0
+
+    private fun rebindEqualizer(audioSessionId: Int) {
+        if (equalizer != null && equalizerSessionId == audioSessionId) return
+        // Libera el viejo si apuntaba a otro sessionId.
+        runCatching { equalizer?.release() }
+        equalizer = null
         try {
             val eq = Equalizer(0, audioSessionId)
             val prefs = (application as MusarumApplication).container.playerPreferences
             eq.enabled = prefs.equalizerEnabled.value
             if (eq.enabled) applyBands(eq, prefs.equalizerBands.value)
             equalizer = eq
+            equalizerSessionId = audioSessionId
         } catch (t: Throwable) {
             // En algunas ROMs limpias AudioEffect falla silenciosamente.
             // No tiramos la app: la UI mostrará que no se aplica.

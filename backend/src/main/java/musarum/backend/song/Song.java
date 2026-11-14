@@ -111,6 +111,14 @@ public class Song extends BaseEntity {
     @Column(name = "enriched_at")
     private Instant enrichedAt;
 
+    /** videoId de YouTube cacheado para esta canción (null = sin resolver). */
+    @Column(name = "youtube_video_id", length = 16)
+    private String youtubeVideoId;
+
+    /** Cuándo se intentó resolver el videoId por última vez (éxito o fallo). */
+    @Column(name = "yt_fetched_at")
+    private Instant ytFetchedAt;
+
     /**
      * Estado del enriquecimiento. null = nunca intentada; ver {@link EnrichStatus}
      * para el resto. Guardado como String para que un cambio de enum no requiera
@@ -154,4 +162,10 @@ public class Song extends BaseEntity {
     public void setYear(Integer year) { this.year = year; }
     public void setTrackNumber(Integer trackNumber) { this.trackNumber = trackNumber; }
     public void setArtists(Set<Artist> artists) { this.artists = artists; }
+
+    /** Guarda el videoId tras resolverlo (o null si no se encontró) + marca el intento. */
+    public void setYoutubeResolution(String videoId) {
+        this.youtubeVideoId = videoId;
+        this.ytFetchedAt = Instant.now();
+    }
 }

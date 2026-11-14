@@ -13,6 +13,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
@@ -94,10 +95,12 @@ public class LibraryScanner {
     }
 
     // Estado de progreso del último escaneo lanzado. Lectura por /scanner/status.
-    // Volatile porque lo lee el hilo de la petición HTTP y lo escribe el pool
-    // scannerExecutor. AtomicInteger para el contador de progreso (incrementos
-    // concurrentes seguros aunque hoy solo haya un hilo).
-    private volatile boolean running = false;
+    // AtomicBoolean + compareAndSet garantiza que dos POST /scanner/import
+    // concurrentes jamás disparen dos escaneos: el primero gana el CAS, el
+    // segundo devuelve lastResult sin tocar nada. Antes era volatile boolean
+    // y había una ventana de microsegundos entre el `if (running)` y el
+    // `running = true` donde dos hilos podían pasar ambos el check.
+    private final AtomicBoolean running = new AtomicBoolean(false);
     private volatile int total = 0;
     private final AtomicInteger processed = new AtomicInteger(0);
     private volatile String currentFile = null;
@@ -130,7 +133,7 @@ public class LibraryScanner {
 
     public ScannerStatus currentStatus() {
         return new ScannerStatus(
-                running,
+                running.get(),
                 total,
                 processed.get(),
                 currentFile,
@@ -155,11 +158,12 @@ public class LibraryScanner {
      */
     @Async("scannerExecutor")
     public CompletableFuture<ImportResult> importNewSongs() {
-        if (running) {
+        // compareAndSet gana solo si estaba false. Garantiza exclusión aunque
+        // dos requests concurrentes lleguen en el mismo microsegundo.
+        if (!running.compareAndSet(false, true)) {
             log.warn("Escaneo ya en curso, ignorando petición duplicada");
             return CompletableFuture.completedFuture(lastResult);
         }
-        running = true;
         startedAt = System.currentTimeMillis();
         processed.set(0);
         currentFile = null;
@@ -301,7 +305,7 @@ public class LibraryScanner {
 
             return CompletableFuture.completedFuture(result);
         } finally {
-            running = false;
+            running.set(false);
             currentFile = null;
             phase = null;
         }

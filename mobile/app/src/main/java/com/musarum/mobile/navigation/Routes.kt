@@ -23,6 +23,9 @@ object Routes {
     const val PUBLISH_UPDATE = "profile/publish-update"
     const val EQUALIZER = "profile/equalizer"
 
+    const val YOUTUBE_EMBED = "youtube/{songId}/{videoId}"
+    fun youtubeEmbed(songId: Long, videoId: String) = "youtube/$songId/$videoId"
+
     const val PLAYLIST_DETAIL = "playlist/{id}"
     fun playlistDetail(id: Long) = "playlist/$id"
 

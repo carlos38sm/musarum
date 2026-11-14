@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -81,6 +82,7 @@ import com.musarum.mobile.LocalSnackbar
 import com.musarum.mobile.music.ClickableArtists
 import com.musarum.mobile.music.library.AddToPlaylistDialog
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Modo Vídeo del player. Visualmente clonamos NowPlayingScreen (mismo shell,
@@ -103,13 +105,15 @@ fun VideoScreen(
     onOpenTrack: () -> Unit,
     onOpenLyrics: () -> Unit,
     onOpenInfo: () -> Unit,
-    onOpenArtist: (Long) -> Unit = {}
+    onOpenArtist: (Long) -> Unit = {},
+    onOpenYoutubeEmbed: (songId: Long, videoId: String) -> Unit = { _, _ -> }
 ) {
     val container = LocalAppContainer.current
     val controller = container.playerController
     val playerState by controller.state.collectAsState()
     val context = LocalContext.current
     val snackbar = LocalSnackbar.current
+    val ytScope = rememberCoroutineScope()
 
     val viewModel: NowPlayingViewModel = viewModel(
         factory = NowPlayingViewModel.factory(
@@ -390,7 +394,21 @@ fun VideoScreen(
             },
             sleepTimerActive = playerState.sleepTimerAt != null,
             onOpenSleepTimer = { showSleepSheet = true },
-            onSearchYouTube = { openYouTubeSearch(context, song) },
+            onSearchYouTube = {
+                // Igual que NowPlayingScreen: resolver videoId en backend →
+                // abrir embed; si no hay match, caer al navegador externo.
+                ytScope.launch {
+                    val result = runCatching {
+                        container.apiService.getYoutubeVideo(song.id)
+                    }
+                    val resp = result.getOrNull()
+                    if (resp != null && resp.isSuccessful && resp.body() != null) {
+                        onOpenYoutubeEmbed(song.id, resp.body()!!.videoId)
+                    } else {
+                        openYouTubeSearch(context, song)
+                    }
+                }
+            },
             downloadState = run {
                 val entries by container.downloadsRepository.entries.collectAsState()
                 val inProgress by container.downloadsManager.inProgress.collectAsState()

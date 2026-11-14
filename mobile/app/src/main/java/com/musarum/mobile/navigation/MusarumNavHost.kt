@@ -257,6 +257,26 @@ fun MusarumNavHost(
                 )
             }
 
+            composable(
+                route = Routes.YOUTUBE_EMBED,
+                arguments = listOf(
+                    navArgument("songId") { type = NavType.LongType },
+                    navArgument("videoId") { type = NavType.StringType }
+                )
+            ) { backStack ->
+                val songId = backStack.arguments?.getLong("songId") ?: return@composable
+                val videoId = backStack.arguments?.getString("videoId") ?: return@composable
+                val song = com.musarum.mobile.LocalAppContainer.current
+                    .playerController.state.value.currentSong
+                val title = if (song?.id == songId) song.title else null
+                com.musarum.mobile.player.YoutubeEmbedScreen(
+                    songId = songId,
+                    videoId = videoId,
+                    songTitle = title,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
             composable(Routes.SONGS) {
                 SongsScreen()
             }
@@ -383,7 +403,12 @@ fun MusarumNavHost(
                             launchSingleTop = true
                         }
                     },
-                    onOpenArtist = { id -> navController.navigate(Routes.artistDetail(id)) }
+                    onOpenArtist = { id -> navController.navigate(Routes.artistDetail(id)) },
+                    onOpenYoutubeEmbed = { songId, videoId ->
+                        navController.navigate(Routes.youtubeEmbed(songId, videoId)) {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
 
@@ -465,7 +490,12 @@ fun MusarumNavHost(
                             launchSingleTop = true
                         }
                     },
-                    onOpenArtist = { id -> navController.navigate(Routes.artistDetail(id)) }
+                    onOpenArtist = { id -> navController.navigate(Routes.artistDetail(id)) },
+                    onOpenYoutubeEmbed = { songId, videoId ->
+                        navController.navigate(Routes.youtubeEmbed(songId, videoId)) {
+                            launchSingleTop = true
+                        }
+                    }
                 )
             }
         }

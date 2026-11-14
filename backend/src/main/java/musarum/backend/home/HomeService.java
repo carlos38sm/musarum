@@ -9,7 +9,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -121,23 +120,82 @@ public class HomeService {
      * Mini-perfil semanal de cada usuario de la red. Excluye al requester y
      * a quien apagara {@code shareTaste}. Un usuario sin reproducciones en
      * la ventana también queda fuera (nada que mostrar).
+     *
+     * Antes hacíamos 4 queries por usuario dentro de un loop (16 queries con
+     * 4 users). Ahora: 1 query de users + 4 queries agregadas (plays, top
+     * artista, top género, top canción), todas con IN (userIds) y GROUP BY
+     * user_id. Total constante = 5 queries independientemente del número de
+     * usuarios.
      */
     @Transactional(readOnly = true)
     public List<TasteProfileDto> tasteProfiles(Long requesterId) {
         Instant weekAgo = Instant.now().minus(7, ChronoUnit.DAYS);
         List<User> users = userRepository.findAll();
 
+        // Candidatos: no yo, shareTaste activo, no bloqueado.
+        List<User> candidates = users.stream()
+                .filter(u -> !Objects.equals(u.getId(), requesterId))
+                .filter(User::isShareTaste)
+                .filter(u -> !u.isBlocked())
+                .toList();
+        if (candidates.isEmpty()) return List.of();
+
+        List<Long> userIds = candidates.stream().map(User::getId).toList();
+
+        // Una query cada uno: plays, top artista, top género, top canción.
+        Map<Long, Long> playsById = toMap(reproductionRepository.countByUserIdsSince(userIds, weekAgo));
+        Map<Long, long[]> topArtistByUser = toPairMap(reproductionRepository.topArtistPerUser(userIds, weekAgo));
+        Map<Long, long[]> topGenreByUser = toPairMap(reproductionRepository.topGenrePerUser(userIds, weekAgo));
+        Map<Long, long[]> topSongByUser = toPairMap(reproductionRepository.topSongPerUser(userIds, weekAgo));
+
+        // Cargamos las entidades referenciadas en lote (findAllById → 1 query
+        // cada una, con el índice de la PK).
+        Set<Long> artistIds = topArtistByUser.values().stream().map(a -> a[0]).collect(Collectors.toSet());
+        Set<Long> genreIds = topGenreByUser.values().stream().map(a -> a[0]).collect(Collectors.toSet());
+        Set<Long> songIds = topSongByUser.values().stream().map(a -> a[0]).collect(Collectors.toSet());
+
+        Map<Long, Artist> artistsById = artistRepository.findAllById(artistIds).stream()
+                .collect(Collectors.toMap(Artist::getId, a -> a));
+        Map<Long, Genre> genresById = genreRepository.findAllById(genreIds).stream()
+                .collect(Collectors.toMap(Genre::getId, g -> g));
+        Map<Long, Song> songsById = songRepository.findAllById(songIds).stream()
+                .collect(Collectors.toMap(Song::getId, s -> s));
+
         List<TasteProfileDto> out = new ArrayList<>();
-        for (User u : users) {
-            if (Objects.equals(u.getId(), requesterId)) continue;
-            if (!u.isShareTaste() || u.isBlocked()) continue;
+        for (User u : candidates) {
+            Long plays = playsById.getOrDefault(u.getId(), 0L);
+            if (plays == 0) continue;  // sin plays en la ventana → fuera
 
-            long plays = reproductionRepository.countByUserSince(u.getId(), weekAgo);
-            if (plays == 0) continue;
+            TasteProfileDto.TopArtist topArtist = null;
+            long[] ta = topArtistByUser.get(u.getId());
+            if (ta != null) {
+                Artist a = artistsById.get(ta[0]);
+                if (a != null) {
+                    topArtist = new TasteProfileDto.TopArtist(a.getId(), a.getName(), a.getImageUrl(), ta[1]);
+                }
+            }
 
-            TasteProfileDto.TopArtist topArtist = pickTopArtist(u.getId(), weekAgo);
-            TasteProfileDto.TopGenre topGenre = pickTopGenre(u.getId(), weekAgo);
-            TasteProfileDto.TopSong topSong = pickTopSong(u.getId(), weekAgo);
+            TasteProfileDto.TopGenre topGenre = null;
+            long[] tg = topGenreByUser.get(u.getId());
+            if (tg != null) {
+                Genre g = genresById.get(tg[0]);
+                if (g != null) {
+                    topGenre = new TasteProfileDto.TopGenre(g.getId(), g.getName(), tg[1]);
+                }
+            }
+
+            TasteProfileDto.TopSong topSong = null;
+            long[] ts = topSongByUser.get(u.getId());
+            if (ts != null) {
+                Song s = songsById.get(ts[0]);
+                if (s != null) {
+                    String coverUrl = s.getAlbum() != null ? s.getAlbum().getCoverUrl() : null;
+                    String artistsLabel = s.getArtists().stream()
+                            .map(Artist::getName)
+                            .collect(Collectors.joining(", "));
+                    topSong = new TasteProfileDto.TopSong(s.getId(), s.getTitle(), coverUrl, artistsLabel, ts[1]);
+                }
+            }
 
             out.add(new TasteProfileDto(
                     u.getId(),
@@ -150,6 +208,26 @@ public class HomeService {
             ));
         }
         return out;
+    }
+
+    /** (userId, count) → Map<userId, count>. */
+    private static Map<Long, Long> toMap(List<Object[]> rows) {
+        Map<Long, Long> m = new java.util.HashMap<>();
+        for (Object[] r : rows) {
+            m.put(((Number) r[0]).longValue(), ((Number) r[1]).longValue());
+        }
+        return m;
+    }
+
+    /** (userId, otherId, plays) → Map<userId, [otherId, plays]>. */
+    private static Map<Long, long[]> toPairMap(List<Object[]> rows) {
+        Map<Long, long[]> m = new java.util.HashMap<>();
+        for (Object[] r : rows) {
+            if (r[1] == null) continue;
+            m.put(((Number) r[0]).longValue(),
+                    new long[]{((Number) r[1]).longValue(), ((Number) r[2]).longValue()});
+        }
+        return m;
     }
 
     /**
@@ -196,43 +274,4 @@ public class HomeService {
         return songs.stream().map(songMapper::toSummary).toList();
     }
 
-    // ── Helpers internos ──────────────────────────────────────────────────
-
-    private TasteProfileDto.TopArtist pickTopArtist(Long userId, Instant since) {
-        List<Object[]> rows = reproductionRepository.findTopArtistForUserSince(userId, since);
-        if (rows.isEmpty()) return null;
-        Object[] row = rows.get(0);
-        Long artistId = ((Number) row[0]).longValue();
-        long plays = ((Number) row[1]).longValue();
-        Artist a = artistRepository.findById(artistId).orElse(null);
-        if (a == null) return null;
-        return new TasteProfileDto.TopArtist(a.getId(), a.getName(), a.getImageUrl(), plays);
-    }
-
-    private TasteProfileDto.TopGenre pickTopGenre(Long userId, Instant since) {
-        List<Object[]> rows = reproductionRepository.findTopGenreForUserSince(userId, since);
-        if (rows.isEmpty()) return null;
-        Object[] row = rows.get(0);
-        Long genreId = ((Number) row[0]).longValue();
-        long plays = ((Number) row[1]).longValue();
-        Genre g = genreRepository.findById(genreId).orElse(null);
-        if (g == null) return null;
-        return new TasteProfileDto.TopGenre(g.getId(), g.getName(), plays);
-    }
-
-    private TasteProfileDto.TopSong pickTopSong(Long userId, Instant since) {
-        List<Object[]> rows = reproductionRepository.findTopSongsWithCount(
-                userId, since, PageRequest.of(0, 1));
-        if (rows.isEmpty()) return null;
-        Object[] row = rows.get(0);
-        Long songId = ((Number) row[0]).longValue();
-        long plays = ((Number) row[1]).longValue();
-        Song s = songRepository.findById(songId).orElse(null);
-        if (s == null) return null;
-        String coverUrl = s.getAlbum() != null ? s.getAlbum().getCoverUrl() : null;
-        String artistsLabel = s.getArtists().stream()
-                .map(Artist::getName)
-                .collect(Collectors.joining(", "));
-        return new TasteProfileDto.TopSong(s.getId(), s.getTitle(), coverUrl, artistsLabel, plays);
-    }
 }

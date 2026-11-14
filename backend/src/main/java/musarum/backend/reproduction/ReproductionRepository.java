@@ -103,6 +103,60 @@ public interface ReproductionRepository extends JpaRepository<Reproduction, Long
     long countByUserSince(Long userId, Instant since);
 
     /**
+     * Agregado por usuario desde :since para cualquier conjunto de userIds.
+     * Devuelve (user_id, plays). Una sola query en vez de N llamadas a
+     * countByUserSince dentro de un loop por user. Lo usa HomeService.tasteProfiles
+     * para pintar el bloque con una query por "KPI" en vez de O(usuarios × KPIs).
+     */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT user_id, COUNT(*) AS plays
+            FROM reproductions
+            WHERE user_id IN (:userIds) AND created_at >= :since
+            GROUP BY user_id
+            """, nativeQuery = true)
+    List<Object[]> countByUserIdsSince(java.util.Collection<Long> userIds, Instant since);
+
+    /**
+     * Top artista por usuario en una ventana. Devuelve (user_id, artist_id, plays)
+     * ordenado por user_id y plays desc. Con DISTINCT ON de Postgres, cogiendo
+     * la primera fila por usuario sacas directamente su top artista.
+     */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT DISTINCT ON (c.user_id) c.user_id, sa.artist_id,
+                   SUM(c.cnt) OVER (PARTITION BY c.user_id, sa.artist_id) AS plays
+            FROM (
+              SELECT user_id, song_id, COUNT(*) AS cnt FROM reproductions
+              WHERE user_id IN (:userIds) AND created_at >= :since
+              GROUP BY user_id, song_id
+            ) AS c
+            JOIN song_artists sa ON sa.song_id = c.song_id
+            ORDER BY c.user_id,
+                     SUM(c.cnt) OVER (PARTITION BY c.user_id, sa.artist_id) DESC
+            """, nativeQuery = true)
+    List<Object[]> topArtistPerUser(java.util.Collection<Long> userIds, Instant since);
+
+    /** Top género por usuario en una ventana. (user_id, genre_id, plays). */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT DISTINCT ON (r.user_id) r.user_id, s.genre_id, COUNT(r.id) AS plays
+            FROM reproductions r
+            JOIN songs s ON s.id = r.song_id
+            WHERE r.user_id IN (:userIds) AND r.created_at >= :since AND s.genre_id IS NOT NULL
+            GROUP BY r.user_id, s.genre_id
+            ORDER BY r.user_id, COUNT(r.id) DESC
+            """, nativeQuery = true)
+    List<Object[]> topGenrePerUser(java.util.Collection<Long> userIds, Instant since);
+
+    /** Top canción por usuario en una ventana. (user_id, song_id, plays). */
+    @org.springframework.data.jpa.repository.Query(value = """
+            SELECT DISTINCT ON (user_id) user_id, song_id, COUNT(*) AS plays
+            FROM reproductions
+            WHERE user_id IN (:userIds) AND created_at >= :since
+            GROUP BY user_id, song_id
+            ORDER BY user_id, COUNT(*) DESC
+            """, nativeQuery = true)
+    List<Object[]> topSongPerUser(java.util.Collection<Long> userIds, Instant since);
+
+    /**
      * (songId, plays) de un usuario desde :since ordenado por plays desc.
      * Lo usa el mini-perfil para sacar su "canción más escuchada" en un paso.
      */

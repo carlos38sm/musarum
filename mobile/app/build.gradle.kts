@@ -133,6 +133,11 @@ dependencies {
     // Reorderable LazyColumn (drag-and-drop) para reordenar canciones en
     // playlists. Librería ligera FOSS mantenida activamente, cero deps extra.
     implementation("sh.calvin.reorderable:reorderable:2.5.1")
+    // YouTube embebido real (bloque 49). Librería FOSS 13k ★ que envuelve el
+    // iframe de YouTube con una API Kotlin — sin API key de Google. El
+    // videoId lo resuelve el backend con scraping ligero de youtube.com/results
+    // y lo cachea en songs.youtube_video_id.
+    implementation(libs.pierfrancescosoffritti.android.youtube.player)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
