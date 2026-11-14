@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
+import com.musarum.mobile.data.BaseUrlStore
 
 @Composable
 fun LoginScreen(
@@ -266,6 +267,8 @@ private fun ServerUrlDialog(
     onReset: () -> Unit
 ) {
     var input by remember { mutableStateOf(current) }
+    val trimmed = input.trim()
+    val isValid = BaseUrlStore.isValid(trimmed)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Servidor de Musarum") },
@@ -282,7 +285,14 @@ private fun ServerUrlDialog(
                     value = input,
                     onValueChange = { input = it },
                     label = { Text("URL") },
+                    placeholder = { Text("https://musarum.example.com") },
                     singleLine = true,
+                    isError = input.isNotBlank() && !isValid,
+                    supportingText = {
+                        if (input.isNotBlank() && !isValid) {
+                            Text("Debe empezar por http:// o https://")
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
                 Spacer(Modifier.height(6.dp))
@@ -295,12 +305,9 @@ private fun ServerUrlDialog(
         },
         confirmButton = {
             TextButton(
+                enabled = isValid,
                 onClick = {
-                    if (input.isNotBlank() && input.trim() != current) {
-                        onSave(input)
-                    } else {
-                        onDismiss()
-                    }
+                    if (trimmed != current.trim()) onSave(trimmed) else onDismiss()
                 }
             ) { Text("Guardar") }
         },

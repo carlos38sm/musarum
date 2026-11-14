@@ -302,6 +302,33 @@ Listado cronológico con 1-2 líneas de qué aporta cada uno. Si Carlos pide rep
     - `.github/workflows/android-release.yml`: dispara en tag `android-v*`. Decodifica keystore de `ANDROID_KEYSTORE_BASE64`, compila APK release firmada, la adjunta a una GitHub Release auto-generada con release notes del commit log.
     - `.github/workflows/backend-release.yml` y `emendatium-release.yml`: disparan en tag `backend-v*` / `emendatium-v*` (con filtro `paths` para evitar rebuilds triviales). Login a GHCR con `GITHUB_TOKEN`, build con buildx + cache GHA, push a `ghcr.io/<owner>/musarum-{backend,emendatium}:{latest,tag}`.
     - `RELEASE.md` en la raíz: guía paso a paso para generar keystore, meter secrets en GitHub, levantar el compose la primera vez, publicar APK/backend/emendatium, avisar a los 4 users con `MUSARUM_APK_*`.
+43. **Home convivencia (Bloque B — nov-14 2026)**: migración V7 añade `share_now_playing` + `share_taste` (default TRUE) a `users`. Backend: nuevo paquete `musarum.backend.home` con `HomeService` + `HomeController` exponiendo `/home/presence` (last reproduction por usuario desde windowDays), `/home/discoveries` (canciones nuevas del catálogo con paginación) y `/home/taste-profiles` (artista/género/canción top por usuario desde queries nativas). `UserController` tiene `PATCH /users/me/privacy`. `ReproductionRepository` expone `findLastPerUserSince`, `findTopArtistForUserSince` (join nativo song_artists), `findTopGenreForUserSince`. `UserMapper.toPublicResponse` oculta los toggles con null.
+    Mobile: `HomeViewModel` con `supervisorScope` + 7 `async` paralelos (presence/discoveries/taste/radio/forYou/stats/smart) que NO revientan si uno falla. Tres tarjetas nuevas en Home (`PresenceCard`, `DiscoveryCard`, `TasteProfileCard`). Pantalla dedicada `NewDiscoveriesScreen` con lista paginada completa. Toggles "Compartir lo que escucho" y "Compartir mi perfil de gustos" en Perfil con `ProfileViewModel.updatePrivacyNowPlaying/Taste`. Respeta privacidad: si un user tiene toggle off, no aparece en `/home/presence` ni en `/home/taste-profiles` para los demás.
+
+44. **Listas inteligentes "Hecho para ti" (Bloque C — nov-14 2026)**: 4 playlists dinámicas que se calculan al vuelo sin tabla propia.
+    Backend: `SongRepository` con 4 queries nativas: `findPartySongs` (BPM>=120 OR género dance/reggaeton/electro/latin), `findFocusSongs` (BPM 1..90 OR classical/ambient/jazz/lofi), `findUndiscoveredForUser` (NOT EXISTS sobre reproductions del user), `findForgottenForUser` (HAVING MAX(created_at)<NOW()-'60 days' AND COUNT>=2, "canciones que te gustaban y has dejado"). `HomeService.listSmartPlaylists()` devuelve slugs + metadatos, `smartPlaylist(slug, userId, size)` resuelve canciones.
+    Mobile: `SmartPlaylistInfoDto` + `SmartPlaylistCard` (220×132dp, gradient por `iconHint`) en carrusel horizontal del Home. Al tocar la tarjeta, el VM carga las canciones y reproduce; si está vacía, snackbar.
+
+45. **Polish UX + drag queue + lupa integrada (Bloque D — nov-14 2026)**:
+    - `InlineSearchBar` + `SearchActionIcon`: lupa en TopAppBar de PlaylistDetail/AlbumDetail/ArtistDetail que colapsa en `OutlinedTextField` con focus requester (delay 60ms para que la animación acabe antes del foco). Filtra la lista en memoria case-insensitive sobre title + artistas.
+    - `MiniPlayer` con blur real: `Surface` transparente + `AsyncImage(currentCoverUrl).blur(28dp)` como fondo + gradient vertical 78%→92% `surfaceVariant` encima para legibilidad del texto. Da sensación de material pulido y translúcido al rollo Carlos.
+    - PlaylistDetail: `dragEnabled = query.isBlank()` — no se permite reordenar mientras hay filtro aplicado (las positions no cuadrarían con DB).
+
+46. **TAG editor (Bloque E — nov-14 2026)**: OWNER puede editar ID3 de una canción sin tocar el fichero a mano.
+    Backend: `PATCH /songs/{id}/tags` (OWNER) con `TagEditRequest(title, artist, album, genre, year, trackNumber, renameFile)` todos nullables. `TagEditService.editTags`:
+    1. **Reescribe ID3 con jaudiotagger PRIMERO**. Si falla (fichero bloqueado, formato no soportado), lanza antes de tocar la DB → el estado nunca queda inconsistente.
+    2. Aplica cambios al JPA usando `ArtistService.findOrCreate` / `AlbumService.findOrCreate` / `GenreService.findOrCreate` → deduplica solo.
+    3. Si `renameFile=true`: construye nuevo nombre a partir del título saneado + extensión original, `Files.move(ATOMIC_MOVE)`, sufijo `(N)` en caso de colisión, actualiza `song.audio_path`.
+    `Song` expone setters explícitos (`setTitle`, `setAlbum`, `setGenre`, `setYear`, `setTrackNumber`, `setArtists`) porque los generados por Lombok no estaban visibles cross-package.
+    Mobile: `EditTagsDialog` con 6 OutlinedTextField + Switch "Renombrar archivo" con preview del nombre resultante. Icono ✏ junto a "Metadata" en `InfoScreen` solo si `isOwner`. `NowPlayingViewModel.editTags` refresca la canción al terminar.
+
+47. **YouTube + BaseURL + Visualizador + Voz (Bloques F/G/H/I — nov-14 2026)**:
+    - **F — YouTube search**: entrada "Buscar en YouTube" en el DropdownMenu "⋯ Más acciones" de NowPlaying y VideoScreen. Abre `https://www.youtube.com/results?search_query={artist}+{title}` con `Intent.ACTION_VIEW + FLAG_ACTIVITY_NEW_TASK`. Sin API key, sin dependencia extra.
+    - **G.1 — BaseURL editable desde Login**: icono Dns en Login → `ServerUrlDialog` con `BaseUrlStore` (SharedPreferences). Al guardar, `Process.killProcess(Process.myPid())` mata la app para que al reabrirla todo el grafo (Retrofit, DownloadsManager, PlayerController, CoverImage, DominantCoverColor, VideoScreen) lea el nuevo `AppContainer.baseUrl`. **IMPORTANTE**: todos los sitios que antes hacían `BuildConfig.MUSARUM_BASE_URL` ahora hacen `container.baseUrl`. Retrofit es inmutable después del `build()`, por eso el kill.
+    - **G.2 — Errores del scan**: `LibraryScanner.recentErrors: ArrayDeque<String>(100)` acumula `path → razón` en el catch de cada canción. `ServerStatsService.buildTechnical()` los incluye en `TechnicalStats.recentScanErrors`. `ServerStatsScreen.TechnicalCard` pinta los últimos 10 reversed con divider.
+    - **H — Visualizador FFT**: `AudioVisualizer` composable con `android.media.audiofx.Visualizer` enganchado al `audioSessionId` que `PlayerService.Player.Listener.onAudioSessionIdChanged` publica en `AppContainer.audioSessionIdFlow`. 32 barras + caps que caen con `CAP_GRAVITY=0.012f`, estilo Winamp/Ares. Requiere `RECORD_AUDIO` (permission añadido al manifest + pedido en runtime). Si el user lo deniega, no dibuja. Toggle en DropdownMenu "⋯ Más acciones" de NowPlaying.
+    - **I — Voz básica**: icono Mic en `SearchScreen` (solo cuando query está vacía). `RecognizerIntent.ACTION_RECOGNIZE_SPEECH` con `EXTRA_LANGUAGE="es-ES"` lanza la UI del sistema (no requiere RECORD_AUDIO en Musarum). `VoiceCommandRouter.route()` enruta con regex en castellano: pausa/play/siguiente/anterior/aleatorio sin parámetro; "pon X" / "reproduce X" → `searchRepository.search(X)` + `controller.playQueue(firstResult, 0)`; "pon playlist X" → `playlistRepository.refresh/details` + playQueue. Si no casa con nada, mete el texto en la barra. **Nota**: PlayerController no tiene `pause()` explícito, así que PAUSE y PLAY usan `togglePlayPause()`.
+
 42. **Re-enriquecer todo + shuffle real + batería + snackbars (nov-10 2026)**:
     - **Re-enriquecer todo (OWNER)**: nuevo endpoint `POST /admin/server/re-enrich-all` en `AdminController`. `ServerStatsService.reEnrichAll()` pagina el catálogo (200 por lote para no cargar 7k entidades en memoria) y por cada canción llama a `emendatiumEnricher.enrichAsync(id, path)` fire-and-forget. Devuelve `ReEnrichSummary(queued, total)`. Mobile: botón "Re-enriquecer todo (N canciones)" en la tarjeta "Mantenimiento" del Análisis del servidor, por encima del botón rojo de "Vaciar biblioteca". Útil cuando el catálogo se importó antes de que Emendatium estuviera corriendo → bio de artistas, BPM, tonalidad y replaygain aparecen poco a poco.
     - **Shuffle real desde Canciones**: fuera el chip "Aleatorio" de arriba de la lista (feo). Nuevo endpoint `GET /songs/all` que devuelve todo el catálogo ordenado como la vista paginada (query nativa `findAllOrdered` idéntica al orden de `findPageOrdered`). `SongListViewModel.loadAllOrdered(onReady)` cachea el resultado en el VM y lo invalida en `refresh()`. Al tocar una canción en Canciones, la cola del player = TODO el catálogo (startIndex = posición de la canción tocada), así el botón shuffle de NowPlaying barajea de verdad las ~7000 canciones y no solo la ventana paginada. `HEADER_ITEMS` pasó de 2 a 1.
@@ -360,44 +387,37 @@ Listado cronológico con 1-2 líneas de qué aporta cada uno. Si Carlos pide rep
 ### 🟢 Descargas offline — COMPLETADO
 Bloques 24, long-press, playlist, sección Biblioteca e indicador en SongRow. Ya hay flujo end-to-end.
 
-### 🔴 Pendientes P0 (original)
-1. **Descargas offline reales — plan original** (parcialmente hecho, ver pendientes arriba):
-   - Nuevo módulo `data/downloads/`:
-     - `DownloadsRepository` con DB local (Room o JSON en SharedPrefs): `{songId → localPath, downloadedAt, sizeBytes}`.
-     - `DownloadsService` con cola, progreso, cancelación. Guarda en `context.filesDir/downloads/{songId}.mp3` (private storage, sin permisos).
-     - Download con OkHttp (ya tenemos el cliente autenticado con JWT) + stream-to-file.
-   - `PlayerController.toMediaItem`: si existe fichero local → `file://` URI en vez de `/stream/{id}`.
-   - UI:
-     - Icono descarga en long-press del SongRow + indicador circular en cover si descargada.
-     - Botón "Descargar todo" al principio de PlaylistDetailScreen.
-     - Sección "Descargas" en Biblioteca con filtro offline + acción borrar.
-     - "X canciones · Y MB" + "Vaciar descargas" en Perfil.
-   - **Sin encriptación** (es tu música, no hay licencia que proteger).
+### ✅ P0 completados (nov-2026)
+- ~~Descargas offline reales~~ → bloque 24 + indicador en SongRow.
+- ~~Despliegue real~~ → bloque 38 (CI/CD release pipeline, GHCR + Watchtower + GitHub Actions).
+- ~~Endpoint `/version` + diálogo "Actualizar"~~ → bloque 39 + bloque 40 (publicar desde el móvil).
+- ~~YouTube fallback~~ → bloque 47-F (search externo, sin API key).
+- ~~Letras karaoke pantalla completa~~ → bloque 39 (SyncedLyricsView escalada por distancia a línea activa).
+- ~~Equalizer~~ → bloque 39 (5 bandas via `audiofx.Equalizer`).
+- ~~Visualizador de audio~~ → bloque 47-H (FFT 32 barras + caps estilo Ares).
+- ~~Home convivencia~~ → bloque 43.
+- ~~Listas inteligentes~~ → bloque 44.
+- ~~TAG editor OWNER~~ → bloque 46.
+- ~~BaseURL editable desde Login~~ → bloque 47-G.1.
+- ~~Panel de errores del scan~~ → bloque 47-G.2.
+- ~~Voz básica~~ → bloque 47-I.
 
-2. **Despliegue real**:
-   - Dockerfile para `backend/` (Maven build + jar). 
-   - Dockerfile para `emendatium/`.
-   - `docker-compose.yml` extendido con backend + emendatium + postgres + watchtower.
-   - GitHub Actions workflow `android-release.yml` + `backend-release.yml` → GHCR + GitHub Release.
-   - **Keystore de firma Android** (Carlos no lo tiene aún, hay que generar `.jks` y meterlo en GitHub Secrets).
-
-3. **Endpoint `/version` + diálogo in-app** "Actualizar" — avisar a los 4 users de que hay APK nueva.
-
-### 🟡 Media prioridad
-4. **YouTube embebido en modo Vídeo** — fallback cuando no hay vídeo local. Requiere Google Cloud API key (gratuita, 10K unidades/día).
-5. **Multi-artista en nombres de archivo** — hoy el renombrado (lógica en Emendatium) solo toma 1 artista. Juntar `artist-credit[]` de MusicBrainz con separador ", ".
-6. **Capitalización inteligente** en títulos — preservar "de", "la", "el", "the", "and", "para"... en minúsculas. ~15 líneas en `TitleBuilder` de Emendatium.
-7. **Mover definición de ReplayGain de Info a Ajustes** — Carlos lo pidió pero no está localizada la referencia exacta. Al revisar InfoScreen, si menciona ReplayGain, moverla.
-8. **Playlists colaborativas** — backend está (`canEdit`, `addCollaborator`, `removeCollaborator`), diálogo invitar en mobile existe, pero falta probar flujo e2e. Notificaciones al invitado = no (no hay push).
+### 🟡 Media prioridad (vivos)
+1. **Multi-artista en nombres de archivo** — hoy el renombrado (lógica en Emendatium) solo toma 1 artista. Juntar `artist-credit[]` de MusicBrainz con separador ", ". **Nota**: el TAG editor del bloque 46 ya acepta multi-artista por coma en `artist` del request, pero solo sobre edición manual — el renombrado automático al escanear sigue siendo single-artist.
+2. **Capitalización inteligente** en títulos — preservar "de", "la", "el", "the", "and", "para"... en minúsculas. ~15 líneas en `TitleBuilder` de Emendatium.
+3. **Mover definición de ReplayGain de Info a Ajustes** — pendiente de localizar la referencia exacta en InfoScreen; si la sigue mencionando, moverla.
+4. **Playlists colaborativas end-to-end** — backend existe (`canEdit`, `addCollaborator`, `removeCollaborator`), diálogo invitar en mobile existe, pero falta probar flujo e2e. Sin notificaciones push (Tailscale, 4 users).
+5. **Emendatium desplegado** — hoy sigue sin contenedor levantado. El Dockerfile existe desde el bloque 39; falta meterlo en el compose real del portátil + variable `EMENDATIUM_BASE_URL` en `.env`. Hasta entonces, las letras y el bloque 42 "Re-enriquecer todo" dependen del pipeline interno del backend (bloque 35), no del Emendatium real.
+6. **Comandos de voz avanzados** — el router del bloque 47-I solo cubre comandos cortos. Faltaría "añade a favoritos", "quita de favoritos", "abre playlist X", "cancela sleep", "pon modo fiesta" (apoyarse en smart playlists del bloque 44).
 
 ### 🟢 Baja prioridad / nice-to-have
-9. **Letras pantalla completa karaoke** — línea actual grande, siguientes desvanecidas.
-10. **Equalizer** básico (bass/treble).
-11. **Visualizador de audio** (barras con el audio).
-12. **Modo gapless** real (más allá del crossfade).
-13. **Export/import de playlists** JSON.
-14. **"Playlists del año" / "Año en resumen"**.
-15. **Rate limit en `/auth/login`** — rechazado por Carlos: con Tailscale no hay superficie pública.
+7. **Modo gapless** real (más allá del crossfade).
+8. **Export/import de playlists** JSON.
+9. **"Playlists del año" / "Año en resumen"**.
+10. **Rate limit en `/auth/login`** — rechazado por Carlos: con Tailscale no hay superficie pública.
+11. **YouTube embebido in-app** (vs. fallback externo del bloque 47-F) — requiere Google Cloud API key gratuita 10K/día.
+12. **Letras bilingües** — traducción + letra original en paralelo.
+13. **Smart crossfade por género** — tiempos distintos según BPM / tipo de canción (fade más largo en ambient, corte seco en hip-hop).
 
 ---
 

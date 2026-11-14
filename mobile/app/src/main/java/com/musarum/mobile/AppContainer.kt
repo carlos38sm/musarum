@@ -47,8 +47,19 @@ class AppContainer(context: Context) {
     val baseUrlStore: BaseUrlStore = BaseUrlStore(context)
     /** URL del backend resuelta UNA vez al construir AppContainer. Todos
      *  los callers (CoverImage, DownloadsManager, PlayerController, …) leen
-     *  de aquí en vez de BuildConfig para respetar el override del user. */
-    val baseUrl: String = baseUrlStore.current()
+     *  de aquí en vez de BuildConfig para respetar el override del user.
+     *  Si el override guardado no es una URL válida (user pegó basura en el
+     *  ServerUrlDialog), lo borramos y caemos al baked-in. Sin este fallback
+     *  la app entraría en crash-loop porque Retrofit.Builder.baseUrl lanza
+     *  al construir y no hay forma de que el user vuelva a abrir el diálogo. */
+    val baseUrl: String = run {
+        val candidate = baseUrlStore.current()
+        if (BaseUrlStore.isValid(candidate)) candidate
+        else {
+            baseUrlStore.clear()
+            baseUrlStore.current()
+        }
+    }
 
     val tokenManager: TokenManager = TokenManager(context, applicationScope)
 

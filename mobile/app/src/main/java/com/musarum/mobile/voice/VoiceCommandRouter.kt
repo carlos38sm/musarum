@@ -43,32 +43,11 @@ class VoiceCommandRouter(
         val text = rawText.trim().lowercase()
         if (text.isEmpty()) return
 
-        // ── Comandos sin parámetros ──
-        // PlayerController expone togglePlayPause pero no pause/play explícitos.
-        // Para "pausa" y "reanudar" delegamos en toggle: si el usuario dice
-        // "pausa" estando ya en pausa, el player sigue igual (aceptable).
-        when {
-            PAUSE.containsMatchIn(text) || PLAY.containsMatchIn(text) -> {
-                controller.togglePlayPause()
-                report(if (PAUSE.containsMatchIn(text)) "Pausado" else "Reanudado")
-                return
-            }
-            NEXT.containsMatchIn(text) -> {
-                controller.next()
-                report("Siguiente")
-                return
-            }
-            PREV.containsMatchIn(text) -> {
-                controller.previous()
-                report("Anterior")
-                return
-            }
-            SHUFFLE.containsMatchIn(text) -> {
-                controller.toggleShuffle()
-                report("Aleatorio alternado")
-                return
-            }
-        }
+        // ── ORDEN IMPORTANTE ──
+        // Los comandos CON parámetro ("play música", "pon playlist X") se
+        // chequean ANTES que los sin parámetro ("play", "pausa"). Si no, el
+        // regex de PLAY cazaría la palabra "play" dentro de "play música" y
+        // dispararía togglePlayPause en vez de reproducir "música".
 
         // ── Comandos con parámetro: "pon X" / "reproduce X" / "playlist X" ──
         val playlistTarget = PLAYLIST_CMD.find(text)?.groupValues?.get(1)?.trim()
@@ -117,6 +96,39 @@ class VoiceCommandRouter(
                 }
             }
             return
+        }
+
+        // ── Comandos sin parámetros (chequeados al final para no chupar
+        //    casos con parámetro) ──
+        // PlayerController expone togglePlayPause pero no pause/play explícitos.
+        // Para "pausa" y "reanudar" delegamos en toggle: si el usuario dice
+        // "pausa" estando ya en pausa, el player sigue igual (aceptable).
+        when {
+            PAUSE.containsMatchIn(text) -> {
+                controller.togglePlayPause()
+                report("Pausado")
+                return
+            }
+            PLAY.containsMatchIn(text) -> {
+                controller.togglePlayPause()
+                report("Reanudado")
+                return
+            }
+            NEXT.containsMatchIn(text) -> {
+                controller.next()
+                report("Siguiente")
+                return
+            }
+            PREV.containsMatchIn(text) -> {
+                controller.previous()
+                report("Anterior")
+                return
+            }
+            SHUFFLE.containsMatchIn(text) -> {
+                controller.toggleShuffle()
+                report("Aleatorio alternado")
+                return
+            }
         }
 
         // Sin comando claro → metemos el texto crudo en la barra de búsqueda.

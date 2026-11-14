@@ -50,5 +50,21 @@ class BaseUrlStore(context: Context) {
 
     companion object {
         private const val KEY = "override_base_url"
+
+        /**
+         * Valida si una cadena puede usarse como baseUrl de Retrofit. Retrofit
+         * exige http:// o https:// + un host no vacío + ruta acabada en "/".
+         * Si no cumple, Retrofit.Builder.baseUrl lanza IllegalArgumentException
+         * al construir → la app no arranca. Primera defensa: el diálogo del
+         * Login la usa para no guardar basura. AppContainer tiene una segunda
+         * defensa por si acaso.
+         */
+        fun isValid(url: String): Boolean {
+            val t = url.trim()
+            if (!t.startsWith("http://") && !t.startsWith("https://")) return false
+            val afterScheme = t.substringAfter("://")
+            val host = afterScheme.substringBefore("/").substringBefore(":")
+            return host.isNotBlank() && !host.contains(" ")
+        }
     }
 }
