@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.palette.graphics.Palette
-import coil3.ImageLoader
+import coil3.SingletonImageLoader
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.toBitmap
@@ -51,7 +51,13 @@ fun rememberDominantCoverColor(
         }
         val color = withContext(Dispatchers.Default) {
             runCatching {
-                val loader = ImageLoader(context)
+                // Reutilizamos el SingletonImageLoader que MusarumApplication
+                // configura con el OkHttpClient autenticado del AppContainer.
+                // Antes construíamos un ImageLoader "pelado" aquí y las covers
+                // del backend (/albums/{id}/cover, que exigen JWT) fallaban
+                // con 401 → el fondo del NowPlaying se quedaba siempre en el
+                // fallback en vez de tomar el color real de la portada.
+                val loader = SingletonImageLoader.get(context)
                 val request = ImageRequest.Builder(context)
                     .data(resolved)
                     .allowHardware(false)

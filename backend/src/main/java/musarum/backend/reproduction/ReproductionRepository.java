@@ -51,6 +51,13 @@ public interface ReproductionRepository extends JpaRepository<Reproduction, Long
     long deleteBySongId(Long songId);
 
     /**
+     * Borra todas las reproducciones del usuario. Lo usa el OWNER al eliminar
+     * un user del sistema. Antes se tragaba findAll() entero y filtraba en
+     * memoria — con historial grande (decenas de miles) era OOM seguro.
+     */
+    long deleteByUserId(Long userId);
+
+    /**
      * IDs de canción por frecuencia descendente (sin ventana temporal). Lo
      * usa el servicio de stats para calcular el "más escuchado" global.
      */

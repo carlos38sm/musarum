@@ -12,4 +12,5 @@ public interface UserRepository extends JpaRepository<User, Long>{
 	boolean existsByNick(String nick);
 	List<User> findByNickContainingIgnoreCaseOrderByNickAsc(String query, Pageable pageable);
 	long countByBlocked(boolean blocked);
+	long countByUserRole(UserRole userRole);
 }

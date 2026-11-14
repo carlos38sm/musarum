@@ -22,7 +22,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
 
 @OptIn(UnstableApi::class)
 class PlayerService : MediaSessionService() {
@@ -35,20 +34,14 @@ class PlayerService : MediaSessionService() {
     override fun onCreate() {
         super.onCreate()
         val app = application as MusarumApplication
-        val tokenManager = app.container.tokenManager
         val playerPreferences = app.container.playerPreferences
 
-        val okHttpClient = OkHttpClient.Builder()
-            .addInterceptor { chain ->
-                val token = tokenManager.currentToken()
-                val req = if (token != null) {
-                    chain.request().newBuilder()
-                        .addHeader("Authorization", "Bearer $token")
-                        .build()
-                } else chain.request()
-                chain.proceed(req)
-            }
-            .build()
+        // Reutilizamos el OkHttpClient del AppContainer. Lleva ya AuthInterceptor
+        // (JWT) y UnauthorizedInterceptor (si el token expira durante streaming,
+        // el usuario vuelve al login en vez de quedarse con 401 en bucle).
+        // Antes montábamos un cliente aparte aquí → connection pool duplicado
+        // y sin UnauthorizedInterceptor.
+        val okHttpClient = app.container.okHttpClient
 
         // OkHttpDataSource solo entiende HTTP(S). Para que las descargas
         // offline (uri file://) funcionen envolvemos con DefaultDataSource,

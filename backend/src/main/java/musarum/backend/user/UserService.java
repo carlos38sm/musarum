@@ -227,24 +227,21 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
         if (user.getUserRole() == UserRole.OWNER) {
-            long owners = userRepository.findAll().stream()
-                    .filter(u -> u.getUserRole() == UserRole.OWNER)
-                    .count();
-            if (owners <= 1) {
+            // countByUserRole va al índice de user_role (o scan corto con 4
+            // users); antes cargábamos findAll() y filtrábamos en memoria.
+            if (userRepository.countByUserRole(UserRole.OWNER) <= 1) {
                 throw new IllegalArgumentException("No puedes borrar al último OWNER");
             }
         }
 
         favoriteRepository.deleteAll(
                 favoriteRepository.findByUserIdOrderByCreatedAtDesc(userId));
-        // reproducciones: no tenemos deleteByUserId directo, pero el stats
-        // service solo lee; para FK, usamos query derivada por JPA. Si no
-        // existe, se puede recorrer y borrar manual. Añadimos el shortcut:
-        reproductionRepository.deleteAll(
-                reproductionRepository.findAll().stream()
-                        .filter(r -> java.util.Objects.equals(r.getUserId(), userId))
-                        .toList()
-        );
+        // Reproducciones del user: query derivada (DELETE FROM reproductions
+        // WHERE user_id = ?) con índice (user_id, created_at). Antes se hacía
+        // findAll().stream().filter → O(N) memoria sobre toda la tabla de
+        // historial. Con 7k canciones y 4 users escuchando habitualmente son
+        // decenas de miles de filas; OOM garantizado al crecer.
+        reproductionRepository.deleteByUserId(userId);
         avatarStorage.deleteAvatar(userId);
         userRepository.delete(user);
     }
