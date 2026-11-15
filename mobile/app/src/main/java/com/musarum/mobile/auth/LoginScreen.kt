@@ -3,6 +3,7 @@ package com.musarum.mobile.auth
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -124,11 +125,17 @@ fun LoginScreen(
             )
         }
 
+        // verticalScroll para que en pantallas pequeñas / con el teclado
+        // abierto el usuario pueda llegar al botón "Entrar" aunque el
+        // contenido no quepa de golpe. Antes, al añadir la fila de bolitas
+        // estilo Netflix, el conjunto superaba el alto útil y el botón
+        // quedaba cortado por debajo del IME.
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(horizontal = 32.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 32.dp, vertical = 24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {

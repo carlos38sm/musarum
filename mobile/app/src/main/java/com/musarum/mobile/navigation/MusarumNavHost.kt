@@ -16,10 +16,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
@@ -70,6 +73,24 @@ fun MusarumNavHost(
     val isAuthenticated by sessionViewModel.isAuthenticated.collectAsState()
 
     val startDestination = if (isAuthenticated) Routes.HOME else Routes.LOGIN
+
+    // Reacciona a la pérdida de sesión en caliente: cuando el JWT expira o
+    // el backend responde 401, UnauthorizedInterceptor limpia el token →
+    // isAuthenticated pasa a false. Como `startDestination` solo se evalúa
+    // una vez al construir el graph, SIN este LaunchedEffect el usuario se
+    // quedaba en Home viendo errores de red hasta cerrar y reabrir la app.
+    // La transición login(false→true) la gestiona LoginScreen.onLoginSuccess;
+    // solo nos interesa la caída true→false post-login.
+    var wasAuthenticated by remember { mutableStateOf(isAuthenticated) }
+    LaunchedEffect(isAuthenticated) {
+        if (wasAuthenticated && !isAuthenticated) {
+            navController.navigate(Routes.LOGIN) {
+                popUpTo(0) { inclusive = true }
+                launchSingleTop = true
+            }
+        }
+        wasAuthenticated = isAuthenticated
+    }
 
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
