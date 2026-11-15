@@ -38,6 +38,12 @@ interface ApiService {
     @POST("auth/login")
     suspend fun login(@Body request: LoginRequest): TokenResponse
 
+    // Picker estilo Netflix: lista de usuarios con avatar para el Login.
+    // Ruta pública bajo /auth/** (permitAll). El backend solo manda
+    // id + nick + avatarUrl, nunca role ni blocked.
+    @GET("auth/users")
+    suspend fun getLoginUsers(): List<com.musarum.mobile.data.network.dto.LoginUserDto>
+
     @GET("songs")
     suspend fun getSongs(
         @Query("page") page: Int = 0,
