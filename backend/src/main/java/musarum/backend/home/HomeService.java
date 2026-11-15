@@ -207,6 +207,10 @@ public class HomeService {
                     topSong
             ));
         }
+        // Orden estable para la UI: el que más ha escuchado esta semana
+        // aparece arriba. Sin esto, el orden seguía el de userRepository.findAll()
+        // (por id) y la lista parecía "aleatoria" entre visitas.
+        out.sort(java.util.Comparator.comparingLong(TasteProfileDto::playsThisWeek).reversed());
         return out;
     }
 

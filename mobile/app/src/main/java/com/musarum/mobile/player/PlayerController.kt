@@ -177,44 +177,45 @@ class PlayerController(
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
             // Caso típico: el usuario tenía la canción descargada como file://
             // y la borra desde Descargas o Perfil mientras suena. ExoPlayer
-            // falla con SOURCE_UNSPECIFIED / IO_FILE_NOT_FOUND al no encontrar
-            // el fichero. Antes el audio simplemente paraba sin mensaje.
-            // Ahora: si la canción actual tiene URI file:// y el fichero ya
-            // no existe, la rearmamos con el endpoint de streaming del backend
-            // y seguimos. Con la pista bien, la próxima canción de la cola
-            // puede tener el mismo problema — mantenemos el mismo fix.
+            // falla con IO_FILE_NOT_FOUND al no encontrar el fichero. Antes
+            // el audio simplemente paraba sin mensaje. Ahora: si la URI
+            // actual es file://, la rearmamos con el endpoint de streaming
+            // del backend y seguimos desde la misma posición.
             val controller = mediaController ?: return
             val song = _state.value.currentSong ?: return
-            val isFileMissing = error.errorCode ==
-                    androidx.media3.common.PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND
+            val currentUri = controller.currentMediaItem?.localConfiguration?.uri
+            val currentIsLocal = currentUri?.scheme == "file"
             val streamingUri = baseUrl.trimEnd('/') + "/stream/" + song.id
-            val currentIsLocal = downloadsRepository.fileFor(song.id) == null
-                    && controller.currentMediaItem?.localConfiguration?.uri?.scheme == "file"
-            if (isFileMissing || currentIsLocal) {
-                android.util.Log.w(
-                    "PlayerController",
-                    "Fichero local ausente para songId=${song.id}, cayendo a streaming"
+
+            // Evita bucles: si ya estábamos streameando y el error viene
+            // de ahí (p.ej. backend caído), NO replazamos por lo mismo.
+            if (!currentIsLocal) return
+            if (currentUri?.toString() == streamingUri) return
+
+            android.util.Log.w(
+                "PlayerController",
+                "Fichero local ausente para songId=${song.id} " +
+                    "(errorCode=${error.errorCode}), cayendo a streaming"
+            )
+            val index = controller.currentMediaItemIndex
+            val pos = controller.currentPosition.coerceAtLeast(0L)
+            runCatching {
+                controller.replaceMediaItem(
+                    index,
+                    MediaItem.Builder()
+                        .setUri(streamingUri)
+                        .setMediaId(song.id.toString())
+                        .setMediaMetadata(
+                            MediaMetadata.Builder()
+                                .setTitle(song.title)
+                                .setArtist(song.artistsLabel)
+                                .build()
+                        )
+                        .build()
                 )
-                val index = controller.currentMediaItemIndex
-                val pos = controller.currentPosition.coerceAtLeast(0L)
-                runCatching {
-                    controller.replaceMediaItem(
-                        index,
-                        MediaItem.Builder()
-                            .setUri(streamingUri)
-                            .setMediaId(song.id.toString())
-                            .setMediaMetadata(
-                                MediaMetadata.Builder()
-                                    .setTitle(song.title)
-                                    .setArtist(song.artistsLabel)
-                                    .build()
-                            )
-                            .build()
-                    )
-                    controller.prepare()
-                    controller.seekTo(pos)
-                    controller.playWhenReady = true
-                }
+                controller.prepare()
+                controller.seekTo(pos)
+                controller.playWhenReady = true
             }
         }
     }

@@ -314,8 +314,10 @@ fun NowPlayingScreen(
                 // Primero intentamos resolver el videoId en el backend y
                 // abrir el embed dentro de la app. Si el backend devuelve 204
                 // (no se encontró), caemos al navegador externo (comportamiento
-                // viejo) como fallback.
+                // viejo) como fallback. El scraping de YouTube puede tardar
+                // hasta 6s → snackbar para que el user sepa que algo pasa.
                 scope.launch {
+                    snackbar("Buscando vídeo en YouTube…")
                     val result = runCatching {
                         container.apiService.getYoutubeVideo(song.id)
                     }
@@ -323,6 +325,7 @@ fun NowPlayingScreen(
                     if (body != null && body.isSuccessful && body.body() != null) {
                         onOpenYoutubeEmbed(song.id, body.body()!!.videoId)
                     } else {
+                        snackbar("Sin resultados en YouTube; abro el navegador")
                         openYouTubeSearch(context, song)
                     }
                 }

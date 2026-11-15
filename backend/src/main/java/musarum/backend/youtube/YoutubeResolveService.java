@@ -7,6 +7,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -38,9 +40,14 @@ public class YoutubeResolveService {
 
     private static final Logger log = LoggerFactory.getLogger(YoutubeResolveService.class);
     private static final Pattern VIDEO_ID_RE = Pattern.compile("\"videoId\":\"([A-Za-z0-9_-]{11})\"");
+    private static final String VIDEO_RENDERER_MARKER = "\"videoRenderer\"";
     private static final String USER_AGENT =
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
     private static final String SENTINEL_NO_MATCH = "__none__";
+    /** Cuánto respetamos un "no match" cacheado antes de reintentar.
+     *  Si YouTube bajó o cambió el HTML temporalmente, el reintento tras 24h
+     *  da nueva oportunidad sin spam. */
+    private static final Duration NEGATIVE_CACHE_TTL = Duration.ofHours(24);
 
     private final SongRepository songRepository;
     private final HttpClient httpClient;
@@ -66,7 +73,14 @@ public class YoutubeResolveService {
                 .orElseThrow(() -> new SongNotFoundException(songId));
         String cached = song.getYoutubeVideoId();
         if (!refresh && cached != null) {
-            return cached.equals(SENTINEL_NO_MATCH) ? null : cached;
+            if (!cached.equals(SENTINEL_NO_MATCH)) return cached;
+            // Cache negativo: respetarlo solo si es fresco.
+            Instant fetchedAt = song.getYtFetchedAt();
+            if (fetchedAt != null
+                    && fetchedAt.isAfter(Instant.now().minus(NEGATIVE_CACHE_TTL))) {
+                return null;
+            }
+            // Expirado: cae a re-scraping.
         }
 
         String artist = (song.getArtists().isEmpty())
@@ -103,9 +117,20 @@ public class YoutubeResolveService {
                 log.warn("YouTube respondió {} a '{}'", res.statusCode(), query);
                 return null;
             }
-            Matcher m = VIDEO_ID_RE.matcher(res.body());
-            if (m.find()) return m.group(1);
-            log.warn("YouTube devolvió HTML sin videoId para '{}'", query);
+            String body = res.body();
+            // IMPORTANTE: el PRIMER "videoId" del HTML suele ser un elemento
+            // promocional (chip "Trending", shorts, radio) — no el primer
+            // resultado de búsqueda real. Los resultados que queremos
+            // reproducir están dentro de bloques "videoRenderer":{...}.
+            // Saltamos al primer marcador y desde ahí capturamos su videoId.
+            int markerIdx = body.indexOf(VIDEO_RENDERER_MARKER);
+            if (markerIdx == -1) {
+                log.warn("YouTube devolvió HTML sin videoRenderer para '{}'", query);
+                return null;
+            }
+            Matcher m = VIDEO_ID_RE.matcher(body);
+            if (m.find(markerIdx)) return m.group(1);
+            log.warn("YouTube devolvió HTML sin videoId tras videoRenderer para '{}'", query);
             return null;
         } catch (Exception e) {
             log.warn("Fallo scrapeando YouTube para '{}': {}", query, e.getMessage());

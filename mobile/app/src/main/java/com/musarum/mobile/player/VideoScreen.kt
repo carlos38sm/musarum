@@ -397,7 +397,9 @@ fun VideoScreen(
             onSearchYouTube = {
                 // Igual que NowPlayingScreen: resolver videoId en backend →
                 // abrir embed; si no hay match, caer al navegador externo.
+                // El scraping puede tardar hasta 6s → snackbar de "buscando".
                 ytScope.launch {
+                    snackbar("Buscando vídeo en YouTube…")
                     val result = runCatching {
                         container.apiService.getYoutubeVideo(song.id)
                     }
@@ -405,6 +407,7 @@ fun VideoScreen(
                     if (resp != null && resp.isSuccessful && resp.body() != null) {
                         onOpenYoutubeEmbed(song.id, resp.body()!!.videoId)
                     } else {
+                        snackbar("Sin resultados en YouTube; abro el navegador")
                         openYouTubeSearch(context, song)
                     }
                 }
