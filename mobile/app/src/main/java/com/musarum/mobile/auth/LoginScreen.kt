@@ -109,27 +109,9 @@ fun LoginScreen(
                 )
             )
     ) {
-        // Icono "⚙ servidor" arriba a la derecha. Útil cuando la IP Tailscale
-        // del backend cambia y el user quiere entrar antes de ningún login.
-        IconButton(
-            onClick = { showServerDialog = true },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .windowInsetsPadding(WindowInsets.systemBars)
-                .padding(8.dp)
-        ) {
-            Icon(
-                Icons.Filled.Dns,
-                contentDescription = "Configurar servidor",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-
         // verticalScroll para que en pantallas pequeñas / con el teclado
         // abierto el usuario pueda llegar al botón "Entrar" aunque el
-        // contenido no quepa de golpe. Antes, al añadir la fila de bolitas
-        // estilo Netflix, el conjunto superaba el alto útil y el botón
-        // quedaba cortado por debajo del IME.
+        // contenido no quepa de golpe.
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -274,6 +256,25 @@ fun LoginScreen(
                     }
                 }
             }
+        }
+
+        // IMPORTANTE: el IconButton del servidor va DESPUÉS del Column en el
+        // Box (= encima en Z-order) para que los taps lleguen a él. Antes
+        // estaba antes del Column, y el .verticalScroll del Column consume
+        // TODOS los eventos pointer de su área → el botón no respondía a
+        // los taps aunque se viera pintado.
+        IconButton(
+            onClick = { showServerDialog = true },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .windowInsetsPadding(WindowInsets.systemBars)
+                .padding(8.dp)
+        ) {
+            Icon(
+                Icons.Filled.Dns,
+                contentDescription = "Configurar servidor",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
 
         if (showServerDialog) {
