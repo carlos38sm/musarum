@@ -50,11 +50,14 @@ public class MusicBrainzSource implements MetadataSource {
     private TrackMetadata toMetadata(MusicBrainzResponse r) {
         String artist = null, artistMbid = null;
         if (r.artistCredit() != null && !r.artistCredit().isEmpty()) {
+            // Multi-artista: concatenamos TODOS los créditos usando el
+            // joinphrase que MB da entre cada uno (" feat. ", " & ", ", ",
+            // etc.). Antes solo tomábamos el primero → se perdían "feat."
+            // y colaboraciones en el nombre de archivo y en el tag.
+            artist = joinArtistCredits(r.artistCredit());
+            // El mbArtistId lo asociamos al primer artista (el "principal").
             var primero = r.artistCredit().get(0).artist();
-            if (primero != null) {
-                artist = Values.clean(primero.name());
-                artistMbid = primero.id();
-            }
+            if (primero != null) artistMbid = primero.id();
         }
 
         MusicBrainzResponse.Release release = mejorRelease(r.releases(), r.isrcs());
@@ -86,10 +89,11 @@ public class MusicBrainzSource implements MetadataSource {
             discNumber  = info.discNumber();
             discTotal   = info.discTotal();
 
-            // albumArtist desde el release si lo trae; si no, el artista de la grabación
-            albumArtist = (release.artistCredit() != null && !release.artistCredit().isEmpty()
-                    && release.artistCredit().get(0).artist() != null)
-                    ? Values.clean(release.artistCredit().get(0).artist().name())
+            // albumArtist: concatenamos todos los créditos del release (si
+            // el álbum es una colaboración MB lo refleja aquí). Si no hay
+            // release artist credit, caemos al artista de la grabación.
+            albumArtist = (release.artistCredit() != null && !release.artistCredit().isEmpty())
+                    ? joinArtistCredits(release.artistCredit())
                     : artist;
 
             var labelInfo = client.lookupReleaseLabels(releaseId)
@@ -131,6 +135,29 @@ public class MusicBrainzSource implements MetadataSource {
 
     private record PistaInfo(Integer trackNumber, Integer trackTotal,
                              Integer discNumber, Integer discTotal) {}
+
+    /**
+     * Concatena todos los artistas de un crédito respetando el joinphrase
+     * que MusicBrainz da entre cada uno. Para "A feat. B" MB envía dos
+     * credits con joinphrase=" feat. " y "". Para "A, B, C" envía ", ", ", "
+     * y "". Si no viene joinphrase, caemos a ", " como separador sensato.
+     */
+    private String joinArtistCredits(List<MusicBrainzResponse.ArtistCredit> credits) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < credits.size(); i++) {
+            var credit = credits.get(i);
+            if (credit.artist() == null) continue;
+            String name = Values.clean(credit.artist().name());
+            if (name == null || name.isBlank()) continue;
+            sb.append(name);
+            // Último crédito: nada más. Intermedio: el joinphrase o ", ".
+            if (i < credits.size() - 1) {
+                String jp = credit.joinphrase();
+                sb.append((jp == null || jp.isBlank()) ? ", " : jp);
+            }
+        }
+        return sb.length() > 0 ? sb.toString() : null;
+    }
 
     /**
      * Elige el release más canónico. Prioriza:

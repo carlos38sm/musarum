@@ -1,14 +1,26 @@
 package musarum.backend.admin;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import musarum.backend.backups.BackupService;
 
 /**
  * Endpoints de administración (OWNER-only). Hoy solo expone el snapshot de
@@ -28,9 +40,11 @@ class AdminController {
     private static final Logger log = LoggerFactory.getLogger(AdminController.class);
 
     private final ServerStatsService statsService;
+    private final BackupService backupService;
 
-    AdminController(ServerStatsService statsService) {
+    AdminController(ServerStatsService statsService, BackupService backupService) {
         this.statsService = statsService;
+        this.backupService = backupService;
     }
 
     @GetMapping("/stats")
@@ -81,6 +95,37 @@ class AdminController {
     ServerStatsService.CleanOrphansSummary cleanOrphanEntities() {
         logCaller("clean-orphan-entities");
         return statsService.cleanOrphanEntities();
+    }
+
+    // ── Backups ──────────────────────────────────────────────────────
+
+    @GetMapping("/backups")
+    @PreAuthorize("hasRole('OWNER')")
+    List<BackupService.BackupFileDto> listBackups() throws IOException {
+        return backupService.list();
+    }
+
+    @PostMapping("/backups")
+    @PreAuthorize("hasRole('OWNER')")
+    BackupService.BackupFileDto createBackup() throws IOException {
+        logCaller("backup-now");
+        Path p = backupService.snapshot();
+        return new BackupService.BackupFileDto(
+                p.getFileName().toString(),
+                Files.size(p),
+                Files.getLastModifiedTime(p).toInstant());
+    }
+
+    @GetMapping("/backups/{fileName}")
+    @PreAuthorize("hasRole('OWNER')")
+    ResponseEntity<FileSystemResource> downloadBackup(@PathVariable String fileName) {
+        Path p = backupService.resolveSafe(fileName);
+        if (p == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + fileName + "\"")
+                .body(new FileSystemResource(p));
     }
 
     /** Traza quién llamó y con qué authorities — útil para diagnosticar 403. */

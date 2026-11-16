@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
@@ -118,6 +119,22 @@ fun SongActionsSheet(
                 onClick = onAddToPlaylist
             )
 
+            // "Enviar a..." — abre un sub-sheet con los otros users de la red
+            // para que el OWNER (o cualquier user) comparta esta canción con
+            // alguien. Cada envío se guarda en la bandeja del destinatario.
+            var showSendTo by remember { mutableStateOf(false) }
+            SheetAction(
+                icon = Icons.AutoMirrored.Filled.Send,
+                label = "Enviar a…",
+                onClick = { showSendTo = true }
+            )
+            if (showSendTo) {
+                SendToUserSheet(
+                    song = song,
+                    onDismiss = { showSendTo = false; onDismiss() }
+                )
+            }
+
             // ── Acciones de descarga offline ───────────────────────────────
             when {
                 isDownloading -> SheetAction(
@@ -200,6 +217,81 @@ private fun SheetAction(
             style = MaterialTheme.typography.bodyLarge,
             color = labelColor
         )
+    }
+}
+
+/**
+ * Sub-sheet "Enviar a..." — lista los otros users de la red (usa el mismo
+ * endpoint /auth/users que el picker Netflix del Login) y envía la canción
+ * al tocar uno. Sin confirmación extra: un tap, un envío. El destinatario
+ * la verá en su Bandeja al abrir Musarum.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SendToUserSheet(
+    song: SongSummaryDto,
+    onDismiss: () -> Unit
+) {
+    val container = LocalAppContainer.current
+    val snackbar = LocalSnackbar.current
+    val scope = rememberCoroutineScope()
+    val me by container.userRepository.me.collectAsState()
+    var users by remember {
+        mutableStateOf<List<com.musarum.mobile.data.network.dto.LoginUserDto>>(emptyList())
+    }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        runCatching { container.apiService.getLoginUsers() }
+            .onSuccess { fetched ->
+                users = fetched.filter { it.id != me?.id }
+            }
+    }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+            Text(
+                "Enviar \"${song.title}\" a…",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
+            )
+            if (users.isEmpty()) {
+                Text(
+                    "No hay otros usuarios en la red.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+            } else {
+                users.forEach { u ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                scope.launch {
+                                    val req = com.musarum.mobile.data.network.dto.SendShareRequest(
+                                        toUserId = u.id,
+                                        songId = song.id
+                                    )
+                                    runCatching { container.apiService.sendInbox(req) }
+                                        .onSuccess { snackbar("Enviado a ${u.nick}") }
+                                        .onFailure { snackbar("No se pudo enviar") }
+                                    onDismiss()
+                                }
+                            }
+                            .padding(horizontal = 24.dp, vertical = 10.dp)
+                    ) {
+                        com.musarum.mobile.music.ArtistAvatar(url = u.avatarUrl, size = 36.dp)
+                        Text(
+                            u.nick,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 14.dp)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 

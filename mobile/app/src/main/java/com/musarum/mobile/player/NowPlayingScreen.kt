@@ -255,6 +255,10 @@ fun NowPlayingScreen(
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentAlignment = Alignment.Center
         ) {
+            // Mini-letra Y visualizador pueden coexistir: la letra arriba,
+            // las barras debajo. Antes el else-if ocultaba el visualizador
+            // si había mini-letra activa, por eso "le daba y no aparecía
+            // nada". Ahora cada uno se pinta independiente.
             if (showMiniLyric && hasSyncedLyrics && !currentLine.isNullOrBlank()) {
                 Text(
                     text = currentLine,
@@ -268,20 +272,31 @@ fun NowPlayingScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 32.dp)
                 )
-            } else if (showVisualizer && audioSessionId > 0) {
-                // Visualizador FFT estilo Ares pintado en el hueco central
-                // sobre el gradient dominante. 32 barras + caps que caen con
-                // gravedad. Si el usuario no concede RECORD_AUDIO, el widget
-                // se queda en blanco sin crashear.
-                AudioVisualizer(
-                    sessionId = audioSessionId,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(140.dp)
-                        .padding(horizontal = 32.dp),
-                    barColor = MaterialTheme.colorScheme.primary,
-                    capColor = MaterialTheme.colorScheme.tertiary
-                )
+            }
+            if (showVisualizer) {
+                // Si no hay sessionId aún (nunca se dio play en esta sesión
+                // del PlayerService) o el user no ha concedido RECORD_AUDIO,
+                // explicamos qué pasa en vez de quedarnos en blanco.
+                when {
+                    audioSessionId <= 0 -> Text(
+                        text = "Pulsa play para activar el visualizador",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 32.dp, vertical = 40.dp),
+                        textAlign = TextAlign.Center
+                    )
+                    else -> AudioVisualizer(
+                        sessionId = audioSessionId,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(if (showMiniLyric && hasSyncedLyrics) 100.dp else 140.dp)
+                            .padding(horizontal = 32.dp),
+                        barColor = MaterialTheme.colorScheme.primary,
+                        capColor = MaterialTheme.colorScheme.tertiary
+                    )
+                }
             }
         }
 

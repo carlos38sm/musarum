@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material.icons.filled.MicExternalOn
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.NewReleases
@@ -79,6 +80,7 @@ fun HomeScreen(
     onOpenSong: (Long) -> Unit = {},
     onOpenDiscoveries: () -> Unit = {},
     onOpenFavorites: () -> Unit = {},
+    onOpenInbox: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(
         factory = HomeViewModel.factory(
             LocalAppContainer.current.playHistoryRepository,
@@ -91,10 +93,17 @@ fun HomeScreen(
     val me by container.userRepository.me.collectAsState()
     val snackbar = LocalSnackbar.current
 
+    val inboxUnreadState = androidx.compose.runtime.remember {
+        androidx.compose.runtime.mutableStateOf(0L)
+    }
+    val inboxUnread = inboxUnreadState.value
     androidx.compose.runtime.LaunchedEffect(Unit) {
         if (me == null) {
             runCatching { container.userRepository.refresh() }
         }
+        // Badge del icono de bandeja en el HeroHeader.
+        runCatching { container.apiService.getInboxUnreadCount() }
+            .onSuccess { inboxUnreadState.value = it["count"] ?: 0L }
     }
 
     Scaffold { padding ->
@@ -110,7 +119,14 @@ fun HomeScreen(
                 contentPadding = PaddingValues(top = 4.dp, bottom = 100.dp),
                 verticalArrangement = Arrangement.spacedBy(22.dp)
             ) {
-                item { HeroHeader(nick = me?.nick, avatarUrl = me?.avatarUrl) }
+                item {
+                    HeroHeader(
+                        nick = me?.nick,
+                        avatarUrl = me?.avatarUrl,
+                        inboxUnread = inboxUnread,
+                        onOpenInbox = onOpenInbox
+                    )
+                }
 
                 state.lastPlayed?.let { last ->
                     item {
@@ -293,7 +309,12 @@ fun HomeScreen(
  * en labelLarge + nick en displaySmall para que destaque sin top app bar.
  */
 @Composable
-private fun HeroHeader(nick: String?, avatarUrl: String?) {
+private fun HeroHeader(
+    nick: String?,
+    avatarUrl: String?,
+    inboxUnread: Long = 0L,
+    onOpenInbox: () -> Unit = {}
+) {
     val greeting = remember { pickGreeting() }
     val scheme = MaterialTheme.colorScheme
 
@@ -365,6 +386,37 @@ private fun HeroHeader(nick: String?, avatarUrl: String?) {
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+            }
+
+            // Icono de bandeja a la derecha del saludo. Badge rojo si hay
+            // canciones sin leer.
+            Box {
+                androidx.compose.material3.IconButton(onClick = onOpenInbox) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Filled.MailOutline,
+                        contentDescription = "Bandeja",
+                        tint = scheme.onSurfaceVariant
+                    )
+                }
+                if (inboxUnread > 0L) {
+                    Surface(
+                        shape = CircleShape,
+                        color = scheme.error,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .size(18.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = if (inboxUnread > 9) "9+" else inboxUnread.toString(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = scheme.onError,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
             }
         }
     }

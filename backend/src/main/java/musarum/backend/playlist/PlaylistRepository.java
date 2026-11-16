@@ -10,6 +10,13 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PlaylistRepository extends JpaRepository<Playlist, Long> {
 
+    /** Snapshot plano para BackupService: (id, name, description, is_public, owner_id). */
+    @org.springframework.data.jpa.repository.Query(
+            value = "SELECT id, name, description, is_public, owner_id " +
+                    "FROM playlists ORDER BY id",
+            nativeQuery = true)
+    java.util.List<Object[]> dumpAll();
+
     List<Playlist> findByOwnerId(Long ownerId);
 
     List<Playlist> findByIsPublicTrue();

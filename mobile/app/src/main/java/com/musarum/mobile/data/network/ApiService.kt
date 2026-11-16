@@ -118,6 +118,24 @@ interface ApiService {
         @Query("refresh") refresh: Boolean = false
     ): retrofit2.Response<com.musarum.mobile.data.network.dto.YoutubeVideoDto>
 
+    // ── Bandeja de canciones compartidas ──
+    @GET("me/inbox")
+    suspend fun getInbox(): List<com.musarum.mobile.data.network.dto.InboxItemDto>
+
+    @GET("me/inbox/unread-count")
+    suspend fun getInboxUnreadCount(): Map<String, Long>
+
+    @POST("me/inbox")
+    suspend fun sendInbox(
+        @Body req: com.musarum.mobile.data.network.dto.SendShareRequest
+    ): retrofit2.Response<Unit>
+
+    @POST("me/inbox/{id}/read")
+    suspend fun markInboxRead(@Path("id") id: Long): retrofit2.Response<Unit>
+
+    @DELETE("me/inbox/{id}")
+    suspend fun deleteInbox(@Path("id") id: Long): retrofit2.Response<Unit>
+
     // Cola "radio" basada en una canción semilla.
     @GET("songs/{id}/radio")
     suspend fun getRadioFrom(

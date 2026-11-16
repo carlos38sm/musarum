@@ -47,6 +47,7 @@ import com.musarum.mobile.music.favorites.FavoritesScreen
 import com.musarum.mobile.music.library.DownloadsScreen
 import com.musarum.mobile.music.genres.GenreDetailScreen
 import com.musarum.mobile.music.library.LibraryScreen
+import com.musarum.mobile.inbox.InboxScreen
 import com.musarum.mobile.music.library.PlaylistDetailScreen
 import com.musarum.mobile.music.search.SearchScreen
 import com.musarum.mobile.player.InfoScreen
@@ -226,7 +227,8 @@ fun MusarumNavHost(
                     onOpenGenre = { id -> navController.navigate(Routes.genreDetail(id)) },
                     onOpenArtist = { id -> navController.navigate(Routes.artistDetail(id)) },
                     onOpenDiscoveries = { navController.navigate(Routes.DISCOVERIES) },
-                    onOpenFavorites = { navController.navigate(Routes.FAVORITES) }
+                    onOpenFavorites = { navController.navigate(Routes.FAVORITES) },
+                    onOpenInbox = { navController.navigate(Routes.INBOX) }
                 )
             }
 
@@ -308,6 +310,10 @@ fun MusarumNavHost(
 
             composable(Routes.DOWNLOADS) {
                 DownloadsScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(Routes.INBOX) {
+                InboxScreen(onBack = { navController.popBackStack() })
             }
 
             composable(Routes.LIBRARY) {

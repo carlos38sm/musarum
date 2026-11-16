@@ -13,7 +13,14 @@ public record MusicBrainzResponse(
         List<Tag> tags,
         List<Genre> genres
 ) {
-    public record ArtistCredit(Artist artist) {}
+    public record ArtistCredit(
+            Artist artist,
+            // Cómo unir ESTE artista con el SIGUIENTE en el crédito. MB
+            // envía " feat. ", " & ", " vs. ", ", " etc. Si viene null,
+            // usamos ", " como fallback. En el último artista suele ser
+            // null o cadena vacía — es el fin del crédito.
+            String joinphrase
+    ) {}
     public record Artist(String id, String name) {}
 
     public record Release(
