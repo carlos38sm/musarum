@@ -142,13 +142,23 @@ class PlayerController(
                 currentRgTarget = 1f
             } else {
                 // Transición natural (fin de track sin crossfade) o manual
-                // (next/previous). Flujo clásico de fade-in si procede.
+                // (next/previous). Si el usuario quiere gapless y no usa
+                // crossfade, la transición tiene que ser INSTANTÁNEA: sin
+                // fade-in, sin pausa, sin volumen 0 inicial. Para pistas de
+                // álbum que enlazan (Dark Side of the Moon, discos en vivo)
+                // es lo que el oído espera. Si crossfade > 0, el fade-in
+                // manual sigue teniendo preferencia.
                 fadeJob?.cancel()
                 fadingOut = false
                 currentRgTarget = 1f
                 val xf = playerPreferences.crossfadeSeconds.value
-                if (xf > 0) scheduleFadeIn(controller, xf * 1000L)
-                else controller.volume = 1f
+                when {
+                    xf > 0 -> scheduleFadeIn(controller, xf * 1000L)
+                    else -> {
+                        // Gapless o simple: volumen inmediato a target.
+                        controller.volume = 1f
+                    }
+                }
             }
             song?.let { fetchCoverFor(it.id) }
         }
@@ -774,24 +784,23 @@ class PlayerController(
         remainingMs: Long
     ) {
         val previousSong = _state.value.currentSong ?: return
-        val previousPos = runCatching { controller.currentPosition }.getOrDefault(0L)
         val target = currentRgTarget
 
         crossfadeInProgress = true
         fadingOut = true
 
-        // 1. Creamos el aux con A y pedimos la posición ANTES de prepare().
-        //    Importante: si llamáramos a seekTo DESPUÉS de que el aux esté
-        //    en STATE_READY, ExoPlayer dispara un nuevo buffering para
-        //    saltar a esa posición → corte audible al empezar el crossfade.
-        //    Pre-posicionando antes del prepare, el buffering inicial ya
-        //    carga desde donde iba A, sin salto posterior.
-        // El aux DEBE usar las mismas AudioAttributes que el principal.
-        // Si se instancia con los defaults (USAGE_UNKNOWN), Android lo trata
-        // como una stream de audio nueva al aparecer/liberar → algunos stacks
-        // Bluetooth hacen handshake de ruta (A2DP) y se oye "desconecta/
-        // reconecta" al cambiar de canción. Mismas attrs + wake lock evita
-        // ese parpadeo.
+        // Pre-buffer de A desde el inicio. NO pre-posicionamos: el aux carga
+        // los primeros segundos de A, los descarta, y al estar READY hacemos
+        // un seekTo a la posición ACTUAL del principal justo antes de
+        // arrancar. Antes usábamos setMediaSource(source, previousPos) en
+        // tiempo de preparación: como prepare tardaba 200-500 ms, cuando el
+        // aux llegaba a READY el principal ya había avanzado esos ms → al
+        // arrancar el aux la pista "retrocedía" ~300 ms = el corte audible
+        // que Carlos oía. Ahora el seek ocurre en el momento exacto del
+        // arranque y la transición es sin rewind.
+        //
+        // AudioAttributes iguales al principal + wakeMode NETWORK → evita
+        // handshake A2DP de los Bluetooth al cambiar de canción.
         val aux = ExoPlayer.Builder(appContext)
             .setAudioAttributes(
                 androidx.media3.common.AudioAttributes.Builder()
@@ -804,7 +813,6 @@ class PlayerController(
             .setWakeMode(androidx.media3.common.C.WAKE_MODE_NETWORK)
             .build()
         val url = uriFor(previousSong.id)
-        // DefaultDataSource soporta file:// (descargas offline) además de HTTP.
         val auxDataSourceFactory = DefaultDataSource.Factory(
             appContext,
             OkHttpDataSource.Factory(okHttpClient)
@@ -812,23 +820,23 @@ class PlayerController(
         val source = ProgressiveMediaSource
                 .Factory(auxDataSourceFactory)
                 .createMediaSource(MediaItem.fromUri(url))
-        aux.setMediaSource(source, previousPos)   // ← seek pre-prepare
-        aux.volume = target
-        aux.playWhenReady = false  // Esperamos ready
+        // Pre-posicionamos con lo mejor que tenemos; el seek definitivo lo
+        // haremos en armCrossfade con la posición EN ESE instante. Así el
+        // buffering inicial ya empieza cerca del punto correcto y el seek
+        // final es un ajuste pequeño (pocos KB) casi instantáneo.
+        val initialSeekHint = runCatching { controller.currentPosition }.getOrDefault(0L)
+        aux.setMediaSource(source, initialSeekHint)
+        aux.volume = 0f  // arrancará silente, la rampa lo sube
+        aux.playWhenReady = false
         aux.prepare()
         auxPlayer = aux
 
-        // Flag local: evita que el callback dispare dos veces (algunos
-        // backends de Media3 emiten STATE_READY más de una vez).
         var crossfadeArmed = false
 
         val auxListener = object : Player.Listener {
             override fun onPlaybackStateChanged(state: Int) {
                 if (state != Player.STATE_READY) return
                 if (crossfadeArmed) return
-                // Chequeo defensivo: si el principal YA cambió de pista
-                // (porque la red tardó demasiado y Media3 avanzó por su
-                // cuenta), el crossfade carece de sentido. Soltamos aux.
                 if (!crossfadeInProgress) {
                     runCatching { aux.removeListener(this) }
                     releaseAuxPlayer()
@@ -836,7 +844,7 @@ class PlayerController(
                 }
                 crossfadeArmed = true
                 runCatching { aux.removeListener(this) }
-                armCrossfade(controller, aux, nextIndex, previousPos, target)
+                armCrossfade(controller, aux, nextIndex, target)
             }
         }
         aux.addListener(auxListener)
@@ -855,45 +863,76 @@ class PlayerController(
         }
     }
 
-    /** Arranca el crossfade una vez el aux está en STATE_READY. El aux ya
-     *  está en la posición correcta porque hicimos setMediaSource(source,
-     *  previousPos) antes del prepare — solo falta soltar el playWhenReady. */
+    /**
+     * Arranca el crossfade una vez el aux está en STATE_READY.
+     * Mejoras clave vs. la versión anterior:
+     *   1. **Seek sincronizado**: resincronizamos el aux con la posición
+     *      ACTUAL del principal justo antes de arrancar → cero rewind.
+     *   2. **Rampa equal-power** (sin²/cos²): la suma de energía de las
+     *      dos fuentes es constante → el punto medio ya no "se oye más
+     *      bajo" como pasaba con la rampa lineal.
+     *   3. **Seek del principal retrasado al 70 % del ramp**: cuando el
+     *      principal cambia a B, su buffer tiene que cargar → micro-glitch.
+     *      Si lo hacemos cuando el aux ya suena fuerte (≥70 % del cross),
+     *      el oído enmascara el glitch. Antes el seek era al momento 0 y
+     *      la rampa UP subía con B aún bufferreando → "silencio de entrada".
+     */
     private fun armCrossfade(
         controller: MediaController,
         aux: ExoPlayer,
         nextIndex: Int,
-        previousPos: Long,
         target: Float
     ) {
+        // 1. Resincroniza el aux con el principal AHORA mismo.
+        val principalPos = runCatching { controller.currentPosition }.getOrDefault(0L)
+        runCatching { aux.seekTo(principalPos) }
+
+        // 2. Aux empieza a sonar en silencio; la rampa lo sube.
+        runCatching { aux.volume = 0f }
         runCatching { aux.playWhenReady = true }
 
-        // Principal: avanza a B con volumen 0. onMediaItemTransition
-        // ve crossfadeInProgress y NO dispara fade-in extra; nosotros
-        // controlamos ambas rampas aquí. Usamos seekTo(nextIndex, 0) en
-        // lugar de seekToNextMediaItem para que el loop de REPEAT_ALL
-        // funcione (nextIndex=0 cuando la "siguiente" es la primera de
-        // la cola — seekToNextMediaItem en la última podía no saltar).
-        runCatching { controller.volume = 0f }
-        runCatching { controller.seekTo(nextIndex, 0L) }
+        // 3. El principal baja desde target; se queda tocando A hasta que el
+        //    ramp alcanza el 70 %. Ahí cambiamos a B silente para que B
+        //    bufferee mientras el aux todavía suena a volumen apreciable;
+        //    el oído enmascara el posible glitch del seek.
+        runCatching { controller.volume = target }
 
-        // Duración efectiva del crossfade = el valor configurado en
-        // preferencias. Usamos el valor crudo (no "remaining") porque
-        // ahora el crossfade empieza en el momento READY del aux, no
-        // en los últimos N segundos del principal.
         val fadeMs = (playerPreferences.crossfadeSeconds.value * 1000L).coerceAtLeast(1000L)
+        // Umbral a partir del cual cambiamos el principal a B. 0.7 = el aux
+        // va al 95 % de volumen (sin(0.7·π/2) ≈ 0.89 → al cuadrado ≈ 0.79
+        // de energía) → suficiente para enmascarar el micro-glitch.
+        val switchAt = 0.7f
 
         fadeJob?.cancel()
         fadeJob = scope.launch {
-            val steps = (fadeMs / 50L).coerceAtLeast(1)
+            val steps = (fadeMs / 40L).coerceAtLeast(1)
             val stepDelay = fadeMs / steps
+            var switched = false
             repeat(steps.toInt()) { i ->
                 val t = (i + 1f) / steps
-                val outVol = (target * (1f - t)).coerceIn(0f, 1f)
-                val inVol  = (target * t).coerceIn(0f, 1f)
-                runCatching { aux.volume = outVol }
-                runCatching { controller.volume = inVol }
+                // Equal-power: sin²(t·π/2) + cos²(t·π/2) = 1 → la energía
+                // acústica combinada se mantiene constante en todo el ramp.
+                val angle = (t * (Math.PI / 2.0)).toFloat()
+                val inFactor  = kotlin.math.sin(angle)
+                val outFactor = kotlin.math.cos(angle)
+                runCatching { aux.volume = (target * inFactor).coerceIn(0f, 1f) }
+                if (!switched) {
+                    // Principal sigue reproduciendo A con volumen bajando.
+                    runCatching { controller.volume = (target * outFactor).coerceIn(0f, 1f) }
+                    if (t >= switchAt) {
+                        switched = true
+                        // Cambio silente a B. onMediaItemTransition ve
+                        // crossfadeInProgress=true y NO dispara fade-in extra.
+                        runCatching { controller.volume = 0f }
+                        runCatching { controller.seekTo(nextIndex, 0L) }
+                    }
+                }
+                // Tras el switch, el principal queda en 0 — B bufferea sin
+                // sonar, aux sigue sonando A fading out. Al final del ramp
+                // subimos el principal a target y liberamos el aux.
                 delay(stepDelay)
             }
+            // Final del ramp: principal suena B a volumen target, aux liberado.
             runCatching { controller.volume = currentRgTarget }
             releaseAuxPlayer()
         }

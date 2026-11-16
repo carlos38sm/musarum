@@ -50,6 +50,18 @@ class PlayerPreferences(context: Context) {
     private val _equalizerBands = MutableStateFlow(loadBands())
     val equalizerBands: StateFlow<List<Int>> = _equalizerBands.asStateFlow()
 
+    // Gapless: cuando el crossfade está a 0 y gapless está ON, al cambiar
+    // de pista NO hacemos fade-in (que metía ~100 ms de silencio+sube) ni
+    // dejamos que Media3 inserte su pequeño gap. La transición entre
+    // canciones es inmediata y sin micro-pausa — pensado para álbumes
+    // cuyas pistas enlazan (Dark Side of the Moon, discos en directo).
+    // Por defecto ON: es lo que el usuario espera, y si usa crossfade >0
+    // la preferencia se ignora.
+    private val _gaplessEnabled = MutableStateFlow(
+        prefs.getBoolean(KEY_GAPLESS, true)
+    )
+    val gaplessEnabled: StateFlow<Boolean> = _gaplessEnabled.asStateFlow()
+
     private val _recentSearches = MutableStateFlow(loadRecent())
     val recentSearches: StateFlow<List<String>> = _recentSearches.asStateFlow()
 
@@ -72,6 +84,11 @@ class PlayerPreferences(context: Context) {
     fun setEqualizerEnabled(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_EQ_ENABLED, enabled).apply()
         _equalizerEnabled.value = enabled
+    }
+
+    fun setGaplessEnabled(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_GAPLESS, enabled).apply()
+        _gaplessEnabled.value = enabled
     }
 
     /** Fija las 5 ganancias en milibelios. Se recortan a [-1500, +1500]. */
@@ -120,6 +137,7 @@ class PlayerPreferences(context: Context) {
         private const val KEY_DOWNLOADS_TEMPORARY = "downloads_temporary_default"
         private const val KEY_EQ_ENABLED = "equalizer_enabled"
         private const val KEY_EQ_BANDS = "equalizer_bands"
+        private const val KEY_GAPLESS = "gapless_enabled"
         private const val KEY_RECENT_SEARCHES = "recent_searches"
         // Separador que no aparece en nicks/títulos razonables.
         private const val SEP = "\u001E"

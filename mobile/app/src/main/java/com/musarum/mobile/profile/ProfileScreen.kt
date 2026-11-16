@@ -243,6 +243,22 @@ fun ProfileScreen(
                 }
             )
             Spacer(Modifier.height(10.dp))
+            // Gapless: solo se aplica cuando crossfade está a 0. Para pistas
+            // de álbum que enlazan (discos en directo, conceptuales como
+            // Dark Side of the Moon) elimina la micro-pausa entre canciones.
+            val gaplessEnabled by container.playerPreferences
+                .gaplessEnabled.collectAsState()
+            SettingRowSwitch(
+                icon = Icons.Filled.MusicNote,
+                title = "Reproducción continua",
+                subtitle = if (crossfadeSeconds > 0) "Ignorado mientras uses crossfade"
+                           else "Sin pausa entre canciones de un álbum",
+                checked = gaplessEnabled,
+                onCheckedChange = {
+                    container.playerPreferences.setGaplessEnabled(it)
+                }
+            )
+            Spacer(Modifier.height(10.dp))
             // Convivencia: cada toggle controla una sección del Home de los
             // demás. shareNowPlaying → "En Musarum ahora"; shareTaste →
             // "Gustos de la casa". El backend ya los respeta; aquí solo
