@@ -148,12 +148,18 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     // ── Enrichment tracking (V6) ──────────────────────────────────────────
 
     /**
-     * Candidatas a re-enriquecer: sin status (nunca intentada) o con
-     * FAILED_TRANSIENT (fallo temporal). Las OK y FAILED_NO_MATCH se saltan
-     * — repetirlas da el mismo resultado.
+     * TODAS las canciones, incluidas OK y FAILED_NO_MATCH.
+     *
+     * <p>Antes filtrábamos a solo NULL/FAILED_TRANSIENT con la idea de "no
+     * repetir lo ya intentado". Problema: si Emendatium corría mal (fpcalc
+     * rev, red caída, ACOUSTID sin clave) y marcaba la fila OK aun sin BPM,
+     * el botón "Re-enriquecer todo" la saltaba para siempre. El usuario
+     * pulsa el botón PORQUE Emendatium ahora está bien — hay que recorrer
+     * el catálogo entero. Reaplicar es barato: el pipeline no sobrescribe
+     * campos ya seteados (merger first-wins + Song.applyEnrichment ignora
+     * nulls), así que una pasada extra solo rellena huecos.
      */
-    @Query("SELECT s FROM Song s "
-         + "WHERE s.enrichStatus IS NULL OR s.enrichStatus = musarum.backend.song.EnrichStatus.FAILED_TRANSIENT")
+    @Query("SELECT s FROM Song s")
     org.springframework.data.domain.Page<Song> findReenqueueable(
             org.springframework.data.domain.Pageable pageable);
 
