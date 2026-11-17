@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
@@ -132,6 +133,33 @@ fun SongActionsSheet(
                 SendToUserSheet(
                     song = song,
                     onDismiss = { showSendTo = false; onDismiss() }
+                )
+            }
+
+            // Si hay una fiesta activa, permite añadir esta canción a la
+            // cola compartida. La detectamos en caliente: un LaunchedEffect
+            // ligero consulta /party/active al abrir el sheet y guarda el id.
+            var activePartyId by remember { mutableStateOf<Long?>(null) }
+            androidx.compose.runtime.LaunchedEffect(song.id) {
+                val resp = runCatching { container.apiService.getActiveParty() }.getOrNull()
+                activePartyId = if (resp != null && resp.isSuccessful) resp.body()?.id else null
+            }
+            activePartyId?.let { pid ->
+                SheetAction(
+                    icon = androidx.compose.material.icons.Icons.Filled.Celebration,
+                    label = "Añadir a la fiesta",
+                    onClick = {
+                        scope.launch {
+                            runCatching {
+                                container.apiService.addSongToParty(
+                                    pid,
+                                    com.musarum.mobile.data.network.dto.AddPartySongRequest(song.id)
+                                )
+                            }.onSuccess { snackbar("Añadida a la fiesta") }
+                                .onFailure { snackbar("No se pudo añadir a la fiesta") }
+                        }
+                        onDismiss()
+                    }
                 )
             }
 

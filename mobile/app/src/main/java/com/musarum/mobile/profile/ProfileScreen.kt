@@ -23,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.DevicesOther
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -90,6 +91,7 @@ fun ProfileScreen(
     onOpenPublishUpdate: () -> Unit = {},
     onOpenCarMode: () -> Unit = {},
     onOpenHandoff: () -> Unit = {},
+    onOpenParty: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModel.factory(LocalAppContainer.current.userRepository)
     )
@@ -304,6 +306,13 @@ fun ProfileScreen(
                 title = "Continuar en otro dispositivo",
                 subtitle = "Pasa la reproducción entre móviles",
                 onClick = onOpenHandoff
+            )
+            Spacer(Modifier.height(10.dp))
+            SettingRow(
+                icon = Icons.Filled.Celebration,
+                title = "Fiesta musical",
+                subtitle = "Cola compartida entre los móviles de la casa",
+                onClick = onOpenParty
             )
             Spacer(Modifier.height(10.dp))
             // Permite al OWNER (o a cualquier usuario) abrir los ajustes de

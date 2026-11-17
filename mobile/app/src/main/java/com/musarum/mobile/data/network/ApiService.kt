@@ -155,6 +155,34 @@ interface ApiService {
     @POST("admin/server/backups")
     suspend fun createBackup(): com.musarum.mobile.data.network.dto.BackupFileDto
 
+    // ── Fiesta musical (listening party) ──
+    @POST("party")
+    suspend fun createParty(): com.musarum.mobile.data.network.dto.PartyDto
+
+    @GET("party/active")
+    suspend fun getActiveParty(): retrofit2.Response<com.musarum.mobile.data.network.dto.PartyDto>
+
+    @POST("party/{id}/join")
+    suspend fun joinParty(@Path("id") id: Long): retrofit2.Response<Unit>
+
+    @POST("party/{id}/leave")
+    suspend fun leaveParty(@Path("id") id: Long): retrofit2.Response<Unit>
+
+    @POST("party/{id}/queue")
+    suspend fun addSongToParty(
+        @Path("id") id: Long,
+        @Body req: com.musarum.mobile.data.network.dto.AddPartySongRequest
+    ): retrofit2.Response<Unit>
+
+    @POST("party/{id}/current")
+    suspend fun setPartyCurrent(
+        @Path("id") id: Long,
+        @Body req: com.musarum.mobile.data.network.dto.SetPartyCurrentRequest
+    ): retrofit2.Response<Unit>
+
+    @DELETE("party/{id}")
+    suspend fun closeParty(@Path("id") id: Long): retrofit2.Response<Unit>
+
     // Cola "radio" basada en una canción semilla.
     @GET("songs/{id}/radio")
     suspend fun getRadioFrom(

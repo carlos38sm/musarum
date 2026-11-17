@@ -246,8 +246,14 @@ fun PlaylistDetailScreen(
                                 }
 
                                 Spacer(Modifier.height(12.dp))
+                                // Solo el owner puede invitar/quitar colaboradores
+                                // (el backend ya devuelve 404 si no eres owner;
+                                // aquí ocultamos los controles para no engañar).
+                                val me by container.userRepository.me.collectAsState()
+                                val isOwner = me?.id != null && me?.id == s.playlist.ownerId
                                 CollaboratorsSection(
                                     collaborators = s.playlist.collaborators,
+                                    canManage = isOwner,
                                     onInvite = { showInvite = true },
                                     onRemove = { userId ->
                                         viewModel.removeCollaborator(userId) { _, msg ->
@@ -319,9 +325,13 @@ fun PlaylistDetailScreen(
 @Composable
 private fun CollaboratorsSection(
     collaborators: List<CollaboratorRefDto>,
+    canManage: Boolean,
     onInvite: () -> Unit,
     onRemove: (Long) -> Unit
 ) {
+    // Si no soy owner y no hay colaboradores → nada que mostrar en absoluto.
+    if (!canManage && collaborators.isEmpty()) return
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -330,10 +340,12 @@ private fun CollaboratorsSection(
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f)
             )
-            TextButton(onClick = onInvite) {
-                Icon(Icons.Filled.PersonAdd, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("Invitar")
+            if (canManage) {
+                TextButton(onClick = onInvite) {
+                    Icon(Icons.Filled.PersonAdd, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Invitar")
+                }
             }
         }
         if (collaborators.isEmpty()) {
@@ -362,16 +374,20 @@ private fun CollaboratorsSection(
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            IconButton(
-                                onClick = { onRemove(c.id) },
-                                modifier = Modifier.size(28.dp)
-                            ) {
-                                Icon(
-                                    Icons.Filled.Close,
-                                    contentDescription = "Quitar colaborador",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
+                            if (canManage) {
+                                IconButton(
+                                    onClick = { onRemove(c.id) },
+                                    modifier = Modifier.size(28.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Close,
+                                        contentDescription = "Quitar colaborador",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else {
+                                Spacer(Modifier.width(12.dp))
                             }
                         }
                     }

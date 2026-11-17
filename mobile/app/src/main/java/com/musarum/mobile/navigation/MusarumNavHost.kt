@@ -250,7 +250,8 @@ fun MusarumNavHost(
                     onOpenEqualizer = { navController.navigate(Routes.EQUALIZER) },
                     onOpenPublishUpdate = { navController.navigate(Routes.PUBLISH_UPDATE) },
                     onOpenCarMode = { navController.navigate(Routes.CAR_MODE) },
-                    onOpenHandoff = { navController.navigate(Routes.HANDOFF) }
+                    onOpenHandoff = { navController.navigate(Routes.HANDOFF) },
+                    onOpenParty = { navController.navigate(Routes.PARTY) }
                 )
             }
 
@@ -326,6 +327,12 @@ fun MusarumNavHost(
 
             composable(Routes.HANDOFF) {
                 com.musarum.mobile.player.HandoffScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.PARTY) {
+                com.musarum.mobile.party.PartyScreen(
                     onBack = { navController.popBackStack() }
                 )
             }
