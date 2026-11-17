@@ -49,6 +49,16 @@ public class EmendatiumAutoEnricher {
             EnrichmentResponse resp = client.enrich(audioPath).orElse(null);
             if (resp == null || resp.metadata() == null) {
                 // Emendatium respondió sin metadata usable → sin match.
+                // Igualmente intentamos limpiar la basura del nombre si la
+                // sugerencia vino rellena (p. ej. quitar "(Official Audio)"
+                // aunque AcoustID no identificara la canción).
+                if (resp != null && resp.suggestions() != null
+                        && resp.suggestions().fileName() != null) {
+                    String newPath = client.rename(audioPath, resp.suggestions().fileName());
+                    if (!newPath.equals(audioPath)) {
+                        songService.updateAudioPath(songId, newPath);
+                    }
+                }
                 songService.markEnrichment(songId, EnrichStatus.FAILED_NO_MATCH);
                 log.info("Emendatium NO MATCH: id={} ({})", songId, audioPath);
                 return;
@@ -65,6 +75,16 @@ public class EmendatiumAutoEnricher {
                     m.coverArt() != null ? "yes" : "no");
 
             applier.applySingle(songId, m);
+            // Renombrado: si Emendatium sugiere un nombre nuevo, aplicamos
+            // el rename en Emendatium (que vive el único con acceso al fs
+            // montado) y actualizamos la ruta en la DB. Sin esto los
+            // "cancion-spotifydownload.com.mp3" se quedaban eternamente.
+            if (resp.suggestions() != null && resp.suggestions().fileName() != null) {
+                String newPath = client.rename(audioPath, resp.suggestions().fileName());
+                if (!newPath.equals(audioPath)) {
+                    songService.updateAudioPath(songId, newPath);
+                }
+            }
             songService.markEnrichment(songId, EnrichStatus.OK);
         } catch (Exception e) {
             // Red caída, timeout, 5xx → marcamos como transient para que

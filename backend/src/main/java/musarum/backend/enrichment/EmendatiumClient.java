@@ -86,6 +86,41 @@ public class EmendatiumClient {
     }
 
     /**
+     * Renombra el fichero de audio en su misma carpeta usando el nombre
+     * sugerido (sin extensión, Emendatium la preserva). Si {@code suggestedName}
+     * ya coincide con el actual o Emendatium no responde, devuelve el path
+     * original. Si lo renombró, devuelve el nuevo path absoluto.
+     */
+    public String rename(String audioPath, String suggestedName) {
+        if (!isEnabled()) return audioPath;
+        if (suggestedName == null || suggestedName.isBlank()) return audioPath;
+        // Emendatium espera el nombre SIN extensión en overrideName.
+        String baseName = suggestedName;
+        int dot = baseName.lastIndexOf('.');
+        if (dot > 0) baseName = baseName.substring(0, dot);
+        try {
+            RenameResponse resp = http.post()
+                    .uri(baseUrl + "/api/enrich/rename")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new RenameRequest(audioPath, null, baseName))
+                    .retrieve()
+                    .body(RenameResponse.class);
+            if (resp == null) return audioPath;
+            if (resp.changed()) {
+                log.info("📝 Emendatium renombró {} → {}", audioPath, resp.newPath());
+                return resp.newPath();
+            }
+            return audioPath;
+        } catch (Exception e) {
+            log.warn("Emendatium rename falló para {}: {}", audioPath, e.getMessage());
+            return audioPath;
+        }
+    }
+
+    public record RenameRequest(String path, Object metadata, String overrideName) {}
+    public record RenameResponse(String oldPath, String newPath, boolean changed) {}
+
+    /**
      * Snapshot del estado de Emendatium para el panel de servidor. Hace ping
      * a {@code /actuator/health} con cache de {@link #PING_TTL} para no pagar
      * un round trip en cada refresh. Siempre devuelve algo — si no alcanzable,

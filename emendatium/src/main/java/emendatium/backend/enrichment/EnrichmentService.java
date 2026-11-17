@@ -4,8 +4,11 @@ import emendatium.backend.config.EnricherProperties;
 import emendatium.backend.fingerprint.AcoustIdMatch;
 import emendatium.backend.fingerprint.FingerprintService;
 import emendatium.backend.naming.FilenameBuilder;
+import emendatium.backend.naming.FilenameSanitizer;
 import emendatium.backend.naming.TitleBuilder;
+import emendatium.backend.shared.FilenameJunk;
 import emendatium.backend.shared.FilenameParser;
+import emendatium.backend.shared.SmartCase;
 import emendatium.backend.shared.TrackMetadata;
 import emendatium.backend.sources.EnrichmentContext;
 import emendatium.backend.sources.MetadataSource;
@@ -28,6 +31,7 @@ public class EnrichmentService {
     private final List<MetadataSource> sources;
     private final MetadataMerger merger;
     private final FilenameBuilder filenameBuilder;
+    private final FilenameSanitizer filenameSanitizer;
     private final TitleBuilder titleBuilder;
     private final EnricherProperties props;
     private final MeterRegistry meterRegistry;
@@ -125,7 +129,21 @@ public class EnrichmentService {
         final TrackMetadata result = acumulado;
 
         boolean hasIdentity = isNotBlank(result.artist()) && isNotBlank(result.title());
-        String suggestedFileName = hasIdentity ? filenameBuilder.build(result) + ".mp3" : null;
+        // Si AcoustID identificó, usamos la plantilla con metadatos canónicos.
+        // Si NO, caemos al nombre del fichero: parseamos "Artista - Título",
+        // recortamos basura (spotifydownload, (Official Audio), [HD]...) y
+        // aplicamos SmartCase. Así aunque Emendatium no encuentre la canción,
+        // los ficheros con sufijos de descargadores se quedan limpios.
+        String suggestedFileName = null;
+        if (hasIdentity) {
+            suggestedFileName = filenameBuilder.build(result) + ".mp3";
+        } else {
+            String fallback = buildFallbackName(fileHint);
+            if (fallback != null) {
+                suggestedFileName = fallback + ".mp3";
+                log.info("🧹 Sin identidad — fallback por nombre: '{}'", suggestedFileName);
+            }
+        }
         String suggestedTitle = titleBuilder.build(result);
 
         log.info("═══════════════════════════════════════════════════════════");
@@ -157,6 +175,31 @@ public class EnrichmentService {
     }
 
     private boolean isNotBlank(String s) { return s != null && !s.isBlank(); }
+
+    /**
+     * Construye un nombre "limpio" partiendo del nombre del fichero actual
+     * cuando AcoustID no identificó la canción. Devuelve null si el nombre
+     * ya estaba limpio (no vale la pena renombrar).
+     */
+    private String buildFallbackName(FilenameParser.Parsed hint) {
+        String artistRaw = hint.artists().isEmpty() ? null
+                : String.join(", ", hint.artists());
+        String titleRaw  = hint.title();
+        String artist = artistRaw != null ? SmartCase.apply(FilenameJunk.strip(artistRaw)) : null;
+        String title  = titleRaw  != null ? SmartCase.apply(FilenameJunk.strip(titleRaw))  : null;
+
+        String composed = (isNotBlank(artist) && isNotBlank(title)) ? (artist + " - " + title)
+                : (isNotBlank(title) ? title : null);
+        if (composed == null) return null;
+
+        String sanitized = filenameSanitizer.sanitize(composed, props.naming().maxFileLength());
+        // No proponer un nombre idéntico al actual (ignora sufijo/extensión).
+        String original = hint.artists().isEmpty()
+                ? (titleRaw == null ? "" : titleRaw)
+                : (String.join(", ", hint.artists()) + " - " + (titleRaw == null ? "" : titleRaw));
+        if (sanitized.equals(original)) return null;
+        return sanitized;
+    }
 
     /**
      * Ejecuta un perito registrando su duración y resultado en Micrometer.

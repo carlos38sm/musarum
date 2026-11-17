@@ -302,6 +302,17 @@ public class SongService {
     }
 
     /**
+     * Setea la ruta nueva de un fichero en DB. Lo invoca el enriquecimiento
+     * cuando Emendatium renombra el .mp3 "cancion-spotifydownload.com.mp3"
+     * a "Artist - Title.mp3". Sin este update, Musarum intentaría servir el
+     * fichero por la ruta vieja y respondería 404 hasta el próximo rescan.
+     */
+    @Transactional
+    public void updateAudioPath(Long songId, String newAudioPath) {
+        songRepository.findById(songId).ifPresent(song -> song.updateAudioPath(newAudioPath));
+    }
+
+    /**
      * Si existe una canción con ese audio_path en la DB, actualiza su
      * content_hash al nuevo valor y devuelve true. Útil cuando cambiamos
      * el algoritmo de hash: la fila ya existe (misma ruta), solo hay que
