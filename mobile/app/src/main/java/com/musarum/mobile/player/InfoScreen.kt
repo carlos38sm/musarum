@@ -75,11 +75,15 @@ fun InfoScreen(
         },
         showVideo = vmState.details?.hasVideo == true,
         onBack = onBack,
-        // Fav y add-to-playlist viven solo en la vista de audio.
         isFavorite = false,
         onToggleFavorite = {},
         onAddToPlaylist = {},
-        topActionsVisible = false
+        topActionsVisible = false,
+        // Orden lógico: LYRICS · VIDEO · TRACK · INFO. Desde INFO,
+        // deslizar a la derecha "va hacia atrás" en la pastilla →
+        // la pestaña anterior es TRACK (Audio). A la izquierda ya no
+        // hay más — lo dejamos no-op.
+        onSwipeRight = onOpenTrack
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),

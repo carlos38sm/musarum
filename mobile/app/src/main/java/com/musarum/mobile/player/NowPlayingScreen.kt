@@ -7,6 +7,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Path
@@ -277,6 +278,12 @@ fun NowPlayingScreen(
                 // Si no hay sessionId aún (nunca se dio play en esta sesión
                 // del PlayerService) o el user no ha concedido RECORD_AUDIO,
                 // explicamos qué pasa en vez de quedarnos en blanco.
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                val hasRecordPerm = remember(audioSessionId) {
+                    androidx.core.content.ContextCompat.checkSelfPermission(
+                        ctx, android.Manifest.permission.RECORD_AUDIO
+                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                }
                 when {
                     audioSessionId <= 0 -> Text(
                         text = "Pulsa play para activar el visualizador",
@@ -287,6 +294,27 @@ fun NowPlayingScreen(
                             .padding(horizontal = 32.dp, vertical = 40.dp),
                         textAlign = TextAlign.Center
                     )
+                    !hasRecordPerm -> Column(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Permiso de audio denegado — el visualizador necesita RECORD_AUDIO para leer el stream del sistema (no graba nada).",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        androidx.compose.material3.TextButton(onClick = {
+                            val intent = android.content.Intent(
+                                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.fromParts("package", ctx.packageName, null)
+                            ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+                            runCatching { ctx.startActivity(intent) }
+                        }) {
+                            Text("Abrir ajustes de permisos")
+                        }
+                    }
                     else -> AudioVisualizer(
                         sessionId = audioSessionId,
                         modifier = Modifier
@@ -468,6 +496,11 @@ fun PlayerShellScaffold(
     onToggleFavorite: () -> Unit,
     onAddToPlaylist: () -> Unit,
     onSwipeDown: (() -> Unit)? = null,
+    // Swipe horizontal entre modos del player. Pensado para las pantallas
+    // "Lyrics" e "Info" donde no hay una portada ancha que ya consuma el
+    // gesto. El caller decide qué modo es cada dirección.
+    onSwipeLeft: (() -> Unit)? = null,
+    onSwipeRight: (() -> Unit)? = null,
     showVideo: Boolean = false,
     // Si el caller va a pintar fav/add en otro sitio (p. ej. NowPlaying los
     // lleva sobre la progress bar), que oculte este bloque superior.
@@ -480,8 +513,8 @@ fun PlayerShellScaffold(
     // Fondo dinámico: lee la portada actual del PlayerController y extrae su
     // color dominante con Palette. Mientras llega, se usa el primary del tema
     // como fallback. La transición entre canciones se interpola.
-    val playerState by com.musarum.mobile.LocalAppContainer.current
-        .playerController.state.collectAsState()
+    val shellContainer = com.musarum.mobile.LocalAppContainer.current
+    val playerState by shellContainer.playerController.state.collectAsState()
     val dominant by rememberDominantCoverColor(
         coverUrl = playerState.currentCoverUrl,
         fallback = primary
@@ -499,6 +532,25 @@ fun PlayerShellScaffold(
     val screenHeightPx = with(density) { configuration.screenHeightDp.dp.toPx() }
     val dismissThresholdPx = screenHeightPx * 0.22f
     var dragOffset by remember { mutableFloatStateOf(0f) }
+
+    // Swipe horizontal entre modos del player. Umbral 80dp antes de disparar
+    // el cambio; evita cambios accidentales al tocar.
+    val swipeHorizontalModifier =
+        if (onSwipeLeft != null || onSwipeRight != null) {
+            Modifier.pointerInput(onSwipeLeft, onSwipeRight) {
+                val threshold = 80.dp.toPx()
+                var accum = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { accum = 0f },
+                    onDragEnd = {
+                        if (accum <= -threshold) onSwipeLeft?.invoke()
+                        else if (accum >= threshold) onSwipeRight?.invoke()
+                        accum = 0f
+                    },
+                    onDragCancel = { accum = 0f }
+                ) { _: androidx.compose.ui.input.pointer.PointerInputChange, dx: Float -> accum += dx }
+            }
+        } else Modifier
 
     val swipeDownModifier = if (onSwipeDown != null) {
         Modifier.pointerInput(Unit) {
@@ -539,22 +591,42 @@ fun PlayerShellScaffold(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                // Degradado "mimetizado con la portada": arriba el color
-                // dominante con mucho peso, baja a un tinte sutil a medio
-                // camino y acaba en el background del tema para no reñir
-                // con el texto de abajo. El Palette ya nos da un color
-                // saturado; aun así metemos alfa para evitar un bloque
-                // plano chillón.
-                Brush.verticalGradient(
-                    0.0f to dominant.copy(alpha = 0.75f),
-                    0.35f to dominant.copy(alpha = 0.28f),
-                    0.65f to background,
-                    1.0f to background
-                )
-            )
             .then(swipeDownModifier)
+            .then(swipeHorizontalModifier)
     ) {
+        // Fondo en 3 capas "estilo Apple Music":
+        //   1. La portada actual escalada a tamaño pantalla con blur FUERTE
+        //      (60dp). Da el toque "este espacio lo decora la canción".
+        //   2. Un velo con el color dominante (saca más pigmento donde el
+        //      blur no basta — fotos con poco color se ven desvaídas).
+        //   3. Un gradient vertical hacia background para que los textos de
+        //      abajo (artista, slider, controles) queden legibles.
+        val coverForBg = playerState.currentCoverUrl
+        if (coverForBg != null) {
+            val resolvedBg = com.musarum.mobile.music.resolveCoverUrl(
+                coverForBg, shellContainer.baseUrl
+            )
+            coil3.compose.AsyncImage(
+                model = resolvedBg,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur(60.dp)
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        0.0f to dominant.copy(alpha = 0.55f),
+                        0.45f to dominant.copy(alpha = 0.22f),
+                        0.75f to background.copy(alpha = 0.72f),
+                        1.0f to background
+                    )
+                )
+        )
         Column(
             modifier = Modifier
                 .fillMaxSize()

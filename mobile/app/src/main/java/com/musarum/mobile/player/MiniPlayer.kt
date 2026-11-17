@@ -205,16 +205,21 @@ fun MiniPlayer(
                 }
             }
 
-            // Play con progreso circular alrededor — reemplaza la barra lineal.
-            // El anillo va en color tertiary (rosa cálido) para resaltar sobre
-            // el oro del botón y marcar bien la posición de la canción.
+            // Play con progreso circular alrededor del botón. El color del
+            // anillo deriva del color dominante de la portada actual — así
+            // cada canción "tiñe" el mini-reproductor. Más fino (2dp) que
+            // antes para que no distraiga del cover de fondo.
+            val ringColor by rememberDominantCoverColor(
+                coverUrl = state.currentCoverUrl,
+                fallback = MaterialTheme.colorScheme.tertiary
+            )
             Box(contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(
                     progress = { progress },
                     modifier = Modifier.size(48.dp),
-                    color = MaterialTheme.colorScheme.tertiary,
-                    trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
-                    strokeWidth = 3.dp,
+                    color = ringColor,
+                    trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
+                    strokeWidth = 2.dp,
                     gapSize = 0.dp,
                     strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                 )

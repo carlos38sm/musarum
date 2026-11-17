@@ -86,12 +86,14 @@ fun LyricsScreen(
         },
         showVideo = vmState.details?.hasVideo == true,
         onBack = onBack,
-        // Fav y add-to-playlist viven solo en la vista de audio: aquí sería
-        // ruido. El scaffold respeta topActionsVisible=false y no los pinta.
         isFavorite = false,
         onToggleFavorite = {},
         onAddToPlaylist = {},
-        topActionsVisible = false
+        topActionsVisible = false,
+        // Orden lógico de la pastilla: LYRICS · VIDEO · TRACK · INFO.
+        // Desde LYRICS (izq del todo) deslizar a la IZQUIERDA "trae" lo
+        // que hay más a la derecha → Audio.
+        onSwipeLeft = onOpenTrack
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),

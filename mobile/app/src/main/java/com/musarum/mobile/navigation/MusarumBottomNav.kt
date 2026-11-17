@@ -1,5 +1,7 @@
 package com.musarum.mobile.navigation
 
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.Home
@@ -50,7 +52,13 @@ fun MusarumBottomNav(
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp,
-        contentColor = MaterialTheme.colorScheme.onBackground
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        // Material3 por defecto da 80dp — demasiado alto para 4 items. 60dp
+        // + label más compacto es cómodo con el pulgar y libera píxeles para
+        // el contenido. windowInsets=0 evita que Material añada su padding
+        // de systemBars (ya lo hace el Scaffold global).
+        modifier = androidx.compose.ui.Modifier.height(60.dp),
+        windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
         navItems.forEach { item ->
             val selected = item.isSelected(currentRoute)

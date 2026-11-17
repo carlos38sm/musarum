@@ -78,6 +78,16 @@ class PlayerService : MediaSessionService() {
         // válido, instanciamos el Equalizer y nos suscribimos a cambios de
         // preferencias para re-aplicar bandas en caliente.
         val container = app.container
+        // Publica el sessionId INICIAL de inmediato: en algunos dispositivos
+        // ExoPlayer lo asigna al construir sin volver a disparar
+        // onAudioSessionIdChanged, por lo que el visualizador se quedaba a 0
+        // para siempre si confiabas solo en el callback. Ahora leemos el id
+        // ya al arrancar y lo publicamos si no es UNSET.
+        val initialSessionId = player.audioSessionId
+        if (initialSessionId != C.AUDIO_SESSION_ID_UNSET) {
+            container.audioSessionIdFlow.value = initialSessionId
+            rebindEqualizer(initialSessionId)
+        }
         player.addListener(object : Player.Listener {
             override fun onAudioSessionIdChanged(audioSessionId: Int) {
                 if (audioSessionId == C.AUDIO_SESSION_ID_UNSET) return

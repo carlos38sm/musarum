@@ -135,7 +135,17 @@ fun ArtistDetailScreen(
                     if (filteredAlbums.isNotEmpty()) {
                         item { SectionHeader("Discografía") }
                         item {
+                            // Altura fija: las AlbumCards tienen alturas
+                            // variables según si el título es 1 o 2 líneas
+                            // y si llevan badges. Al scrollear el LazyRow
+                            // recalculaba el máximo y "Canciones" saltaba
+                            // arriba/abajo. Fijamos 260dp = cover 160 +
+                            // texto + stats con holgura. Dentro de cada
+                            // AlbumCard queda espacio en blanco si el
+                            // título es corto, pero la sección de
+                            // Canciones queda quieta.
                             LazyRow(
+                                modifier = Modifier.height(260.dp),
                                 contentPadding = PaddingValues(horizontal = 16.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
