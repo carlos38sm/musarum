@@ -11,6 +11,13 @@ class UnauthorizedInterceptor(
     private val scope: CoroutineScope
 ) : Interceptor {
 
+    private companion object {
+        // 10 s de gracia tras un saveToken. Suficiente para absorber peticiones
+        // en vuelo de un ciclo anterior o retrasos puntuales del backend sin
+        // dejar la sesión "zombi" eternamente si el token nuevo fuese inválido.
+        const val GRACE_PERIOD_MS = 10_000L
+    }
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val response = chain.proceed(request)
@@ -41,7 +48,14 @@ class UnauthorizedInterceptor(
         val requestToken = authHeader?.removePrefix("Bearer ")?.trim()
         val currentToken = tokenManager.currentToken()
         val tokenMatchesCurrent = requestToken != null && requestToken == currentToken
-        if (isAuthFailure && hadToken && !isPublicRoute && tokenMatchesCurrent) {
+        // CLAVE 3: ventana de gracia tras un login. Si el usuario acaba de
+        // meter la contraseña y una 401 cae en los primeros segundos, casi
+        // seguro es una petición del ciclo anterior o una sincronización
+        // que llegó a destiempo. Un bounce instantáneo al Login es la peor
+        // UX posible — si la contraseña fuese mala, el backend lo habría
+        // rechazado en /auth/login y nunca habríamos llegado aquí.
+        val inGracePeriod = tokenManager.msSinceLastSave() < GRACE_PERIOD_MS
+        if (isAuthFailure && hadToken && !isPublicRoute && tokenMatchesCurrent && !inGracePeriod) {
             scope.launch { tokenManager.clearToken() }
         }
         return response

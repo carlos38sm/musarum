@@ -41,7 +41,20 @@ class TokenManager(
     private val _token = MutableStateFlow<String?>(prefs.getString(TOKEN_KEY, null))
     val token: StateFlow<String?> = _token.asStateFlow()
 
+    // Timestamp (epoch ms) del último saveToken. El UnauthorizedInterceptor
+    // lo consulta para NO limpiar durante los primeros segundos tras un
+    // login: una 401 inmediata casi siempre viene de una petición en vuelo
+    // del ciclo anterior (token viejo o backend que tardó en procesar). Si
+    // de verdad el token nuevo es inválido, el usuario se dará cuenta al
+    // tocar algo y re-logueará; mucho mejor que el bounce instantáneo al
+    // Login nada más meter la contraseña.
+    @Volatile private var lastSaveAtMs: Long = 0L
+
     fun currentToken(): String? = _token.value
+
+    fun msSinceLastSave(): Long =
+        if (lastSaveAtMs == 0L) Long.MAX_VALUE
+        else System.currentTimeMillis() - lastSaveAtMs
 
     suspend fun saveToken(value: String) {
         // Orden clave: StateFlow ANTES del write a disco. Tras retornar esta
@@ -49,11 +62,13 @@ class TokenManager(
         // sin esto el Home disparaba 7 peticiones paralelas en el race y
         // alguna salía sin Authorization → 401 → vuelta al Login.
         _token.value = value
+        lastSaveAtMs = System.currentTimeMillis()
         prefs.edit().putString(TOKEN_KEY, value).apply()
     }
 
     suspend fun clearToken() {
         _token.value = null
+        lastSaveAtMs = 0L
         prefs.edit().remove(TOKEN_KEY).apply()
     }
 
