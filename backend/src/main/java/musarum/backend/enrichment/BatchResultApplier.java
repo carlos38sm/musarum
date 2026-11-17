@@ -74,7 +74,19 @@ class BatchResultApplier {
     private void applyMetadata(Song song, EnrichedMetadata meta) {
         String lyricsPath = null;
         if (meta.syncedLyrics() != null && !meta.syncedLyrics().isBlank()) {
-            lyricsPath = lyricsWriter.write(song.getId(), meta.syncedLyrics());
+            // CLAVE: no sobreescribir letras ya guardadas. Si el usuario
+            // (o una pasada anterior de Emendatium) ya puso una letra, la
+            // respetamos aunque Emendatium traiga otra ahora. Para cambiar
+            // una letra concreta existe POST /songs/{id}/lyrics/refresh.
+            boolean alreadyHasLyrics =
+                    song.getLyricsPath() != null
+                    && !song.getLyricsPath().isBlank()
+                    && java.nio.file.Files.exists(lyricsWriter.pathFor(song.getId()));
+            if (!alreadyHasLyrics) {
+                lyricsPath = lyricsWriter.write(song.getId(), meta.syncedLyrics());
+            } else {
+                log.info("Letra ya existente para song {} — no sobrescribimos", song.getId());
+            }
         }
 
         song.applyEnrichment(
