@@ -27,6 +27,8 @@ object Routes {
     fun youtubeEmbed(songId: Long, videoId: String) = "youtube/$songId/$videoId"
 
     const val INBOX = "inbox"
+    const val CAR_MODE = "car_mode"
+    const val HANDOFF = "handoff"
 
     const val PLAYLIST_DETAIL = "playlist/{id}"
     fun playlistDetail(id: Long) = "playlist/$id"

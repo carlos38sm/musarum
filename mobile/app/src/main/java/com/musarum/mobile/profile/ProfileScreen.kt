@@ -24,6 +24,8 @@ import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.DevicesOther
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Group
@@ -86,6 +88,8 @@ fun ProfileScreen(
     onOpenServerStats: () -> Unit = {},
     onOpenEqualizer: () -> Unit = {},
     onOpenPublishUpdate: () -> Unit = {},
+    onOpenCarMode: () -> Unit = {},
+    onOpenHandoff: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(
         factory = ProfileViewModel.factory(LocalAppContainer.current.userRepository)
     )
@@ -286,6 +290,20 @@ fun ProfileScreen(
                 title = "Ecualizador",
                 subtitle = if (eqEnabled) "Activado · 5 bandas" else "Desactivado",
                 onClick = onOpenEqualizer
+            )
+            Spacer(Modifier.height(10.dp))
+            SettingRow(
+                icon = Icons.Filled.DirectionsCar,
+                title = "Modo coche",
+                subtitle = "Controles grandes para conducir con una mano",
+                onClick = onOpenCarMode
+            )
+            Spacer(Modifier.height(10.dp))
+            SettingRow(
+                icon = Icons.Filled.DevicesOther,
+                title = "Continuar en otro dispositivo",
+                subtitle = "Pasa la reproducción entre móviles",
+                onClick = onOpenHandoff
             )
             Spacer(Modifier.height(10.dp))
             // Permite al OWNER (o a cualquier usuario) abrir los ajustes de

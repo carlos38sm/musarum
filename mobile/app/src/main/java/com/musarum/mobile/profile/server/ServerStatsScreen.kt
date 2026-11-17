@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -135,6 +136,11 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                         viewModel.cleanOrphanEntities { _, msg ->
                             scope.launch { snackbarHostState.showSnackbar(msg) }
                         }
+                    }
+                )
+                BackupsCard(
+                    onSnackbar = { msg ->
+                        scope.launch { snackbarHostState.showSnackbar(msg) }
                     }
                 )
                 Spacer(Modifier.height(8.dp))
@@ -256,6 +262,94 @@ private fun MaintenanceCard(
                 if (songCount > 0) "Vaciar biblioteca ($songCount canciones)"
                 else "Biblioteca ya vacía"
             )
+        }
+    }
+}
+
+@Composable
+private fun BackupsCard(onSnackbar: (String) -> Unit) {
+    val container = LocalAppContainer.current
+    val scope = rememberCoroutineScope()
+    var items by remember { mutableStateOf<List<com.musarum.mobile.data.network.dto.BackupFileDto>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var creating by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        runCatching { container.apiService.listBackups() }
+            .onSuccess { items = it }
+        loading = false
+    }
+
+    StatCard(title = "Backups automáticos") {
+        Text(
+            "El servidor hace backup de playlists y favoritos cada 30 minutos " +
+                "en _backups/. Mantiene los últimos 10 y rota el resto.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = {
+                if (creating) return@Button
+                creating = true
+                scope.launch {
+                    val res = runCatching { container.apiService.createBackup() }
+                    creating = false
+                    res.onSuccess { nuevo ->
+                        items = (listOf(nuevo) + items.filter { it.fileName != nuevo.fileName })
+                            .take(10)
+                        onSnackbar("Backup creado: ${nuevo.fileName}")
+                    }.onFailure {
+                        onSnackbar("No se pudo hacer el backup: ${it.message ?: "error"}")
+                    }
+                }
+            },
+            enabled = !creating,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.Save, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(if (creating) "Creando…" else "Hacer backup ahora")
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        if (loading) {
+            Text(
+                "Cargando lista…",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else if (items.isEmpty()) {
+            Text(
+                "Aún no hay backups guardados.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else {
+            items.forEach { b ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            b.fileName,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            humanBytes(b.sizeBytes),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
         }
     }
 }

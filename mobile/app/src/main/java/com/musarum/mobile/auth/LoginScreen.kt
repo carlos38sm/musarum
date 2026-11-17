@@ -62,7 +62,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.data.BaseUrlStore
 import com.musarum.mobile.data.network.dto.LoginUserDto
-import com.musarum.mobile.music.ArtistAvatar
+import com.musarum.mobile.music.UserAvatar
 
 @Composable
 fun LoginScreen(
@@ -424,31 +424,23 @@ private fun UserPickerBubble(
             .width(84.dp)
             .clickable(onClick = onClick)
     ) {
+        // UserAvatar hace: imagen si hay url; inicial del nick en un color
+        // derivado del propio nick si no hay. Dentro de un Surface con el
+        // borde de selección.
         Surface(
             shape = CircleShape,
-            color = bg,
+            color = androidx.compose.ui.graphics.Color.Transparent,
             border = androidx.compose.foundation.BorderStroke(
                 width = if (selected) 3.dp else 1.dp,
                 color = if (selected) primary else primary.copy(alpha = 0.25f)
             ),
             modifier = Modifier.size(size)
         ) {
-            if (user.avatarUrl.isNullOrBlank()) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Filled.Person,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(size * 0.5f)
-                    )
-                }
-            } else {
-                // Reutilizamos ArtistAvatar (coincide: círculo + Coil + fallback).
-                ArtistAvatar(
-                    url = user.avatarUrl,
-                    size = size
-                )
-            }
+            UserAvatar(
+                nick = user.nick,
+                avatarUrl = user.avatarUrl,
+                size = size
+            )
         }
         Spacer(Modifier.height(6.dp))
         Text(

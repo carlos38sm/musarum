@@ -248,7 +248,9 @@ fun MusarumNavHost(
                     onOpenUsers = { navController.navigate(Routes.USERS_ADMIN) },
                     onOpenServerStats = { navController.navigate(Routes.SERVER_STATS) },
                     onOpenEqualizer = { navController.navigate(Routes.EQUALIZER) },
-                    onOpenPublishUpdate = { navController.navigate(Routes.PUBLISH_UPDATE) }
+                    onOpenPublishUpdate = { navController.navigate(Routes.PUBLISH_UPDATE) },
+                    onOpenCarMode = { navController.navigate(Routes.CAR_MODE) },
+                    onOpenHandoff = { navController.navigate(Routes.HANDOFF) }
                 )
             }
 
@@ -314,6 +316,18 @@ fun MusarumNavHost(
 
             composable(Routes.INBOX) {
                 InboxScreen(onBack = { navController.popBackStack() })
+            }
+
+            composable(Routes.CAR_MODE) {
+                com.musarum.mobile.player.CarModeScreen(
+                    onExit = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.HANDOFF) {
+                com.musarum.mobile.player.HandoffScreen(
+                    onBack = { navController.popBackStack() }
+                )
             }
 
             composable(Routes.LIBRARY) {

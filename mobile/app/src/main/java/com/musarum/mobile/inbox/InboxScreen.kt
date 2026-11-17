@@ -38,8 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.data.network.dto.InboxItemDto
-import com.musarum.mobile.music.ArtistAvatar
 import com.musarum.mobile.music.CoverImage
+import com.musarum.mobile.music.UserAvatar
 import kotlinx.coroutines.launch
 
 /**
@@ -129,7 +129,7 @@ private fun InboxRow(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            ArtistAvatar(url = item.fromAvatarUrl, size = 40.dp)
+            UserAvatar(nick = item.fromNick, avatarUrl = item.fromAvatarUrl, size = 40.dp)
             Column(
                 modifier = Modifier.weight(1f).padding(start = 12.dp)
             ) {

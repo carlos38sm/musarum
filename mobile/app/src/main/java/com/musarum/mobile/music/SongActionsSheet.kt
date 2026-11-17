@@ -282,7 +282,11 @@ private fun SendToUserSheet(
                             }
                             .padding(horizontal = 24.dp, vertical = 10.dp)
                     ) {
-                        com.musarum.mobile.music.ArtistAvatar(url = u.avatarUrl, size = 36.dp)
+                        com.musarum.mobile.music.UserAvatar(
+                            nick = u.nick,
+                            avatarUrl = u.avatarUrl,
+                            size = 36.dp
+                        )
                         Text(
                             u.nick,
                             style = MaterialTheme.typography.bodyLarge,

@@ -136,6 +136,25 @@ interface ApiService {
     @DELETE("me/inbox/{id}")
     suspend fun deleteInbox(@Path("id") id: Long): retrofit2.Response<Unit>
 
+    // ── Handoff de reproducción entre dispositivos ──
+    @POST("handoff/publish")
+    suspend fun publishHandoff(
+        @Body req: com.musarum.mobile.data.network.dto.PublishHandoffRequest
+    ): retrofit2.Response<Unit>
+
+    @GET("handoff")
+    suspend fun listHandoffs(): List<com.musarum.mobile.data.network.dto.HandoffDto>
+
+    @DELETE("handoff/publish")
+    suspend fun clearHandoff(): retrofit2.Response<Unit>
+
+    // ── Backups (OWNER) ──
+    @GET("admin/server/backups")
+    suspend fun listBackups(): List<com.musarum.mobile.data.network.dto.BackupFileDto>
+
+    @POST("admin/server/backups")
+    suspend fun createBackup(): com.musarum.mobile.data.network.dto.BackupFileDto
+
     // Cola "radio" basada en una canción semilla.
     @GET("songs/{id}/radio")
     suspend fun getRadioFrom(
