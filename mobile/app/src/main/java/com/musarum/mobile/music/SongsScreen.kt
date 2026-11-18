@@ -398,7 +398,9 @@ fun SongRow(
                 url = coverUrl ?: song.coverUrl,
                 size = 48.dp,
                 cornerRadius = 8.dp,
-                placeholder = Icons.Filled.MusicNote
+                placeholder = Icons.Filled.MusicNote,
+                placeholderKind = PlaceholderKind.SONGS,
+                placeholderSeed = song.id
             )
             if (downloadEntry != null) {
                 val isTemp = downloadEntry.isTemporary

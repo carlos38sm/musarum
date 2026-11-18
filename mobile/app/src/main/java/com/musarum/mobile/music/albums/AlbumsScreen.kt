@@ -128,7 +128,9 @@ private fun AlbumGridItem(album: AlbumCardDto, onClick: () -> Unit) {
             cornerRadius = 10.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .aspectRatio(1f)
+                .aspectRatio(1f),
+            placeholderKind = com.musarum.mobile.music.PlaceholderKind.ALBUMS,
+            placeholderSeed = album.id
         )
         Text(
             album.title,

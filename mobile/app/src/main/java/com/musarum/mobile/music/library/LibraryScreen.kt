@@ -513,15 +513,19 @@ private fun PlaylistRow(
                 onClick = onClick,
                 onLongClick = onDelete
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(
-            Icons.Filled.QueueMusic,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.width(40.dp)
+        // Mosaico 2×2 con las portadas de las 4 primeras canciones
+        // (bloque B20). Los huecos se rellenan con placeholder de
+        // playlists — si _placeholders/playlists está vacío, cae a gris.
+        com.musarum.mobile.music.PlaylistMosaicCover(
+            urls = playlist.coverUrls,
+            playlistId = playlist.id,
+            size = 52.dp,
+            cornerRadius = 8.dp
         )
+        Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 playlist.name,

@@ -66,6 +66,7 @@ import com.musarum.mobile.music.CoverImage
 import com.musarum.mobile.ui.InlineSearchBar
 import com.musarum.mobile.ui.SearchActionIcon
 import com.musarum.mobile.ui.humanizeDurationMs
+import com.musarum.mobile.ui.humanizeIso
 import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -169,28 +170,66 @@ fun PlaylistDetailScreen(
                                     .fillMaxWidth()
                                     .padding(16.dp)
                             ) {
+                                // Mosaico 2×2 + título como header (B20).
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    com.musarum.mobile.music.PlaylistMosaicCover(
+                                        urls = s.playlist.coverUrls,
+                                        playlistId = s.playlist.id,
+                                        size = 112.dp,
+                                        cornerRadius = 12.dp
+                                    )
+                                    Spacer(Modifier.width(14.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            s.playlist.name,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                            maxLines = 2,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        s.playlist.description?.takeIf { it.isNotBlank() }?.let {
+                                            Text(
+                                                it,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis,
+                                                modifier = Modifier.padding(top = 4.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                                Spacer(Modifier.height(12.dp))
+                                // Info extra (B21): nº canciones · minutos
+                                // totales · género top · artista top · fecha
+                                // de creación. Se compone en texto multilinea
+                                // compacto con "·" como separador. Omitimos
+                                // los nulls para no dejar "· ·" a secas.
+                                val totalMs = s.playlist.durationMs
+                                    ?: entries.sumOf { (it.durationMs ?: 0).toLong() }
+                                val infoLine1 = buildString {
+                                    append("${s.playlist.songCount.coerceAtLeast(entries.size)} canciones")
+                                    append(" · ")
+                                    append(humanizeDurationMs(totalMs))
+                                }
                                 Text(
-                                    s.playlist.name,
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
+                                    infoLine1,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                s.playlist.description?.takeIf { it.isNotBlank() }?.let {
+                                val extras = buildList {
+                                    s.playlist.topArtistName?.let { add("Artista top: $it") }
+                                    s.playlist.topGenreName?.let { add("Género top: $it") }
+                                    s.playlist.createdAt?.let { add("Creada ${humanizeIso(it)}") }
+                                }
+                                if (extras.isNotEmpty()) {
                                     Text(
-                                        it,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(top = 4.dp)
+                                        extras.joinToString(" · "),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                                        modifier = Modifier.padding(top = 2.dp)
                                     )
                                 }
-                                val totalMs = entries.sumOf { (it.durationMs ?: 0).toLong() }
-                                Text(
-                                    "${entries.size} canciones · ${humanizeDurationMs(totalMs)}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 4.dp)
-                                )
                                 Spacer(Modifier.height(12.dp))
                                 val downloaded by container.downloadsRepository
                                     .entries.collectAsState()

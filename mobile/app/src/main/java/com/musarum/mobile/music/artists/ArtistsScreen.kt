@@ -129,7 +129,8 @@ private fun ArtistBubble(artist: ArtistSummaryDto, onClick: () -> Unit) {
         ArtistAvatar(
             url = artist.imageUrl,
             size = 110.dp,
-            modifier = Modifier.aspectRatio(1f)
+            modifier = Modifier.aspectRatio(1f),
+            placeholderSeed = artist.id
         )
         Text(
             artist.name,

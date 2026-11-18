@@ -4,7 +4,10 @@ data class PlaylistSummaryDto(
     val id: Long,
     val name: String,
     val isPublic: Boolean = false,
-    val songCount: Int = 0
+    val songCount: Int = 0,
+    // Hasta 4 URLs de las primeras canciones (mosaico 2x2). Slots vacíos
+    // llegan como null — el cliente los pinta con placeholder.
+    val coverUrls: List<String?> = emptyList()
 )
 
 data class PlaylistEntryDto(
@@ -36,7 +39,14 @@ data class PlaylistDetailsDto(
     val ownerNick: String?,
     val ownerId: Long?,
     val entries: PageDto<PlaylistEntryDto> = PageDto(),
-    val collaborators: List<CollaboratorRefDto> = emptyList()
+    val collaborators: List<CollaboratorRefDto> = emptyList(),
+    // Header enriquecido (bloque B21): mosaico 2×2, totales y tops.
+    val coverUrls: List<String?> = emptyList(),
+    val songCount: Int = 0,
+    val durationMs: Long? = null,
+    val topGenreName: String? = null,
+    val topArtistName: String? = null,
+    val createdAt: String? = null
 )
 
 data class CollaboratorRefDto(val id: Long, val nick: String)

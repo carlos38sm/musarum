@@ -21,3 +21,19 @@ fun humanizeDurationMs(totalMs: Long): String {
     val hours = totalHours % 24L
     return if (hours == 0L) "$days d" else "$days d $hours h"
 }
+
+/**
+ * Formatea un timestamp ISO-8601 que viene del backend (ej.
+ * "2026-11-14T18:32:04.123Z") como fecha corta en castellano. Si no
+ * parsea, devuelve la cadena cruda — no queremos crashear el header
+ * de la playlist por un formato inesperado.
+ */
+fun humanizeIso(iso: String): String {
+    return runCatching {
+        val instant = java.time.Instant.parse(iso)
+        val localDate = instant.atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+        val months = arrayOf("ene", "feb", "mar", "abr", "may", "jun",
+                             "jul", "ago", "sep", "oct", "nov", "dic")
+        "${localDate.dayOfMonth} ${months[localDate.monthValue - 1]} ${localDate.year}"
+    }.getOrElse { iso }
+}

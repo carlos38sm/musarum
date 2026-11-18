@@ -11,17 +11,38 @@ import musarum.backend.playlist.dto.PlaylistSummaryDto;
 import musarum.backend.song.Song;
 import musarum.backend.song.dto.ArtistRef;
 
+import java.time.Instant;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Component
 class PlaylistMapper {
+
+    /**
+     * Toma la portada de álbum de cada una de las primeras 4 entries (por
+     * posición) para que el cliente la pinte en mosaico 2×2. Si una entry
+     * no tiene cover, el slot queda vacío y el cliente dibuja placeholder.
+     */
+    private List<String> firstFourCovers(Playlist playlist) {
+        return playlist.getEntries().stream()
+                .sorted(Comparator.comparingInt(PlaylistEntry::getPosition))
+                .limit(4)
+                .map(e -> {
+                    Album a = e.getSong().getAlbum();
+                    return a != null ? a.getCoverUrl() : null;
+                })
+                .toList();
+    }
 
     PlaylistSummaryDto toSummary(Playlist playlist) {
         return new PlaylistSummaryDto(
                 playlist.getId(),
                 playlist.getName(),
                 playlist.isPublic(),
-                playlist.getEntries().size()
+                playlist.getEntries().size(),
+                firstFourCovers(playlist)
         );
     }
 
@@ -32,6 +53,28 @@ class PlaylistMapper {
                 .map(u -> new CollaboratorRef(u.getId(), u.getNick()))
                 .toList();
 
+        long totalMs = 0L;
+        Map<String, Integer> genreCount = new HashMap<>();
+        Map<String, Integer> artistCount = new HashMap<>();
+        for (PlaylistEntry e : playlist.getEntries()) {
+            Song song = e.getSong();
+            if (song.getDurationMs() != null) totalMs += song.getDurationMs();
+            if (song.getGenre() != null && song.getGenre().getName() != null) {
+                genreCount.merge(song.getGenre().getName(), 1, Integer::sum);
+            }
+            song.getArtists().forEach(a -> {
+                if (a.getName() != null) artistCount.merge(a.getName(), 1, Integer::sum);
+            });
+        }
+        String topGenre = genreCount.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey).orElse(null);
+        String topArtist = artistCount.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey).orElse(null);
+        Long durationMs = totalMs > 0L ? totalMs : null;
+        Instant createdAt = playlist.getCreatedAt();
+
         return new PlaylistDetailsDto(
                 playlist.getId(),
                 playlist.getName(),
@@ -40,11 +83,17 @@ class PlaylistMapper {
                 playlist.getOwner().getNick(),
                 playlist.getOwner().getId(),
                 entryDtos,
-                collaborators
+                collaborators,
+                firstFourCovers(playlist),
+                playlist.getEntries().size(),
+                durationMs,
+                topGenre,
+                topArtist,
+                createdAt
         );
     }
 
-    private PlaylistEntryDto toEntryDto(PlaylistEntry entry) {
+    PlaylistEntryDto toEntryDto(PlaylistEntry entry) {
         Song song = entry.getSong();
         Album album = song.getAlbum();
 
