@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalConfiguration
@@ -131,6 +133,7 @@ fun NowPlayingScreen(
     }
 
     var showAddToPlaylist by remember { mutableStateOf(false) }
+    var showSendSheet by remember { mutableStateOf(false) }
     // Para la acción OWNER "eliminar del disco" del dropdown.
     val me by container.userRepository.me.collectAsState()
     val isOwner = me?.userRole == "OWNER"
@@ -279,11 +282,35 @@ fun NowPlayingScreen(
                 // del PlayerService) o el user no ha concedido RECORD_AUDIO,
                 // explicamos qué pasa en vez de quedarnos en blanco.
                 val ctx = androidx.compose.ui.platform.LocalContext.current
-                val hasRecordPerm = remember(audioSessionId) {
-                    androidx.core.content.ContextCompat.checkSelfPermission(
-                        ctx, android.Manifest.permission.RECORD_AUDIO
-                    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                // Hook que re-evalúa el permiso cada vez que la Activity
+                // vuelve a primer plano. Antes se cacheaba con `remember`
+                // atado al sessionId → si el user abría Ajustes y concedía
+                // RECORD_AUDIO, al volver seguía viendo "Permiso denegado".
+                var hasRecordPerm by remember {
+                    mutableStateOf(
+                        androidx.core.content.ContextCompat.checkSelfPermission(
+                            ctx, android.Manifest.permission.RECORD_AUDIO
+                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    )
                 }
+                val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+                androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+                    val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                        if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                            hasRecordPerm = androidx.core.content.ContextCompat.checkSelfPermission(
+                                ctx, android.Manifest.permission.RECORD_AUDIO
+                            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        }
+                    }
+                    lifecycleOwner.lifecycle.addObserver(observer)
+                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+                }
+                // Launcher inline para pedir el permiso directamente desde
+                // el "Permiso denegado" sin tener que ir a Ajustes si el
+                // sistema aún permite el prompt.
+                val permLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                    androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
+                ) { granted -> hasRecordPerm = granted }
                 when {
                     audioSessionId <= 0 -> Text(
                         text = "Pulsa play para activar el visualizador",
@@ -299,20 +326,31 @@ fun NowPlayingScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Permiso de audio denegado — el visualizador necesita RECORD_AUDIO para leer el stream del sistema (no graba nada).",
+                            text = "El visualizador necesita permiso de audio para leer el stream del sistema. No graba nada.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
                         )
-                        Spacer(Modifier.height(8.dp))
-                        androidx.compose.material3.TextButton(onClick = {
-                            val intent = android.content.Intent(
-                                android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                android.net.Uri.fromParts("package", ctx.packageName, null)
-                            ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
-                            runCatching { ctx.startActivity(intent) }
-                        }) {
-                            Text("Abrir ajustes de permisos")
+                        Spacer(Modifier.height(10.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            androidx.compose.material3.TextButton(onClick = {
+                                // Primer intento: prompt del sistema. Si el
+                                // user ya pulsó "No volver a preguntar" Android
+                                // devolverá denied sin diálogo y el usuario
+                                // tendrá que ir a Ajustes (botón de al lado).
+                                permLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+                            }) {
+                                Text("Permitir")
+                            }
+                            androidx.compose.material3.TextButton(onClick = {
+                                val intent = android.content.Intent(
+                                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    android.net.Uri.fromParts("package", ctx.packageName, null)
+                                ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+                                runCatching { ctx.startActivity(intent) }
+                            }) {
+                                Text("Abrir ajustes")
+                            }
                         }
                     }
                     else -> AudioVisualizer(
@@ -375,6 +413,7 @@ fun NowPlayingScreen(
             },
             visualizerActive = showVisualizer,
             onToggleVisualizer = { showVisualizer = !showVisualizer },
+            onSendSong = { showSendSheet = true },
             downloadState = run {
                 val entries by container.downloadsRepository.entries.collectAsState()
                 val inProgress by container.downloadsManager.inProgress.collectAsState()
@@ -434,6 +473,16 @@ fun NowPlayingScreen(
         AddToPlaylistDialog(
             songId = song.id,
             onDismiss = { showAddToPlaylist = false }
+        )
+    }
+
+    if (showSendSheet) {
+        // Bottom sheet reusable con la lista de usuarios + bolitas. Vive en
+        // SongActionsSheet para no duplicar lógica con el long-press de
+        // SongRow — allí también envía canciones a otros usuarios.
+        com.musarum.mobile.music.SendToUserSheet(
+            song = song,
+            onDismiss = { showSendSheet = false }
         )
     }
 
@@ -743,6 +792,7 @@ private fun ActionsRow(
     onSearchYouTube: () -> Unit,
     visualizerActive: Boolean,
     onToggleVisualizer: () -> Unit,
+    onSendSong: () -> Unit,
     downloadState: DownloadState,
     onDownload: () -> Unit
 ) {
@@ -796,30 +846,37 @@ private fun ActionsRow(
             DropdownMenu(
                 expanded = showMore,
                 onDismissRequest = { showMore = false },
-                offset = DpOffset(x = (-8).dp, y = 8.dp),
+                // offset negativo grande: por defecto el menú se anclaba
+                // pegado a la izquierda del botón y quedaba feo. Lo
+                // desplazamos para que se abra hacia la izquierda y quede
+                // alineado con el borde derecho de la fila de acciones.
+                offset = DpOffset(x = (-180).dp, y = 8.dp),
                 modifier = Modifier
+                    .widthIn(min = 200.dp, max = 240.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
+                // Nombres cortos — más fáciles de leer y el menú no se
+                // alarga. Orden: Cola · Radio · YouTube · Visualizador ·
+                // Temporizador · Enviar · Eliminar (si OWNER).
                 DropdownMenuItem(
-                    text = { Text("Cola de reproducción") },
+                    text = { Text("Cola") },
                     leadingIcon = { Icon(Icons.Filled.PlaylistPlay, null) },
                     onClick = { showMore = false; onOpenQueue() }
                 )
                 DropdownMenuItem(
-                    text = { Text("Radio basada en esta") },
+                    text = { Text("Radio") },
                     leadingIcon = { Icon(Icons.Filled.Radio, null) },
                     onClick = { showMore = false; onStartRadio() }
                 )
                 DropdownMenuItem(
-                    text = { Text("Buscar en YouTube") },
+                    text = { Text("YouTube") },
                     leadingIcon = { Icon(Icons.Filled.OpenInNew, null) },
                     onClick = { showMore = false; onSearchYouTube() }
                 )
                 DropdownMenuItem(
                     text = {
-                        Text(if (visualizerActive) "Ocultar visualizador"
-                             else "Visualizador de audio")
+                        Text(if (visualizerActive) "Ocultar visualizador" else "Visualizador")
                     },
                     leadingIcon = {
                         Icon(
@@ -833,8 +890,7 @@ private fun ActionsRow(
                 )
                 DropdownMenuItem(
                     text = {
-                        Text(if (sleepTimerActive) "Temporizador activo"
-                             else "Temporizador de apagado")
+                        Text(if (sleepTimerActive) "Temporizador activo" else "Temporizador")
                     },
                     leadingIcon = {
                         Icon(
@@ -846,11 +902,16 @@ private fun ActionsRow(
                     },
                     onClick = { showMore = false; onOpenSleepTimer() }
                 )
+                DropdownMenuItem(
+                    text = { Text("Enviar") },
+                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, null) },
+                    onClick = { showMore = false; onSendSong() }
+                )
                 if (isOwner) {
                     DropdownMenuItem(
                         text = {
                             Text(
-                                "Eliminar del disco",
+                                "Eliminar",
                                 color = MaterialTheme.colorScheme.error
                             )
                         },

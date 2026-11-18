@@ -213,6 +213,12 @@ fun MusarumNavHost(
                 container.playerController.stop()
                 container.favoriteRepository.clear()
                 container.playlistRepository.clear()
+                // Historial de búsqueda, EQ y preferencias "por usuario": al
+                // cerrar sesión los limpiamos para que si otro user entra en
+                // el mismo móvil no vea las búsquedas del anterior. Las
+                // preferencias de sistema (crossfade, replaygain) sí quedan,
+                // son de "aparato" no de "cuenta".
+                container.playerPreferences.clearRecentSearches()
                 sessionViewModel.logout()
                 navController.navigate(Routes.LOGIN) {
                     popUpTo(0) { inclusive = true }

@@ -13,10 +13,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -92,10 +95,27 @@ fun FavoritesContent(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
+                        // Dos acciones principales lado a lado: Reproducir
+                        // + Descargar todas. "Descargadas" se calcula sobre
+                        // la lista actual y el texto cambia según progreso.
+                        val downloads by container.downloadsRepository.entries.collectAsState()
+                        val inProgress by container.downloadsManager.inProgress.collectAsState()
+                        val pending = s.favorites.filter {
+                            !downloads.containsKey(it.songId) && !inProgress.contains(it.songId)
+                        }
+                        val downloadLabel = when {
+                            inProgress.isNotEmpty() -> "Descargando (${inProgress.size})…"
+                            pending.isEmpty() && s.favorites.isNotEmpty() -> "Descargadas"
+                            pending.isNotEmpty() && pending.size < s.favorites.size ->
+                                "Descargar (${pending.size})"
+                            else -> "Descargar todas"
+                        }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(16.dp)
+                                .padding(16.dp),
+                            horizontalArrangement = androidx.compose.foundation.layout.Arrangement
+                                .spacedBy(10.dp)
                         ) {
                             Button(
                                 onClick = {
@@ -105,7 +125,23 @@ fun FavoritesContent(
                             ) {
                                 Icon(Icons.Filled.PlayArrow, contentDescription = null)
                                 Spacer(Modifier.width(6.dp))
-                                Text("Reproducir todas")
+                                Text("Reproducir")
+                            }
+                            FilledTonalButton(
+                                enabled = pending.isNotEmpty(),
+                                onClick = {
+                                    pending.forEach { fav ->
+                                        container.downloadsManager.download(fav.toSongSummary())
+                                    }
+                                }
+                            ) {
+                                Icon(
+                                    if (pending.isEmpty() && s.favorites.isNotEmpty())
+                                        Icons.Filled.CheckCircle else Icons.Filled.Download,
+                                    contentDescription = null
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(downloadLabel)
                             }
                         }
                         HorizontalDivider()

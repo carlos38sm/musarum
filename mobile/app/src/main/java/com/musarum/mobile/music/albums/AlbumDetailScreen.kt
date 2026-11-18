@@ -319,19 +319,22 @@ private fun PillAction(
              else MaterialTheme.colorScheme.surfaceVariant
     val fg = if (primary) MaterialTheme.colorScheme.onPrimary
              else MaterialTheme.colorScheme.onSurface
+    // Altura de 48dp (antes 40dp): los botones Reproducir/Aleatorio salían
+    // enanos al lado del cover de 180dp. 48dp es la altura táctil mínima
+    // recomendada por Material, se agarra bien con el pulgar.
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(50),
         color = bg,
         contentColor = fg,
-        modifier = Modifier.height(40.dp)
+        modifier = Modifier.height(48.dp)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 18.dp),
+            modifier = Modifier.padding(horizontal = 22.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
             Text(label, style = MaterialTheme.typography.labelLarge)
         }
     }

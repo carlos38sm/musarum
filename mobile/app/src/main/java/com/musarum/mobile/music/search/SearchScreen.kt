@@ -310,7 +310,14 @@ fun SearchScreen(
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun FilterChipRow(current: SearchFilter, onSelect: (SearchFilter) -> Unit) {
-    val scheme = MaterialTheme.colorScheme
+    // Colores distintos y vivos para cada filtro (ámbar, coral, cian, verde).
+    // Carlos quería "apagados por defecto, al pulsar vivos y cada uno un
+    // color" — los dejamos neutros cuando no están seleccionados y saltan a
+    // su accent cuando el user pulsa.
+    val accentTodo = Color(0xFFFFB300)       // ámbar
+    val accentArtistas = Color(0xFFEC407A)   // coral/rosa
+    val accentAlbumes = Color(0xFF26C6DA)    // cian
+    val accentCanciones = Color(0xFF9CCC65)  // verde lima
     androidx.compose.foundation.layout.FlowRow(
         modifier = Modifier
             .fillMaxWidth()
@@ -323,7 +330,7 @@ private fun FilterChipRow(current: SearchFilter, onSelect: (SearchFilter) -> Uni
             modifier = Modifier.weight(1f),
             label = "Todo",
             icon = Icons.Filled.Apps,
-            accent = scheme.primary,
+            accent = accentTodo,
             selected = current == SearchFilter.ALL,
             onClick = { onSelect(SearchFilter.ALL) }
         )
@@ -331,7 +338,7 @@ private fun FilterChipRow(current: SearchFilter, onSelect: (SearchFilter) -> Uni
             modifier = Modifier.weight(1f),
             label = "Artistas",
             icon = Icons.Filled.MicExternalOn,
-            accent = scheme.secondary,
+            accent = accentArtistas,
             selected = current == SearchFilter.ARTISTS,
             onClick = { onSelect(SearchFilter.ARTISTS) }
         )
@@ -339,7 +346,7 @@ private fun FilterChipRow(current: SearchFilter, onSelect: (SearchFilter) -> Uni
             modifier = Modifier.weight(1f),
             label = "Álbumes",
             icon = Icons.Filled.Album,
-            accent = scheme.tertiary,
+            accent = accentAlbumes,
             selected = current == SearchFilter.ALBUMS,
             onClick = { onSelect(SearchFilter.ALBUMS) }
         )
@@ -347,7 +354,7 @@ private fun FilterChipRow(current: SearchFilter, onSelect: (SearchFilter) -> Uni
             modifier = Modifier.weight(1f),
             label = "Canciones",
             icon = Icons.Filled.MusicNote,
-            accent = scheme.primary,
+            accent = accentCanciones,
             selected = current == SearchFilter.SONGS,
             onClick = { onSelect(SearchFilter.SONGS) }
         )
@@ -369,16 +376,10 @@ private fun SearchFilterChip(
         label = "chipBg"
     )
     val fg by animateColorAsState(
-        targetValue = if (selected) {
-            // Elegimos onX según el accent para que el contraste sea real,
-            // no un "vemos qué sale". onPrimary para primary, etc.
-            when (accent) {
-                scheme.primary -> scheme.onPrimary
-                scheme.secondary -> scheme.onSecondary
-                scheme.tertiary -> scheme.onTertiary
-                else -> scheme.onPrimary
-            }
-        } else scheme.onSurfaceVariant,
+        // Siempre blanco sobre el accent seleccionado: los 4 colores son
+        // suficientemente saturados para dar contraste con blanco. Si
+        // alguna vez metemos uno pastel, habría que calcular por luminance.
+        targetValue = if (selected) Color.White else scheme.onSurfaceVariant,
         label = "chipFg"
     )
     Surface(

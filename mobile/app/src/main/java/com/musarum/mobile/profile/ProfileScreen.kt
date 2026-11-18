@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -413,15 +415,19 @@ fun ProfileScreen(
                 state.scannerStatus?.phase == "importing" -> "Importando canciones…"
                 else -> "Escaneando…"
             }
-            SettingRow(
-                icon = if (state.scanning) Icons.Filled.Refresh else Icons.Filled.LibraryMusic,
-                title = scanTitle,
-                subtitle = scanSubtitle,
-                enabled = !state.scanning,
-                onClick = {
-                    viewModel.triggerScan { _, msg -> snackbar(msg) }
-                }
-            )
+            // Re-escanear: solo el OWNER gestiona la biblioteca. Un MEMBER
+            // verlo era confuso (el backend respondía 403 al tocarlo).
+            if (isOwner) {
+                SettingRow(
+                    icon = if (state.scanning) Icons.Filled.Refresh else Icons.Filled.LibraryMusic,
+                    title = scanTitle,
+                    subtitle = scanSubtitle,
+                    enabled = !state.scanning,
+                    onClick = {
+                        viewModel.triggerScan { _, msg -> snackbar(msg) }
+                    }
+                )
+            }
 
             // Alta y gestión de usuarios + carpetas: solo visible para el
             // OWNER. Un MEMBER no puede ver siquiera la opción (y el backend
@@ -1008,6 +1014,7 @@ private fun ChangePasswordDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CrossfadeDialog(
     value: Int,
@@ -1025,12 +1032,41 @@ private fun CrossfadeDialog(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
+                // Slider con thumb discreto (punto de 10dp) + track fino (2dp)
+                // — la variante por defecto de Material 3 pinta un "barrote"
+                // demasiado visual para algo tan sutil como el crossfade.
                 Slider(
                     value = value.toFloat(),
                     onValueChange = { onChange(it.toInt()) },
                     valueRange = 0f..12f,
-                    steps = 11
+                    steps = 11,
+                    thumb = {
+                        Box(
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        )
+                    },
+                    track = { sliderState ->
+                        val activeFraction = (sliderState.value - sliderState.valueRange.start) /
+                                (sliderState.valueRange.endInclusive - sliderState.valueRange.start)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(2.dp)
+                                .clip(androidx.compose.foundation.shape.RoundedCornerShape(1.dp))
+                                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.18f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .fillMaxWidth(activeFraction.coerceIn(0f, 1f))
+                                    .background(MaterialTheme.colorScheme.primary)
+                            )
+                        }
+                    }
                 )
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text("0", style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))

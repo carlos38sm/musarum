@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.GroupAdd
@@ -494,16 +495,24 @@ private fun CollaborativePlaceholder() {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun PlaylistRow(
     playlist: PlaylistSummaryDto,
     onClick: () -> Unit,
     onDelete: () -> Unit
 ) {
+    // Tap = abrir playlist; long-press = confirmación de borrado. Antes
+    // había un icono "papelera" flotando a la derecha que ensuciaba la
+    // fila — Carlos prefiere limpio. El long-press es el mismo gesto que
+    // SongRow usa para sus acciones avanzadas.
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onDelete
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -525,13 +534,6 @@ private fun PlaylistRow(
                 "${playlist.songCount} canciones",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        IconButton(onClick = onDelete) {
-            Icon(
-                Icons.Filled.Delete,
-                contentDescription = "Eliminar",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

@@ -40,6 +40,11 @@ public class EnrichmentService {
     public record Suggestions(String fileName, String title, boolean hasIdentity) {}
 
     public EnrichmentResult enrich(Path mp3) {
+        // MDC pone el nombre del fichero como prefijo en cada log de este
+        // thread hasta que lo quitemos — así cuando se enriquecen varias
+        // canciones en paralelo los logs no se mezclan y se puede filtrar
+        // una concreta con `docker logs | findstr "Camila"`.
+        org.slf4j.MDC.put("song", mp3.getFileName().toString());
         log.info("═══════════════════════════════════════════════════════════");
         log.info("🎵 ENRIQUECIENDO: {}", mp3.getFileName());
         log.info("═══════════════════════════════════════════════════════════");
@@ -155,7 +160,9 @@ public class EnrichmentService {
         log.info("    → fileName:    '{}'", suggestedFileName);
         log.info("═══════════════════════════════════════════════════════════");
 
-        return new EnrichmentResult(result, new Suggestions(suggestedFileName, suggestedTitle, hasIdentity));
+        EnrichmentResult out = new EnrichmentResult(result, new Suggestions(suggestedFileName, suggestedTitle, hasIdentity));
+        org.slf4j.MDC.remove("song");
+        return out;
     }
 
     public static EnrichmentResult stripCoverData(EnrichmentResult full) {

@@ -142,28 +142,36 @@ fun CarModeScreen(
 
             Spacer(Modifier.height(56.dp))
 
-            // Controles: 3 botones gigantes centrados.
+            // Controles: 3 botones gigantes centrados. prev / next IGUALES
+            // en tamaño (antes next se veía enano por diferencias ópticas
+            // del icono); play/pause algo mayor por ser el principal.
             Row(
+                modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(28.dp)
+                horizontalArrangement = Arrangement.Center
             ) {
                 CarButton(
                     icon = Icons.Filled.SkipPrevious,
                     contentDescription = "Anterior",
+                    size = 104.dp,
+                    iconSize = 60.dp,
                     onClick = { container.playerController.previous() }
                 )
-                // Play/pause es el principal — más grande que los lados.
+                Spacer(Modifier.width(24.dp))
                 CarButton(
                     icon = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = if (state.isPlaying) "Pausa" else "Reproducir",
-                    size = 128.dp,
-                    iconSize = 72.dp,
+                    size = 136.dp,
+                    iconSize = 76.dp,
                     primary = true,
                     onClick = { container.playerController.togglePlayPause() }
                 )
+                Spacer(Modifier.width(24.dp))
                 CarButton(
                     icon = Icons.Filled.SkipNext,
                     contentDescription = "Siguiente",
+                    size = 104.dp,
+                    iconSize = 60.dp,
                     onClick = { container.playerController.next() }
                 )
             }

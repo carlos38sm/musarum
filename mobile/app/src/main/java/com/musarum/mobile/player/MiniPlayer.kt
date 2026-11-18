@@ -1,6 +1,11 @@
 package com.musarum.mobile.player
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -39,18 +44,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import com.musarum.mobile.music.CoverImage
 import kotlin.math.abs
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlinx.coroutines.launch
 
 /**
@@ -80,52 +87,84 @@ fun MiniPlayer(
     val fadeDistancePx = with(androidx.compose.ui.platform.LocalDensity.current) { 180.dp.toPx() }
     val rowAlpha = (1f - (abs(dragX) / fadeDistancePx).coerceIn(0f, 0.6f))
 
+    // Color dominante de la portada actual. Se usa como base del degradado
+    // de fondo y del anillo de progreso. Se re-extrae por canción.
+    val fallbackColor = MaterialTheme.colorScheme.tertiary
+    val dominant by rememberDominantCoverColor(
+        coverUrl = state.currentCoverUrl,
+        fallback = fallbackColor
+    )
+    // Variantes clara / oscura del dominante para el degradado y el fondo
+    // del play. Usamos luminance para decidir si el dominante es ya oscuro
+    // (se aclara) o claro (se oscurece) sin tintar hacia negro siempre.
+    val isDark = dominant.luminance() < 0.35f
+    val lighter = if (isDark) dominant.lighten(0.20f) else dominant.lighten(0.08f)
+    val darker = if (isDark) dominant.darken(0.18f) else dominant.darken(0.32f)
+    // Degradado animado: dos focos que giran lentamente alrededor del
+    // centro del mini-player. 12 s por vuelta para que sea perceptible pero
+    // no distraiga.
+    val gradientTransition = rememberInfiniteTransition(label = "mpGrad")
+    val angle by gradientTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 12_000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "mpAngle"
+    )
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 6.dp),
         shape = RoundedCornerShape(22.dp),
-        // Dejamos el Surface transparente: el fondo con blur de la portada
-        // se pinta dentro del Box de abajo. Así tenemos degradé suave de la
-        // canción actual tras los textos y el play, pero el contorno del
-        // Surface + shadowElevation + clip a RoundedCornerShape siguen
-        // definiendo la pastilla.
-        color = androidx.compose.ui.graphics.Color.Transparent,
+        // Dejamos el Surface transparente: el fondo coloreado dinámico se
+        // pinta dentro del Box de abajo. Así tenemos degradé suave que se
+        // mueve lentamente, con el color dominante de la canción.
+        color = Color.Transparent,
         shadowElevation = 10.dp
     ) {
         Box(modifier = Modifier.clip(RoundedCornerShape(22.dp))) {
-            // Fondo blur de la portada actual. Si no hay cover, fallback a
-            // surfaceVariant plano para mantener contraste sobre el fondo.
-            val cover = state.currentCoverUrl
-            if (cover != null) {
-                AsyncImage(
-                    model = cover,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .matchParentSize()
-                        .blur(28.dp)
-                )
-                // Velo para asegurar legibilidad de textos y controles: el
-                // blur solo no basta si la portada es muy clara. Degradé
-                // vertical sutil para no aplastar completamente los colores.
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            Brush.verticalGradient(
-                                0f to MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
-                                1f to MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.92f)
-                            )
+            // Fondo dinámico: base plana con el color dominante + dos
+            // "manchas" radiales de color más claro/oscuro que orbitan. No
+            // es la imagen ni blur: es color extraído del cover, menos
+            // ruido visual y más definición. Sin cover, fallback a tertiary.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(dominant.copy(alpha = 0.96f))
+            )
+            // Mancha 1: se mueve en círculo pequeño.
+            val radRad = Math.toRadians(angle.toDouble())
+            val cx1 = 0.5f + 0.25f * cos(radRad).toFloat()
+            val cy1 = 0.5f + 0.25f * sin(radRad).toFloat()
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(lighter.copy(alpha = 0.55f), Color.Transparent),
+                            center = Offset(cx1 * 1000f, cy1 * 200f),
+                            radius = 600f
                         )
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                )
-            }
+                    )
+            )
+            // Mancha 2: contra-fase, otro color.
+            val radRad2 = Math.toRadians((angle + 180f).toDouble())
+            val cx2 = 0.5f + 0.25f * cos(radRad2).toFloat()
+            val cy2 = 0.5f + 0.25f * sin(radRad2).toFloat()
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(darker.copy(alpha = 0.45f), Color.Transparent),
+                            center = Offset(cx2 * 1000f, cy2 * 200f),
+                            radius = 600f
+                        )
+                    )
+            )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -205,14 +244,13 @@ fun MiniPlayer(
                 }
             }
 
-            // Play con progreso circular alrededor del botón. El color del
-            // anillo deriva del color dominante de la portada actual — así
-            // cada canción "tiñe" el mini-reproductor. Más fino (2dp) que
-            // antes para que no distraiga del cover de fondo.
-            val ringColor by rememberDominantCoverColor(
-                coverUrl = state.currentCoverUrl,
-                fallback = MaterialTheme.colorScheme.tertiary
-            )
+            // Play con progreso circular alrededor del botón. El anillo usa
+            // la variante CLARA del color dominante (la que resalta sobre el
+            // fondo); el botón play interno usa la variante OSCURA del
+            // mismo color para que el anillo destaque claramente por
+            // encima. Grosor fino (2dp) para no distraer.
+            val ringColor = lighter
+            val playBgColor = darker
             Box(contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(
                     progress = { progress },
@@ -226,7 +264,7 @@ fun MiniPlayer(
                 Surface(
                     modifier = Modifier.size(38.dp),
                     shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary
+                    color = playBgColor
                 ) {
                     IconButton(
                         onClick = { controller.togglePlayPause() },
@@ -254,4 +292,26 @@ fun MiniPlayer(
         }
         }
     }
+}
+
+/** Aclara un Color mezclándolo con blanco por el factor [amount] (0..1). */
+private fun Color.lighten(amount: Float): Color {
+    val a = amount.coerceIn(0f, 1f)
+    return Color(
+        red = red + (1f - red) * a,
+        green = green + (1f - green) * a,
+        blue = blue + (1f - blue) * a,
+        alpha = alpha
+    )
+}
+
+/** Oscurece un Color mezclándolo con negro por el factor [amount] (0..1). */
+private fun Color.darken(amount: Float): Color {
+    val a = amount.coerceIn(0f, 1f)
+    return Color(
+        red = red * (1f - a),
+        green = green * (1f - a),
+        blue = blue * (1f - a),
+        alpha = alpha
+    )
 }

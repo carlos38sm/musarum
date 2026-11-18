@@ -120,6 +120,7 @@ fun InfoScreen(
                 vmState.details != null -> InfoSections(
                     details = vmState.details!!,
                     showEditButton = me?.userRole == "OWNER",
+                    isOwner = me?.userRole == "OWNER",
                     onEdit = { showEditTags = true }
                 )
             }
@@ -154,6 +155,7 @@ fun InfoScreen(
 private fun InfoSections(
     details: SongDetailsDto,
     showEditButton: Boolean = false,
+    isOwner: Boolean = false,
     onEdit: () -> Unit = {}
 ) {
     val camelot = CamelotWheel.toCamelot(details.musicalKey)
@@ -227,6 +229,7 @@ private fun InfoSections(
         val hasTech = details.format != null || details.bitrate != null
                 || details.sampleRate != null || details.channels != null
                 || details.fileSize != null || details.audioPath != null
+                || isOwner
         if (hasTech) {
             Section("Técnico") {
                 PairRow(
@@ -242,6 +245,12 @@ private fun InfoSections(
                     right = null
                 )
                 details.audioPath?.let { InfoLine("Ruta del archivo", it) }
+                // ID visible solo para el OWNER: útil para consultas directas
+                // en la DB cuando una canción se porta mal (letras raras,
+                // metadata inconsistente). No aporta nada al resto de users.
+                if (isOwner) {
+                    InfoLine("ID canción", details.id.toString())
+                }
             }
         }
 

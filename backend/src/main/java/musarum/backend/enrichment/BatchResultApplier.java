@@ -72,6 +72,15 @@ class BatchResultApplier {
     }
 
     private void applyMetadata(Song song, EnrichedMetadata meta) {
+        // Diagnóstico: Carlos reportaba canciones con tonalidad pero sin BPM.
+        // Loggeamos lo que llega del wire para confirmar si el problema está
+        // en el serializador (BPM se pierde entre Emendatium y backend) o en
+        // el applier. Aparece en /admin/server/logs si el nivel es INFO.
+        log.info("applyMetadata song={} bpm={} key={} rg={} lyrics={} coverUrl={}",
+                song.getId(), meta.bpm(), meta.musicalKey(),
+                meta.replayGainTrackGain(),
+                meta.syncedLyrics() != null,
+                meta.coverArt() != null ? meta.coverArt().sourceUrl() : "no");
         String lyricsPath = null;
         if (meta.syncedLyrics() != null && !meta.syncedLyrics().isBlank()) {
             // CLAVE: no sobreescribir letras ya guardadas. Si el usuario

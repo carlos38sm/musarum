@@ -256,7 +256,7 @@ private fun SheetAction(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SendToUserSheet(
+internal fun SendToUserSheet(
     song: SongSummaryDto,
     onDismiss: () -> Unit
 ) {
