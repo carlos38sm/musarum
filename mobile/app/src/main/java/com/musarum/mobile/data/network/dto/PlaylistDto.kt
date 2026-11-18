@@ -7,7 +7,14 @@ data class PlaylistSummaryDto(
     val songCount: Int = 0,
     // Hasta 4 URLs de las primeras canciones (mosaico 2x2). Slots vacíos
     // llegan como null — el cliente los pinta con placeholder.
-    val coverUrls: List<String?> = emptyList()
+    //
+    // NULLABLE a propósito: Gson ignora defaults de Kotlin si el campo
+    // está ausente en el JSON. Si el móvil es nuevo y el backend aún es
+    // viejo (Watchtower sin pullear), la respuesta no trae coverUrls y
+    // Gson lo pone a null — al hacer `.take(4)` sobre eso crashea la
+    // app entera al entrar en Biblioteca. Con nullable + `orEmpty()` al
+    // consumir se degrada limpio.
+    val coverUrls: List<String?>? = null
 )
 
 data class PlaylistEntryDto(
@@ -41,7 +48,8 @@ data class PlaylistDetailsDto(
     val entries: PageDto<PlaylistEntryDto> = PageDto(),
     val collaborators: List<CollaboratorRefDto> = emptyList(),
     // Header enriquecido (bloque B21): mosaico 2×2, totales y tops.
-    val coverUrls: List<String?> = emptyList(),
+    // Nullable por el mismo motivo que PlaylistSummaryDto.coverUrls.
+    val coverUrls: List<String?>? = null,
     val songCount: Int = 0,
     val durationMs: Long? = null,
     val topGenreName: String? = null,

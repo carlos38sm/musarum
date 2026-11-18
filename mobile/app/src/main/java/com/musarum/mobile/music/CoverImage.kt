@@ -197,13 +197,15 @@ fun resolveCoverUrl(url: String?, baseUrl: String): String? {
  */
 @Composable
 fun PlaylistMosaicCover(
-    urls: List<String?>,
+    urls: List<String?>?,
     playlistId: Long,
     modifier: Modifier = Modifier,
     size: Dp = 72.dp,
     cornerRadius: Dp = 10.dp
 ) {
-    val padded = (urls + List(4) { null }).take(4)
+    // `urls` puede llegar null si el backend aún es viejo y no manda el
+    // campo (Gson no respeta defaults). orEmpty + padding a 4 siempre.
+    val padded = (urls.orEmpty() + List(4) { null }).take(4)
     Surface(
         modifier = modifier.size(size),
         shape = RoundedCornerShape(cornerRadius),
