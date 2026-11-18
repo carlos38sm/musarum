@@ -95,25 +95,19 @@ fun FavoritesContent(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
-                        // Dos acciones principales lado a lado: Reproducir
-                        // + Descargar todas. "Descargadas" se calcula sobre
-                        // la lista actual y el texto cambia según progreso.
+                        // Fila de acciones: Reproducir (texto) + Descargar
+                        // todas (icono nube solo, más discreto). El icono
+                        // cambia a CheckCircle cuando ya están todas bajadas.
                         val downloads by container.downloadsRepository.entries.collectAsState()
                         val inProgress by container.downloadsManager.inProgress.collectAsState()
                         val pending = s.favorites.filter {
                             !downloads.containsKey(it.songId) && !inProgress.contains(it.songId)
                         }
-                        val downloadLabel = when {
-                            inProgress.isNotEmpty() -> "Descargando (${inProgress.size})…"
-                            pending.isEmpty() && s.favorites.isNotEmpty() -> "Descargadas"
-                            pending.isNotEmpty() && pending.size < s.favorites.size ->
-                                "Descargar (${pending.size})"
-                            else -> "Descargar todas"
-                        }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = androidx.compose.foundation.layout.Arrangement
                                 .spacedBy(10.dp)
                         ) {
@@ -127,7 +121,9 @@ fun FavoritesContent(
                                 Spacer(Modifier.width(6.dp))
                                 Text("Reproducir")
                             }
-                            FilledTonalButton(
+                            // Icono nube: descarga todas las pendientes.
+                            // Cambia a check cuando ya están todas bajadas.
+                            IconButton(
                                 enabled = pending.isNotEmpty(),
                                 onClick = {
                                     pending.forEach { fav ->
@@ -136,12 +132,13 @@ fun FavoritesContent(
                                 }
                             ) {
                                 Icon(
-                                    if (pending.isEmpty() && s.favorites.isNotEmpty())
+                                    imageVector = if (pending.isEmpty() && s.favorites.isNotEmpty())
                                         Icons.Filled.CheckCircle else Icons.Filled.Download,
-                                    contentDescription = null
+                                    contentDescription = if (pending.isEmpty() && s.favorites.isNotEmpty())
+                                        "Todas descargadas" else "Descargar favoritas",
+                                    tint = if (pending.isNotEmpty()) MaterialTheme.colorScheme.primary
+                                           else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Spacer(Modifier.width(6.dp))
-                                Text(downloadLabel)
                             }
                         }
                         HorizontalDivider()

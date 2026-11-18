@@ -6,13 +6,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -32,25 +30,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.musarum.mobile.LocalAppContainer
-import com.musarum.mobile.music.CoverImage
-import com.musarum.mobile.player.rememberDominantCoverColor
 
 /**
- * Modo coche: UI simplificada con botones gigantes para controlar la
- * reproducción con una mano al volante sin mirar demasiado. 3 controles:
- * anterior / play-pause (grande) / siguiente. Título + artista grandes
- * arriba, cover sin detalles. Nada de listas, letras, menús.
+ * Modo coche: prioridad total a los controles. Sin portada, sin mini-player.
+ * Carlos: "yo priorizaría los botones, no la portada como tal, y el
+ * miniplayer quizás hasta lo quitaba de la vista de modo coche, así hay
+ * más espacio para botones". Layout vertical: título + artista ARRIBA
+ * (fuera del alcance del pulgar), y los 3 botones APILADOS ocupando casi
+ * toda la pantalla — máxima área táctil para conducir sin mirar.
  *
- * El fondo toma el color dominante de la portada (mismo mecanismo que
- * NowPlaying) para que el conductor no vea un contraste brusco si cambia
- * de la pantalla principal a esta.
+ * El fondo toma el color dominante de la portada para no hacer salto
+ * visual con el NowPlaying, pero la portada en sí no se pinta.
  */
 @Composable
 fun CarModeScreen(
@@ -94,33 +90,15 @@ fun CarModeScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 32.dp, vertical = 48.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(start = 28.dp, end = 28.dp, top = 100.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Portada grande centrada.
-            Surface(
-                shape = RoundedCornerShape(16.dp),
-                color = Color.Transparent,
-                modifier = Modifier
-                    .fillMaxWidth(0.65f)
-                    .aspectRatio(1f)
-            ) {
-                CoverImage(
-                    url = state.currentCoverUrl,
-                    size = 0.dp,  // ignorado por fillMaxSize interno
-                    cornerRadius = 16.dp,
-                    modifier = Modifier.fillMaxSize()
-                )
-            }
-
-            Spacer(Modifier.height(36.dp))
-
-            // Título y artista grandes para ser legibles de reojo.
+            // Título y artista arriba del todo. Compactos — todo el espacio
+            // vertical disponible se lo quedan los botones.
             Text(
                 text = song?.title ?: "—",
                 style = MaterialTheme.typography.displaySmall.copy(
-                    fontSize = 38.sp,
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold
                 ),
                 color = MaterialTheme.colorScheme.onBackground,
@@ -129,10 +107,10 @@ fun CarModeScreen(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             Text(
                 text = song?.artistsLabel.orEmpty(),
-                style = MaterialTheme.typography.titleLarge.copy(fontSize = 24.sp),
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
@@ -140,38 +118,45 @@ fun CarModeScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(56.dp))
+            Spacer(Modifier.height(32.dp))
 
-            // Controles: 3 botones gigantes centrados. prev / next IGUALES
-            // en tamaño (antes next se veía enano por diferencias ópticas
-            // del icono); play/pause algo mayor por ser el principal.
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            // Botones apilados en vertical — cada uno enorme. Ratio: play
+            // central más grande (es el más usado), prev/next iguales. Al
+            // ser verticales, el pulgar del volante los encuentra solos sin
+            // tener que mirar a lados distintos de la pantalla.
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                CarButton(
+                CarVerticalButton(
                     icon = Icons.Filled.SkipPrevious,
                     contentDescription = "Anterior",
-                    size = 104.dp,
-                    iconSize = 60.dp,
+                    label = "Anterior",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     onClick = { container.playerController.previous() }
                 )
-                Spacer(Modifier.width(24.dp))
-                CarButton(
+                CarVerticalButton(
                     icon = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                     contentDescription = if (state.isPlaying) "Pausa" else "Reproducir",
-                    size = 136.dp,
-                    iconSize = 76.dp,
+                    label = if (state.isPlaying) "Pausa" else "Reproducir",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1.3f),  // un pelín más alto por ser el principal
                     primary = true,
                     onClick = { container.playerController.togglePlayPause() }
                 )
-                Spacer(Modifier.width(24.dp))
-                CarButton(
+                CarVerticalButton(
                     icon = Icons.Filled.SkipNext,
                     contentDescription = "Siguiente",
-                    size = 104.dp,
-                    iconSize = 60.dp,
+                    label = "Siguiente",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     onClick = { container.playerController.next() }
                 )
             }
@@ -179,31 +164,50 @@ fun CarModeScreen(
     }
 }
 
+/**
+ * Botón "tipo banda" ancho que ocupa toda la fila. Icono grande centrado
+ * + etiqueta grande debajo. Más fácil de dar con el pulgar al volante
+ * que un círculo pequeño — el toque queda en cualquier punto de la banda.
+ */
 @Composable
-private fun CarButton(
+private fun CarVerticalButton(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
-    size: androidx.compose.ui.unit.Dp = 88.dp,
-    iconSize: androidx.compose.ui.unit.Dp = 48.dp,
+    label: String,
+    modifier: Modifier = Modifier,
     primary: Boolean = false,
     onClick: () -> Unit
 ) {
     val bg = if (primary) MaterialTheme.colorScheme.primary
-             else MaterialTheme.colorScheme.surface
+             else MaterialTheme.colorScheme.surfaceVariant
     val fg = if (primary) MaterialTheme.colorScheme.onPrimary
              else MaterialTheme.colorScheme.onSurface
     Surface(
         onClick = onClick,
-        shape = CircleShape,
+        shape = RoundedCornerShape(28.dp),
         color = bg,
-        modifier = Modifier.size(size)
+        contentColor = fg,
+        modifier = modifier
     ) {
-        Box(contentAlignment = Alignment.Center) {
+        Row(
+            modifier = Modifier.fillMaxSize().padding(horizontal = 32.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
             Icon(
                 imageVector = icon,
                 contentDescription = contentDescription,
                 tint = fg,
-                modifier = Modifier.size(iconSize)
+                modifier = Modifier.size(72.dp)
+            )
+            Spacer(Modifier.size(20.dp))
+            Text(
+                label,
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.SemiBold
+                ),
+                color = fg
             )
         }
     }

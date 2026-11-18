@@ -97,6 +97,101 @@ private fun pickDominant(bitmap: Bitmap): Color? {
     return Color(argb)
 }
 
+/**
+ * Par de colores de la portada: el dominante (primario) y un secundario
+ * suficientemente distinto. Para el MiniPlayer queremos intercalar entre
+ * fondo, botón play y anillo de progreso — usar 3 tonos del mismo color
+ * mata el contraste. Si no hay portada o Palette no da suficiente variedad,
+ * se degrada a un par fallback que sigue manteniendo diferencia de tono.
+ */
+data class CoverColorPair(val primary: Color, val secondary: Color)
+
+@Composable
+fun rememberCoverColorPair(
+    coverUrl: String?,
+    fallbackPrimary: Color,
+    fallbackSecondary: Color
+): State<CoverColorPair> {
+    val context = LocalContext.current
+    val baseUrl = LocalAppContainer.current.baseUrl
+    var extracted by remember {
+        mutableStateOf(CoverColorPair(fallbackPrimary, fallbackSecondary))
+    }
+
+    LaunchedEffect(coverUrl) {
+        val resolved = resolveCoverUrl(coverUrl, baseUrl)
+        if (resolved.isNullOrBlank()) {
+            extracted = CoverColorPair(fallbackPrimary, fallbackSecondary)
+            return@LaunchedEffect
+        }
+        val pair = withContext(Dispatchers.Default) {
+            runCatching {
+                val loader = SingletonImageLoader.get(context)
+                val request = ImageRequest.Builder(context)
+                    .data(resolved)
+                    .allowHardware(false)
+                    .build()
+                val bitmap: Bitmap? = loader.execute(request).image?.toBitmap()
+                bitmap?.let { pickPair(it) }
+            }.getOrNull()
+        }
+        extracted = pair ?: CoverColorPair(fallbackPrimary, fallbackSecondary)
+    }
+
+    val animatedPrimary by animateColorAsState(
+        targetValue = extracted.primary,
+        animationSpec = tween(durationMillis = 450),
+        label = "coverPairPrimary"
+    )
+    val animatedSecondary by animateColorAsState(
+        targetValue = extracted.secondary,
+        animationSpec = tween(durationMillis = 450),
+        label = "coverPairSecondary"
+    )
+    return remember(animatedPrimary, animatedSecondary) {
+        androidx.compose.runtime.derivedStateOf {
+            CoverColorPair(animatedPrimary, animatedSecondary)
+        }
+    }
+}
+
+/**
+ * Elige dos swatches distintos de la portada. El primero: el Vibrant
+ * habitual. El segundo: el que más contraste de tono (hue) tenga con el
+ * primero de entre los otros swatches disponibles. Así en una portada
+ * "rojiza" el segundo tiende a ser el verde/amarillo apagado del fondo o
+ * similar, no otro rojo casi idéntico.
+ */
+private fun pickPair(bitmap: Bitmap): CoverColorPair? {
+    val palette = Palette.from(bitmap)
+        .maximumColorCount(24)
+        .generate()
+    val primarySwatch = palette.vibrantSwatch
+        ?: palette.darkVibrantSwatch
+        ?: palette.lightVibrantSwatch
+        ?: palette.mutedSwatch
+        ?: palette.dominantSwatch
+        ?: return null
+    val candidates = listOfNotNull(
+        palette.lightVibrantSwatch,
+        palette.darkVibrantSwatch,
+        palette.vibrantSwatch,
+        palette.lightMutedSwatch,
+        palette.darkMutedSwatch,
+        palette.mutedSwatch,
+        palette.dominantSwatch
+    ).filter { it !== primarySwatch }
+
+    val primaryHue = primarySwatch.hsl[0]
+    val secondarySwatch = candidates.maxByOrNull { sw ->
+        val hueDiff = kotlin.math.abs(sw.hsl[0] - primaryHue).let {
+            if (it > 180f) 360f - it else it
+        }
+        hueDiff
+    } ?: primarySwatch
+    return CoverColorPair(Color(primarySwatch.rgb), Color(secondarySwatch.rgb))
+}
+
 /** Conveniencia por si en el futuro quieres leer el toArgb en tests. */
 @Suppress("unused")
 internal fun Color.argb() = this.toArgb()

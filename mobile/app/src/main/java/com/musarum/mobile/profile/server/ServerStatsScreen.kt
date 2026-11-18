@@ -192,10 +192,9 @@ private fun MaintenanceCard(
 ) {
     StatCard(title = "Mantenimiento") {
         Text(
-            "Re-busca biografías de artistas, BPM, tonalidad y replaygain " +
-                "en Emendatium. Solo re-encola canciones nunca intentadas " +
-                "o con fallos temporales — las que ya se sabe que Emendatium " +
-                "no identifica no se repiten.",
+            "Vuelve a pasar Emendatium por TODA la biblioteca: biografías, " +
+                "BPM, tonalidad, portadas, ReplayGain y renombrado. Los campos " +
+                "ya puestos no se pisan — solo se rellenan los que estén vacíos.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -212,7 +211,7 @@ private fun MaintenanceCard(
             Icon(Icons.Filled.AutoFixHigh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(
-                if (songCount > 0) "Re-enriquecer pendientes"
+                if (songCount > 0) "Re-enriquecer todo ($songCount canciones)"
                 else "Nada que enriquecer"
             )
         }

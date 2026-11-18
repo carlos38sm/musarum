@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.layout.size
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
@@ -42,8 +43,12 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -423,31 +428,42 @@ private fun RecentSearchesPanel(
     onPick: (String) -> Unit,
     onClearAll: () -> Unit
 ) {
-    if (recent.isEmpty()) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) {
-            Text(
-                "Empieza a escribir para buscar",
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        return
+    val container = LocalAppContainer.current
+    // Cargamos las últimas reproducciones del usuario para ofrecerlas como
+    // acceso rápido cuando el search está vacío (Carlos: "Poner algo en
+    // búsqueda para que no quede vacío"). Son las suyas — logout limpia el
+    // historial local, y recentPlays viene filtrado por user_id en backend.
+    var recentPlays by remember {
+        mutableStateOf<List<com.musarum.mobile.data.network.dto.SongSummaryDto>>(emptyList())
     }
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "Recientes",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f)
-            )
-            TextButton(onClick = onClearAll) { Text("Borrar") }
-        }
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+    var topPlays by remember {
+        mutableStateOf<List<com.musarum.mobile.data.network.dto.SongSummaryDto>>(emptyList())
+    }
+    LaunchedEffect(Unit) {
+        runCatching { container.playHistoryRepository.recentPlays(12) }
+            .onSuccess { recentPlays = it }
+        runCatching { container.playHistoryRepository.topPlays("week", 12) }
+            .onSuccess { topPlays = it }
+    }
+
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (recent.isNotEmpty()) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "Recientes",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    TextButton(onClick = onClearAll) { Text("Borrar") }
+                }
+            }
             items(recent.size, key = { "recent_$it" }) { idx ->
                 val term = recent[idx]
                 Row(
@@ -472,6 +488,80 @@ private fun RecentSearchesPanel(
                     )
                 }
                 HorizontalDivider()
+            }
+        }
+
+        if (recentPlays.isNotEmpty()) {
+            item {
+                Text(
+                    "Últimas reproducciones",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            items(
+                count = recentPlays.size,
+                key = { idx -> "rp_${recentPlays[idx].id}" }
+            ) { idx ->
+                val song = recentPlays[idx]
+                SongRow(
+                    song = song,
+                    onClick = {
+                        container.playerController.playQueue(
+                            songs = recentPlays,
+                            startIndex = idx
+                        )
+                    },
+                    onLongPress = {}
+                )
+                HorizontalDivider()
+            }
+        }
+
+        if (topPlays.isNotEmpty() && recentPlays.isEmpty() && recent.isEmpty()) {
+            // Solo usamos "más escuchadas de la semana" como fallback si NI
+            // siquiera hay reproducciones recientes — el user es nuevo o
+            // tiene la biblioteca muy pequeña. Para no saturar cuando ya
+            // había contenido.
+            item {
+                Text(
+                    "Más escuchadas esta semana",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+            items(
+                count = topPlays.size,
+                key = { idx -> "tp_${topPlays[idx].id}" }
+            ) { idx ->
+                val song = topPlays[idx]
+                SongRow(
+                    song = song,
+                    onClick = {
+                        container.playerController.playQueue(
+                            songs = topPlays,
+                            startIndex = idx
+                        )
+                    },
+                    onLongPress = {}
+                )
+                HorizontalDivider()
+            }
+        }
+
+        if (recent.isEmpty() && recentPlays.isEmpty() && topPlays.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 60.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "Empieza a escribir para buscar",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

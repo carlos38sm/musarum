@@ -87,16 +87,21 @@ fun MiniPlayer(
     val fadeDistancePx = with(androidx.compose.ui.platform.LocalDensity.current) { 180.dp.toPx() }
     val rowAlpha = (1f - (abs(dragX) / fadeDistancePx).coerceIn(0f, 0.6f))
 
-    // Color dominante de la portada actual. Se usa como base del degradado
-    // de fondo y del anillo de progreso. Se re-extrae por canción.
-    val fallbackColor = MaterialTheme.colorScheme.tertiary
-    val dominant by rememberDominantCoverColor(
+    // DOS colores distintos de la portada: el dominante (primary) y uno
+    // con buen contraste de hue (secondary). Antes usábamos 3 tonos del
+    // mismo color y Carlos no veía diferencia entre fondo, anillo y botón.
+    // Ahora: fondo = primary, anillo = secondary (contraste real), play
+    // bg = secondary oscurecido para que el anillo salte visualmente por
+    // encima del play.
+    val fallbackPrimary = MaterialTheme.colorScheme.tertiary
+    val fallbackSecondary = MaterialTheme.colorScheme.primary
+    val coverPair by rememberCoverColorPair(
         coverUrl = state.currentCoverUrl,
-        fallback = fallbackColor
+        fallbackPrimary = fallbackPrimary,
+        fallbackSecondary = fallbackSecondary
     )
-    // Variantes clara / oscura del dominante para el degradado y el fondo
-    // del play. Usamos luminance para decidir si el dominante es ya oscuro
-    // (se aclara) o claro (se oscurece) sin tintar hacia negro siempre.
+    val dominant = coverPair.primary
+    val accent = coverPair.secondary
     val isDark = dominant.luminance() < 0.35f
     val lighter = if (isDark) dominant.lighten(0.20f) else dominant.lighten(0.08f)
     val darker = if (isDark) dominant.darken(0.18f) else dominant.darken(0.32f)
@@ -244,13 +249,12 @@ fun MiniPlayer(
                 }
             }
 
-            // Play con progreso circular alrededor del botón. El anillo usa
-            // la variante CLARA del color dominante (la que resalta sobre el
-            // fondo); el botón play interno usa la variante OSCURA del
-            // mismo color para que el anillo destaque claramente por
-            // encima. Grosor fino (2dp) para no distraer.
-            val ringColor = lighter
-            val playBgColor = darker
+            // Anillo = secondary (color DIFERENTE del dominante del fondo,
+            // con contraste de hue garantizado por rememberCoverColorPair).
+            // Botón play = secondary oscurecido, así el anillo salta
+            // visualmente sobre el fondo y sobre el botón a la vez.
+            val ringColor = accent
+            val playBgColor = accent.darken(if (accent.luminance() < 0.35f) 0.10f else 0.30f)
             Box(contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(
                     progress = { progress },

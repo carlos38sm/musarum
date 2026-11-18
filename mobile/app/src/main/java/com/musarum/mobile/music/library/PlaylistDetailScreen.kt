@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PlayArrow
@@ -403,63 +404,111 @@ private fun InviteCollaboratorDialog(
     onSearch: suspend (String) -> List<UserResponseDto>,
     onPick: (UserResponseDto) -> Unit
 ) {
+    // Nuevo diseño pedido por Carlos (nov 2026): bolitas de los usuarios
+    // directamente visibles para pulsar una sin escribir nada. La lupa
+    // revela un campo de búsqueda solo cuando hace falta (hay muchos
+    // usuarios o el que buscas no se ve). Con 3 o 4 oyentes en la red,
+    // normalmente con las bolitas sobra.
+    var allUsers by remember { mutableStateOf<List<UserResponseDto>>(emptyList()) }
+    var showSearch by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
-    var results by remember { mutableStateOf<List<UserResponseDto>>(emptyList()) }
+    var searchResults by remember { mutableStateOf<List<UserResponseDto>>(emptyList()) }
+    val container = LocalAppContainer.current
+    val me by container.userRepository.me.collectAsState()
 
-    // Debounce: tras 300ms de inactividad, lanza búsqueda. Si el campo queda
-    // vacío, limpia resultados sin pedir nada.
-    LaunchedEffect(query) {
-        if (query.isBlank()) {
-            results = emptyList()
+    // Carga inicial: /auth/users devuelve TODOS los usuarios registrados
+    // (público, sin auth) — perfecto para la rejilla de bolitas. Lo
+    // convertimos al DTO que usa el resto del flujo (nick + avatar).
+    LaunchedEffect(Unit) {
+        allUsers = runCatching { container.apiService.getLoginUsers() }
+            .getOrDefault(emptyList())
+            .filter { it.id != me?.id }
+            .map { lu ->
+                UserResponseDto(
+                    id = lu.id,
+                    nick = lu.nick,
+                    avatarUrl = lu.avatarUrl
+                )
+            }
+    }
+    LaunchedEffect(query, showSearch) {
+        if (!showSearch || query.isBlank()) {
+            searchResults = emptyList()
             return@LaunchedEffect
         }
         delay(300)
-        results = runCatching { onSearch(query) }.getOrDefault(emptyList())
+        searchResults = runCatching { onSearch(query) }.getOrDefault(emptyList())
     }
+
+    val visible = if (showSearch && query.isNotBlank()) searchResults else allUsers
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Invitar colaborador") },
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Invitar", modifier = Modifier.weight(1f))
+                IconButton(onClick = { showSearch = !showSearch; if (!showSearch) query = "" }) {
+                    Icon(
+                        Icons.Filled.Search,
+                        contentDescription = if (showSearch) "Ocultar búsqueda" else "Buscar por nick",
+                        tint = if (showSearch) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    label = { Text("Buscar por nick") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(Modifier.height(8.dp))
-                if (results.isEmpty() && query.isNotBlank()) {
+                if (showSearch) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        label = { Text("Buscar por nick") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
+                if (visible.isEmpty()) {
                     Text(
-                        "Sin resultados",
+                        if (showSearch && query.isNotBlank()) "Sin resultados"
+                        else "No hay más usuarios disponibles.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
-                    results.forEach { user ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onPick(user) }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Surface(
-                                modifier = Modifier.size(34.dp),
-                                shape = RoundedCornerShape(50),
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                    // FlowRow de bolitas: cada una con avatar + nick debajo.
+                    // Tap = invitar. maxItemsInEachRow = 4 funciona bien con
+                    // 3 compañeros; si crece, hace scroll de columnas.
+                    androidx.compose.foundation.layout.FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        maxItemsInEachRow = 4
+                    ) {
+                        visible.forEach { user ->
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier
+                                    .width(68.dp)
+                                    .clickable { onPick(user) }
                             ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        user.nick.firstOrNull()?.uppercase() ?: "?",
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
+                                com.musarum.mobile.music.UserAvatar(
+                                    nick = user.nick,
+                                    avatarUrl = user.avatarUrl,
+                                    size = 56.dp
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    user.nick,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1,
+                                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                )
                             }
-                            Spacer(Modifier.width(12.dp))
-                            Text(user.nick, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }

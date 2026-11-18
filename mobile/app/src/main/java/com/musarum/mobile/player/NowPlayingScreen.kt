@@ -643,35 +643,19 @@ fun PlayerShellScaffold(
             .then(swipeDownModifier)
             .then(swipeHorizontalModifier)
     ) {
-        // Fondo en 3 capas "estilo Apple Music":
-        //   1. La portada actual escalada a tamaño pantalla con blur FUERTE
-        //      (60dp). Da el toque "este espacio lo decora la canción".
-        //   2. Un velo con el color dominante (saca más pigmento donde el
-        //      blur no basta — fotos con poco color se ven desvaídas).
-        //   3. Un gradient vertical hacia background para que los textos de
-        //      abajo (artista, slider, controles) queden legibles.
-        val coverForBg = playerState.currentCoverUrl
-        if (coverForBg != null) {
-            val resolvedBg = com.musarum.mobile.music.resolveCoverUrl(
-                coverForBg, shellContainer.baseUrl
-            )
-            coil3.compose.AsyncImage(
-                model = resolvedBg,
-                contentDescription = null,
-                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(60.dp)
-            )
-        }
+        // Fondo: SOLO color dominante del cover con degradado hacia el
+        // background. Antes había una capa con la portada en blur encima,
+        // pero Carlos la quería quitar porque añadía ruido visual y hacía
+        // que los textos perdiesen contraste. Sin imagen, el degradado
+        // transmite el "color" de la canción sin distraer.
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        0.0f to dominant.copy(alpha = 0.55f),
-                        0.45f to dominant.copy(alpha = 0.22f),
-                        0.75f to background.copy(alpha = 0.72f),
+                        0.0f to dominant.copy(alpha = 0.70f),
+                        0.45f to dominant.copy(alpha = 0.30f),
+                        0.75f to background.copy(alpha = 0.80f),
                         1.0f to background
                     )
                 )
