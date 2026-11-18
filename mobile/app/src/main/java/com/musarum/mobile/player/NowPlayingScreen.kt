@@ -47,6 +47,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DownloadDone
@@ -735,7 +737,7 @@ private fun TopActions(
             Icon(
                 imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                 contentDescription = null,
-                tint = if (isFavorite) MaterialTheme.colorScheme.tertiary
+                tint = if (isFavorite) com.musarum.mobile.ui.FavoriteRed
                 else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(22.dp)
             )
@@ -935,7 +937,7 @@ private fun ActionsRow(
             Icon(
                 imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                 contentDescription = null,
-                tint = if (isFavorite) MaterialTheme.colorScheme.tertiary
+                tint = if (isFavorite) com.musarum.mobile.ui.FavoriteRed
                 else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(22.dp)
             )
@@ -1133,12 +1135,17 @@ private fun TrackControls(controller: PlayerController, state: PlayerUiState) {
 
 @Composable
 internal fun downloadIcon(state: DownloadState) = when (state) {
-    DownloadState.NOT_DOWNLOADED -> Icons.Filled.Download
+    // Nube con flecha abajo (CloudDownload) como icono universal de
+    // "descargar" en Musarum. Carlos: "extrapolar el de la playlist a
+    // todas partes". Antes era Download (flecha sola), ahora alineado
+    // con el resto de la app.
+    DownloadState.NOT_DOWNLOADED -> Icons.Filled.CloudDownload
     DownloadState.IN_PROGRESS    -> Icons.Filled.Downloading
-    // Antes TEMPORARY usaba DownloadDone (check pequeño) que se parecía
-    // demasiado a CheckCircle de PERMANENT. Reloj deja claro "esto caduca".
+    // TEMPORARY usa reloj: deja claro "esto caduca".
     DownloadState.TEMPORARY      -> Icons.Filled.Schedule
-    DownloadState.PERMANENT      -> Icons.Filled.CheckCircle
+    // PERMANENT: nube con tick (CloudDone) para que sea la misma familia
+    // visual que la nube de descarga pero marcada como "hecho".
+    DownloadState.PERMANENT      -> Icons.Filled.CloudDone
 }
 
 @Composable

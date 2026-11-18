@@ -23,7 +23,9 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.DragIndicator
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import sh.calvin.reorderable.ReorderableItem
@@ -87,6 +89,11 @@ fun PlaylistDetailScreen(
     // despliega la InlineSearchBar y la lista filtra por title/artistsLabel.
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
+    // Modo "ordenar": al activarlo aparecen las asas de drag en cada fila
+    // (hasta entonces están ocultas, estilo Spotify). Antes el drag estaba
+    // siempre visible y manchaba la lista.
+    var reorderMode by remember { mutableStateOf(false) }
+    var showEditInfo by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -199,35 +206,52 @@ fun PlaylistDetailScreen(
                                         }
                                     }
                                 }
-                                Spacer(Modifier.height(12.dp))
-                                // Info extra (B21): nº canciones · minutos
-                                // totales · género top · artista top · fecha
-                                // de creación. Se compone en texto multilinea
-                                // compacto con "·" como separador. Omitimos
-                                // los nulls para no dejar "· ·" a secas.
+                                Spacer(Modifier.height(14.dp))
+                                // Info extra (B21) en bento 2×2: canciones,
+                                // duración total, artista top, género top.
+                                // La fecha va aparte como pie pequeño.
                                 val totalMs = s.playlist.durationMs
                                     ?: entries.sumOf { (it.durationMs ?: 0).toLong() }
-                                val infoLine1 = buildString {
-                                    append("${s.playlist.songCount.coerceAtLeast(entries.size)} canciones")
-                                    append(" · ")
-                                    append(humanizeDurationMs(totalMs))
+                                val songCount = s.playlist.songCount.coerceAtLeast(entries.size)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    PlaylistStatTile(
+                                        value = songCount.toString(),
+                                        label = "canciones",
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    PlaylistStatTile(
+                                        value = humanizeDurationMs(totalMs),
+                                        label = "duración",
+                                        modifier = Modifier.weight(1f)
+                                    )
                                 }
-                                Text(
-                                    infoLine1,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                val extras = buildList {
-                                    s.playlist.topArtistName?.let { add("Artista top: $it") }
-                                    s.playlist.topGenreName?.let { add("Género top: $it") }
-                                    s.playlist.createdAt?.let { add("Creada ${humanizeIso(it)}") }
+                                if (s.playlist.topArtistName != null || s.playlist.topGenreName != null) {
+                                    Spacer(Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        PlaylistStatTile(
+                                            value = s.playlist.topArtistName ?: "—",
+                                            label = "artista top",
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                        PlaylistStatTile(
+                                            value = s.playlist.topGenreName ?: "—",
+                                            label = "género top",
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
                                 }
-                                if (extras.isNotEmpty()) {
+                                s.playlist.createdAt?.let { iso ->
+                                    Spacer(Modifier.height(6.dp))
                                     Text(
-                                        extras.joinToString(" · "),
+                                        "Creada ${humanizeIso(iso)}",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                        modifier = Modifier.padding(top = 2.dp)
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f)
                                     )
                                 }
                                 Spacer(Modifier.height(12.dp))
@@ -235,10 +259,18 @@ fun PlaylistDetailScreen(
                                     .entries.collectAsState()
                                 val pending = entries.count { downloaded[it.songId] == null }
                                 val allDownloaded = entries.isNotEmpty() && pending == 0
+                                val me by container.userRepository.me.collectAsState()
+                                val isOwner = me?.id != null && me?.id == s.playlist.ownerId
+                                // Fila de acciones icon-only pedida por Carlos:
+                                // reproducir, descargar, editar, ordenar, invitar.
+                                // Sin texto, más compacta. Los últimos 3 solo
+                                // aparecen si eres owner (el backend rechazaría
+                                // las acciones de otros con 404).
                                 Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Button(
+                                    IconButton(
                                         onClick = {
                                             if (entries.isNotEmpty()) {
                                                 container.playerController.playQueue(
@@ -249,58 +281,77 @@ fun PlaylistDetailScreen(
                                         },
                                         enabled = entries.isNotEmpty()
                                     ) {
-                                        Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                                        Spacer(Modifier.width(6.dp))
-                                        Text("Reproducir")
+                                        Icon(
+                                            Icons.Filled.PlayArrow,
+                                            contentDescription = "Reproducir",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(28.dp)
+                                        )
                                     }
-                                    OutlinedButton(
+                                    IconButton(
                                         onClick = {
-                                            // Encolamos solo las que no están ya descargadas o
-                                            // en curso: el manager ya es idempotente, pero así
-                                            // le ahorramos ir y volver por el mutex N veces.
                                             val toDownload = entries
                                                 .map { it.toSongSummary() }
                                                 .filter { downloaded[it.id] == null }
                                             toDownload.forEach {
                                                 container.downloadsManager.download(it)
                                             }
-                                            snackbar(when {
-                                                toDownload.isEmpty() -> "Ya estaban todas descargadas"
-                                                else -> "Descargando ${toDownload.size} canciones"
-                                            })
                                         },
                                         enabled = entries.isNotEmpty() && !allDownloaded
                                     ) {
                                         Icon(
                                             if (allDownloaded) Icons.Filled.CloudDone
                                             else Icons.Filled.CloudDownload,
-                                            contentDescription = null
+                                            contentDescription = if (allDownloaded) "Descargada"
+                                            else "Descargar ${if (pending < entries.size) "($pending)" else ""}",
+                                            tint = if (allDownloaded) MaterialTheme.colorScheme.tertiary
+                                            else MaterialTheme.colorScheme.onSurface
                                         )
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(when {
-                                            allDownloaded -> "Descargada"
-                                            pending == entries.size -> "Descargar"
-                                            else -> "Descargar ($pending)"
-                                        })
+                                    }
+                                    if (isOwner) {
+                                        IconButton(onClick = { showEditInfo = true }) {
+                                            Icon(
+                                                Icons.Filled.Edit,
+                                                contentDescription = "Editar info"
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = { reorderMode = !reorderMode },
+                                            enabled = entries.isNotEmpty() && query.isBlank()
+                                        ) {
+                                            Icon(
+                                                Icons.Filled.SwapVert,
+                                                contentDescription = if (reorderMode) "Terminar orden" else "Ordenar",
+                                                tint = if (reorderMode) MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                        IconButton(onClick = { showInvite = true }) {
+                                            Icon(
+                                                Icons.Filled.PersonAdd,
+                                                contentDescription = "Invitar"
+                                            )
+                                        }
                                     }
                                 }
 
-                                Spacer(Modifier.height(12.dp))
-                                // Solo el owner puede invitar/quitar colaboradores
-                                // (el backend ya devuelve 404 si no eres owner;
-                                // aquí ocultamos los controles para no engañar).
-                                val me by container.userRepository.me.collectAsState()
-                                val isOwner = me?.id != null && me?.id == s.playlist.ownerId
-                                CollaboratorsSection(
-                                    collaborators = s.playlist.collaborators,
-                                    canManage = isOwner,
-                                    onInvite = { showInvite = true },
-                                    onRemove = { userId ->
-                                        viewModel.removeCollaborator(userId) { _, msg ->
-                                            snackbar(msg)
+                                // Bolitas de colaboradores (estilo Spotify): solo
+                                // si la playlist tiene alguno. Cuando no hay
+                                // nadie, ni se dibuja la sección — antes
+                                // aparecía una tarjeta pálida con "nadie puede
+                                // editarla todavía" que ensuciaba el header.
+                                if (s.playlist.collaborators.isNotEmpty()) {
+                                    Spacer(Modifier.height(10.dp))
+                                    CollaboratorsBubbles(
+                                        collaborators = s.playlist.collaborators,
+                                        canManage = isOwner,
+                                        onRemove = { userId ->
+                                            viewModel.removeCollaborator(userId) { _, msg ->
+                                                snackbar(msg)
+                                            }
                                         }
-                                    }
-                                )
+                                    )
+                                }
                             }
                             HorizontalDivider()
                         }
@@ -336,7 +387,7 @@ fun PlaylistDetailScreen(
                                         onRemove = { viewModel.removeEntry(entry.entryId) },
                                         isDragging = isDragging,
                                         dragHandleModifier = Modifier.draggableHandle(),
-                                        dragEnabled = query.isBlank()
+                                        dragEnabled = reorderMode && query.isBlank()
                                     )
                                 }
                                 HorizontalDivider()
@@ -360,8 +411,173 @@ fun PlaylistDetailScreen(
             }
         )
     }
+
+    if (showEditInfo) {
+        val current = (state as? PlaylistDetailUiState.Ready)?.playlist
+        if (current != null) {
+            EditPlaylistInfoDialog(
+                initialName = current.name,
+                initialDescription = current.description.orEmpty(),
+                initialPublic = current.isPublic,
+                onDismiss = { showEditInfo = false },
+                onSave = { newName, newDesc, newPublic ->
+                    viewModel.updateInfo(newName, newDesc.takeIf { it.isNotBlank() }, newPublic) { ok, msg ->
+                        snackbar(msg)
+                        if (ok) showEditInfo = false
+                    }
+                }
+            )
+        }
+    }
 }
 
+/**
+ * Mini-tile tipo bento para los stats del header de playlist. Valor en
+ * grande arriba (titleMedium bold), label pequeña debajo. Fondo con
+ * surfaceVariant + esquinas redondeadas 14dp — queda como "pastilla"
+ * discreta, no como botón.
+ */
+@Composable
+private fun PlaylistStatTile(
+    value: String,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.height(58.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun EditPlaylistInfoDialog(
+    initialName: String,
+    initialDescription: String,
+    initialPublic: Boolean,
+    onDismiss: () -> Unit,
+    onSave: (name: String, description: String, isPublic: Boolean) -> Unit
+) {
+    var name by remember { mutableStateOf(initialName) }
+    var description by remember { mutableStateOf(initialDescription) }
+    var isPublic by remember { mutableStateOf(initialPublic) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Editar playlist") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nombre") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Descripción") },
+                    minLines = 2,
+                    maxLines = 4,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    androidx.compose.material3.Switch(
+                        checked = isPublic,
+                        onCheckedChange = { isPublic = it }
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "Colaborativa (otros users pueden invitarse)",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onSave(name.trim(), description.trim(), isPublic) },
+                enabled = name.isNotBlank()
+            ) { Text("Guardar") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+/**
+ * Fila de bolitas de colaboradores estilo Spotify. Solo se usa cuando ya
+ * hay colaboradores; si el owner quiere añadir uno, usa el icono
+ * PersonAdd de la fila de acciones (abre InviteCollaboratorDialog).
+ */
+@Composable
+private fun CollaboratorsBubbles(
+    collaborators: List<CollaboratorRefDto>,
+    canManage: Boolean,
+    onRemove: (Long) -> Unit
+) {
+    if (collaborators.isEmpty()) return
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        collaborators.forEach { c ->
+            Box {
+                com.musarum.mobile.music.UserAvatar(
+                    nick = c.nick,
+                    avatarUrl = null,
+                    size = 32.dp,
+                    modifier = Modifier.padding(end = 6.dp)
+                )
+                if (canManage) {
+                    // X en la esquina superior derecha para quitar. Hitbox
+                    // pequeño pero accesible. No se muestra a los MEMBER.
+                    IconButton(
+                        onClick = { onRemove(c.id) },
+                        modifier = Modifier
+                            .size(16.dp)
+                            .align(Alignment.TopEnd)
+                    ) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Quitar ${c.nick}",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Antigua tarjeta "Colaboradores" — queda sin uso pero la dejo por si se
+ * reutiliza en el futuro para una vista más detallada.
+ */
+@Suppress("unused")
 @Composable
 private fun CollaboratorsSection(
     collaborators: List<CollaboratorRefDto>,

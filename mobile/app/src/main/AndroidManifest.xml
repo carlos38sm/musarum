@@ -6,6 +6,12 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- WifiLock HIGH_PERF explícito mientras el player está reproduciendo
+         evita que el router deje al chip Wi-Fi en modo bajo consumo con la
+         pantalla apagada (síntoma: Bluetooth se corta a veces entre
+         canciones porque el stream no llega a tiempo). WAKE_MODE_NETWORK
+         de ExoPlayer no siempre fuerza HIGH_PERF en todos los fabricantes. -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <!-- Para enganchar android.media.audiofx.Equalizer al audio session del ExoPlayer. -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- android.media.audiofx.Visualizer (visualizador FFT) exige RECORD_AUDIO

@@ -25,6 +25,14 @@ class PlaylistRepository(private val apiService: ApiService) {
 
     suspend fun details(id: Long): PlaylistDetailsDto = apiService.getPlaylist(id)
 
+    suspend fun update(id: Long, name: String, description: String?, isPublic: Boolean): PlaylistDetailsDto =
+        apiService.updatePlaylist(
+            id,
+            com.musarum.mobile.data.network.dto.PlaylistUpdateRequest(
+                name = name, description = description, isPublic = isPublic
+            )
+        )
+
     suspend fun entries(id: Long): List<PlaylistEntryDto> =
         apiService.getPlaylist(id).entries.content
 

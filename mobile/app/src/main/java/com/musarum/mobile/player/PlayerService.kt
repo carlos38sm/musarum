@@ -30,6 +30,23 @@ class PlayerService : MediaSessionService() {
     private var equalizer: Equalizer? = null
     private var equalizerJob: Job? = null
     private val serviceScope: CoroutineScope = MainScope()
+    private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
+
+    private fun acquireWifiLock() {
+        if (wifiLock == null) {
+            val wifi = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE)
+                    as? android.net.wifi.WifiManager ?: return
+            wifiLock = wifi.createWifiLock(
+                android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF,
+                "musarum:wifi"
+            ).apply { setReferenceCounted(false) }
+        }
+        runCatching { if (wifiLock?.isHeld == false) wifiLock?.acquire() }
+    }
+
+    private fun releaseWifiLock() {
+        runCatching { if (wifiLock?.isHeld == true) wifiLock?.release() }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -103,6 +120,17 @@ class PlayerService : MediaSessionService() {
                 // de UNSET.
                 container.audioSessionIdFlow.value = audioSessionId
             }
+
+            // WifiLock HIGH_PERF: lo agarramos mientras isPlaying=true y lo
+            // soltamos al pausar o parar. Esto resuelve el bug recurrente de
+            // "se corta el Bluetooth" o "se para la canción al bloquear" en
+            // algunos Android (Xiaomi/Samsung sobre todo): sin HIGH_PERF, el
+            // chip Wi-Fi baja a modo ahorro con pantalla apagada, el stream
+            // se retrasa, el buffer de ExoPlayer se vacía, y el handshake
+            // con el BT headset se cae.
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                if (isPlaying) acquireWifiLock() else releaseWifiLock()
+            }
         })
 
         equalizerJob = serviceScope.launch {
@@ -170,6 +198,8 @@ class PlayerService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        releaseWifiLock()
+        wifiLock = null
         runCatching { equalizer?.release() }
         equalizer = null
         equalizerJob?.cancel()

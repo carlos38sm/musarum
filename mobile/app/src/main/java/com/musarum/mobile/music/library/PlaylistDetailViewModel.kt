@@ -90,6 +90,17 @@ class PlaylistDetailViewModel(
 
     suspend fun searchUsers(query: String) = repository.searchUsers(query)
 
+    fun updateInfo(name: String, description: String?, isPublic: Boolean, onDone: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            runCatching { repository.update(playlistId, name, description, isPublic) }
+                .onSuccess {
+                    _state.value = PlaylistDetailUiState.Ready(it)
+                    onDone(true, "Playlist actualizada")
+                }
+                .onFailure { onDone(false, it.message ?: "No se pudo actualizar") }
+        }
+    }
+
     companion object {
         fun factory(
             repository: PlaylistRepository,

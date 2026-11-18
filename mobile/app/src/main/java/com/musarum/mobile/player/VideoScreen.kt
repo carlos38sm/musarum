@@ -601,12 +601,12 @@ private fun VideoActionsRow(
             Icon(
                 imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                 contentDescription = null,
-                tint = if (isFavorite) MaterialTheme.colorScheme.tertiary
+                tint = if (isFavorite) com.musarum.mobile.ui.FavoriteRed
                 else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(22.dp)
             )
         }
-    }
+}
 }
 
 @Composable

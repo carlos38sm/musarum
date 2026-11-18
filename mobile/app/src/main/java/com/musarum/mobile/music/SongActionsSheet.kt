@@ -15,7 +15,7 @@ import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DownloadDone
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -105,7 +105,7 @@ fun SongActionsSheet(
             SheetAction(
                 icon = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                 label = if (isFavorite) "Quitar de favoritas" else "Me gusta",
-                iconTint = if (isFavorite) MaterialTheme.colorScheme.primary else null,
+                iconTint = if (isFavorite) com.musarum.mobile.ui.FavoriteRed else null,
                 onClick = {
                     scope.launch {
                         runCatching { container.favoriteRepository.toggle(song.id) }
@@ -199,7 +199,7 @@ fun SongActionsSheet(
                     )
                 }
                 else -> SheetAction(
-                    icon = Icons.Filled.DownloadDone,
+                    icon = Icons.Filled.CloudDone,
                     label = "Borrar descarga",
                     onClick = {
                         container.downloadsManager.remove(song.id)
