@@ -18,7 +18,8 @@ class UserMapper {
 				user.getAvatarUrl(),
 				user.isBlocked(),
 				user.isShareNowPlaying(),
-				user.isShareTaste()
+				user.isShareTaste(),
+				user.getLastLoginAt()
 		);
 	}
 
@@ -42,6 +43,9 @@ class UserMapper {
 				user.getAvatarUrl(),
 				false,
 				null,
+				null,
+				// En la vista pública NO exponemos última conexión: es
+				// información solo para el OWNER (panel de Usuarios).
 				null
 		);
 	}

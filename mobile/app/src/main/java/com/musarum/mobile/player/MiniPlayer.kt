@@ -255,6 +255,15 @@ fun MiniPlayer(
             // visualmente sobre el fondo y sobre el botón a la vez.
             val ringColor = accent
             val playBgColor = accent.darken(if (accent.luminance() < 0.35f) 0.10f else 0.30f)
+            // Si el fondo del botón es MUY oscuro (portadas tipo metal o
+            // trap con negro/rojo oscuro), el símbolo play/pause en
+            // onPrimary (negro) se pierde. Forzamos blanco en ese caso;
+            // dejamos onPrimary (acorde al theme dinámico) para fondos
+            // claros.
+            val playIconTint = if (playBgColor.luminance() < 0.35f)
+                Color.White
+            else
+                MaterialTheme.colorScheme.onPrimary
             Box(contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(
                     progress = { progress },
@@ -278,7 +287,7 @@ fun MiniPlayer(
                             imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             contentDescription = if (state.isPlaying) "Pausar" else "Reproducir",
                             modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onPrimary
+                            tint = playIconTint
                         )
                     }
                 }

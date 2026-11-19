@@ -511,16 +511,37 @@ fun NowPlayingScreen(
                     confirmDelete = false
                     val idToDelete = song.id
                     scope.launch {
-                        runCatching { container.songRepository.delete(idToDelete) }
-                            .onSuccess {
-                                // Sin snackbar: el player avanza a la siguiente
-                                // (o vuelve atrás) y eso ya es feedback claro.
-                                runCatching { controller.next() }
-                                    .onFailure { onBack() }
-                            }
-                            .onFailure { t ->
-                                snackbar("No se pudo eliminar: ${t.message ?: "error"}")
-                            }
+                        val deleteResult = runCatching {
+                            container.songRepository.delete(idToDelete)
+                        }
+                        // Caso raro pero reproducible: el backend commita el
+                        // DELETE pero la respuesta llega 401 (interceptores,
+                        // red flaky, retry a mitad). Antes salía un snackbar
+                        // rojo "No se pudo eliminar: HTTP 401" aunque la
+                        // canción ya estaba fuera. Verificamos con un GET:
+                        // si devuelve 404, la canción está muerta y lo
+                        // tratamos como éxito. Solo mostramos error si la
+                        // canción sigue viva de verdad.
+                        val reallyGone = if (deleteResult.isSuccess) true
+                        else {
+                            runCatching { container.songRepository.details(idToDelete) }
+                                .fold(
+                                    onSuccess = { false },
+                                    onFailure = { err ->
+                                        val msg = err.message ?: ""
+                                        msg.contains("404") || msg.contains("Not Found", true)
+                                    }
+                                )
+                        }
+                        if (reallyGone) {
+                            // Sin snackbar: el player avanza a la siguiente
+                            // y eso ya es feedback claro.
+                            runCatching { controller.next() }
+                                .onFailure { onBack() }
+                        } else {
+                            val t = deleteResult.exceptionOrNull()
+                            snackbar("No se pudo eliminar: ${t?.message ?: "error"}")
+                        }
                     }
                 }) {
                     Text("Eliminar", color = MaterialTheme.colorScheme.error)

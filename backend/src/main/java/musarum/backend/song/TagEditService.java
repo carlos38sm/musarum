@@ -130,8 +130,12 @@ public class TagEditService {
 
         // 3) Rename opcional del fichero físico. Si falla, los tags + DB ya
         //    se han actualizado — no revertimos. El OWNER lo reintenta.
+        //    Le pasamos el artista TAL COMO llegó en la request para
+        //    preservar el orden ("A, B" → fichero "A, B - Title.mp3"). Si
+        //    no se editó el artista en esta request, caemos a los artistas
+        //    actuales del song (alfabéticos, por estabilidad).
         if (Boolean.TRUE.equals(req.renameFile())) {
-            tryRenameFile(song, file);
+            tryRenameFile(song, file, req.artist());
         }
 
         songRepository.save(song);
@@ -139,10 +143,24 @@ public class TagEditService {
         return songMapper.toDetails(song, isFavorite);
     }
 
-    private void tryRenameFile(Song song, File current) {
+    private void tryRenameFile(Song song, File current, String requestedArtistRaw) {
         String ext = extensionOf(current.getName());
-        String artist = song.getArtists().stream()
-                .map(Artist::getName).findFirst().orElse("Desconocido");
+        // BUG viejo: aquí solo cogíamos el primer artista con findFirst(),
+        // así "A, B - Title.mp3" acababa como "A - Title.mp3". Ahora:
+        //  - Si el user mandó artista en la request, lo usamos tal cual
+        //    (split + join preservando orden del texto escrito).
+        //  - Si no, caemos a los artistas actuales del song ordenados
+        //    alfabéticamente (HashSet no da orden estable).
+        String artist;
+        if (requestedArtistRaw != null && !requestedArtistRaw.isBlank()) {
+            artist = String.join(", ", splitArtists(requestedArtistRaw));
+        } else {
+            artist = song.getArtists().stream()
+                    .map(Artist::getName)
+                    .sorted()
+                    .reduce((a, b) -> a + ", " + b)
+                    .orElse("Desconocido");
+        }
         String title = song.getTitle();
         String baseName = sanitize(artist) + " - " + sanitize(title);
         File target = new File(current.getParentFile(), baseName + "." + ext);

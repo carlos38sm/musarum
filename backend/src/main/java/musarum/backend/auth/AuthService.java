@@ -68,6 +68,17 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user.nick(), user.role().name());
+        // Marca "última conexión" para el panel de Usuarios del OWNER.
+        // Lo hacemos best-effort — si falla (DB saturada, lo que sea), el
+        // token ya está emitido y el usuario entra igual.
+        try {
+            userRepository.findById(user.id()).ifPresent(u -> {
+                u.setLastLoginAt(java.time.Instant.now());
+                userRepository.save(u);
+            });
+        } catch (Exception ignored) {
+            // No queremos tumbar el login por esto.
+        }
         return new TokenResponse(token);
     }
 }

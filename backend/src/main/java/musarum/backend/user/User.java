@@ -11,6 +11,8 @@ import lombok.Setter;
 import lombok.experimental.SuperBuilder;
 import musarum.backend.shared.BaseEntity;
 
+import java.time.Instant;
+
 @Entity
 @Getter
 @Setter
@@ -53,4 +55,13 @@ public class User extends BaseEntity{
 	@Column(name = "share_taste", nullable = false)
 	@lombok.Builder.Default
 	private boolean shareTaste = true;
+
+	/**
+	 * Marca de la última autenticación exitosa (login). Se actualiza en
+	 * {@code AuthService.authenticate} y se expone al OWNER en el panel
+	 * de Usuarios para ver quién lleva sin conectarse. Nullable para los
+	 * usuarios creados antes de V13.
+	 */
+	@Column(name = "last_login_at")
+	private Instant lastLoginAt;
 }

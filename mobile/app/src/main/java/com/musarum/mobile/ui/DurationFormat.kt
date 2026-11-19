@@ -37,3 +37,26 @@ fun humanizeIso(iso: String): String {
         "${localDate.dayOfMonth} ${months[localDate.monthValue - 1]} ${localDate.year}"
     }.getOrElse { iso }
 }
+
+/**
+ * Formatea un timestamp como "última conexión" en relativo: "ahora",
+ * "hace X min", "hace X h", "hace X d" (hasta 30 días) y fecha corta
+ * más allá. Si viene null o no parsea, devuelve "Nunca".
+ */
+fun humanizeLastSeen(iso: String?): String {
+    if (iso.isNullOrBlank()) return "Nunca"
+    return runCatching {
+        val instant = java.time.Instant.parse(iso)
+        val diffMs = System.currentTimeMillis() - instant.toEpochMilli()
+        val mins = diffMs / 60_000L
+        val hours = diffMs / 3_600_000L
+        val days = diffMs / 86_400_000L
+        when {
+            mins < 2 -> "ahora"
+            mins < 60 -> "hace $mins min"
+            hours < 24 -> "hace $hours h"
+            days < 30 -> "hace $days d"
+            else -> humanizeIso(iso)
+        }
+    }.getOrElse { "Nunca" }
+}

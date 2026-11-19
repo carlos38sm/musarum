@@ -7,13 +7,18 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.navigation.NavBackStackEntry
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.dp
+import com.musarum.mobile.ui.MusarumMiniSnackbar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -119,7 +124,11 @@ fun MusarumNavHost(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // No pasamos `snackbarHost` al Scaffold: lo pintamos manualmente
+        // como overlay en la zona superior (dentro del Box de contenido)
+        // para que NUNCA tape los controles de NowPlaying / Video, que son
+        // la parte baja de la pantalla. Como píldora pequeña arriba, estilo
+        // toast de Android — ver [MusarumMiniSnackbar].
         bottomBar = {
             if (showMini || showBottomNav) {
                 Column {
@@ -158,6 +167,7 @@ fun MusarumNavHost(
             }
         }
     ) { innerPadding ->
+      Box(modifier = Modifier.fillMaxSize()) {
         // Diálogo global de "actualización disponible": lo monitorizamos
         // aquí (fuera del NavHost) para que aparezca en cualquier pantalla.
         val update by container.updateChecker.available.collectAsState()
@@ -554,6 +564,18 @@ fun MusarumNavHost(
             }
         }
         }
+        // Overlay del Snackbar: TOP-CENTER con padding de status bar y un
+        // pequeño respiro vertical. Fuera del NavHost para que persista
+        // entre navegaciones. Usa la píldora pequeña — ver
+        // [MusarumMiniSnackbar].
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 8.dp)
+        ) { data -> MusarumMiniSnackbar(data) }
+      }
     }
 }
 

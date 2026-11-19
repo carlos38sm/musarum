@@ -12,7 +12,10 @@ data class UserResponseDto(
     // Toggles de privacidad (Home — convivencia). Nullable: /users/search
     // los deja fuera para no filtrar preferencias ajenas.
     val shareNowPlaying: Boolean? = null,
-    val shareTaste: Boolean? = null
+    val shareTaste: Boolean? = null,
+    // Última conexión (login). Solo se rellena en /users/admin para el
+    // OWNER; en el resto de respuestas viene null. ISO-8601 UTC.
+    val lastLoginAt: String? = null
 )
 
 data class UpdatePrivacyRequest(

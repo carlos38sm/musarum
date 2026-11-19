@@ -11,7 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 /**
@@ -33,13 +33,22 @@ public class PlaceholderService {
     public enum Kind { SONGS, ALBUMS, ARTISTS, PLAYLISTS }
 
     private final Path root;
-    // Cache de listados por carpeta: evita hacer Files.list() en cada
-    // request. La carpeta cambia poco (es manual) y cualquier cambio
-    // requiere un reinicio del backend — es admisible para este caso.
-    private final ConcurrentHashMap<Kind, List<Path>> cache = new ConcurrentHashMap<>();
+    // Cache de listados por carpeta con TTL corto (30 s). Antes cacheábamos
+    // "para siempre" (hasta reinicio) y aparecía el bug clásico: Carlos
+    // arranca el backend con las carpetas vacías (se crean solas en
+    // @PostConstruct), el móvil pide un placeholder de inmediato, cacheamos
+    // una lista VACÍA, después Carlos mete las imágenes y nunca se refresca
+    // hasta que reinicia. Con TTL de 30 s el primer listado "en caliente"
+    // tras arrancar se pierde rápido y la carpeta real se ve.
+    private static final long TTL_MS = 30_000L;
+    @SuppressWarnings("unchecked")
+    private final AtomicReference<CachedListing>[] cache = new AtomicReference[Kind.values().length];
+
+    private record CachedListing(long readAtMs, List<Path> images) {}
 
     public PlaceholderService(@Value("${MUSARUM_MUSIC_PATH}") String musicPath) {
         this.root = Path.of(musicPath, "_placeholders");
+        for (int i = 0; i < cache.length; i++) cache[i] = new AtomicReference<>(null);
     }
 
     @PostConstruct
@@ -70,19 +79,29 @@ public class PlaceholderService {
     }
 
     private List<Path> listing(Kind kind) {
-        return cache.computeIfAbsent(kind, k -> {
-            Path dir = root.resolve(k.name().toLowerCase());
-            if (!Files.exists(dir) || !Files.isDirectory(dir)) return List.of();
+        AtomicReference<CachedListing> slot = cache[kind.ordinal()];
+        CachedListing current = slot.get();
+        long now = System.currentTimeMillis();
+        if (current != null && (now - current.readAtMs) < TTL_MS) {
+            return current.images;
+        }
+        Path dir = root.resolve(kind.name().toLowerCase());
+        List<Path> fresh;
+        if (!Files.exists(dir) || !Files.isDirectory(dir)) {
+            fresh = List.of();
+        } else {
             try (Stream<Path> s = Files.list(dir)) {
-                return s.filter(Files::isRegularFile)
+                fresh = s.filter(Files::isRegularFile)
                         .filter(PlaceholderService::isImage)
                         .sorted(Comparator.comparing(p -> p.getFileName().toString()))
                         .toList();
             } catch (IOException e) {
                 log.warn("No pude listar placeholders de {}: {}", dir, e.getMessage());
-                return List.of();
+                fresh = List.of();
             }
-        });
+        }
+        slot.set(new CachedListing(now, fresh));
+        return fresh;
     }
 
     private static boolean isImage(Path p) {
@@ -96,6 +115,6 @@ public class PlaceholderService {
      * añadimos un endpoint admin de "refrescar placeholders sin reiniciar".
      */
     public void invalidate() {
-        cache.clear();
+        for (AtomicReference<CachedListing> slot : cache) slot.set(null);
     }
 }
