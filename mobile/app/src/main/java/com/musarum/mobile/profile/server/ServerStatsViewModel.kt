@@ -4,8 +4,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.musarum.mobile.data.network.ApiService
+import com.musarum.mobile.data.network.dto.HostStatsDto
 import com.musarum.mobile.data.network.dto.ServerStatsDto
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,7 +31,21 @@ class ServerStatsViewModel(
     private val _state = MutableStateFlow<ServerStatsUiState>(ServerStatsUiState.Loading)
     val state: StateFlow<ServerStatsUiState> = _state.asStateFlow()
 
-    init { refresh() }
+    // Host stats (CPU/RAM/red del Windows). null = aún no cargadas o el
+    // backend es viejo y no expone /host-stats. Separadas del state
+    // principal para que el polling live no reinicie las otras tarjetas.
+    private val _host = MutableStateFlow<HostStatsDto?>(null)
+    val host: StateFlow<HostStatsDto?> = _host.asStateFlow()
+
+    private val _hostLive = MutableStateFlow(false)
+    val hostLive: StateFlow<Boolean> = _hostLive.asStateFlow()
+
+    private var hostPollingJob: Job? = null
+
+    init {
+        refresh()
+        loadHostOnce()
+    }
 
     fun refresh() {
         viewModelScope.launch {
@@ -44,6 +61,53 @@ class ServerStatsViewModel(
                 )
             }
         }
+        // Al recargar el panel entero refrescamos también host-stats (si
+        // es alcanzable). Las dos llamadas son independientes.
+        loadHostOnce()
+    }
+
+    /** Pide un snapshot puntual del host. Fire-and-forget: si falla lo deja a null. */
+    private fun loadHostOnce() {
+        viewModelScope.launch {
+            try {
+                _host.value = apiService.hostStats()
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (_: Throwable) {
+                // Backend viejo que no expone /host-stats, o 401 — silencioso.
+                // La tarjeta se queda sin pintar y no revienta nada.
+            }
+        }
+    }
+
+    /**
+     * Enciende o apaga el "modo live" del panel Máquina: mientras esté ON,
+     * pide {@code /host-stats} cada 2s. La velocidad instantánea de red e
+     * IO solo tiene sentido con refrescos cortos — el backend calcula el
+     * delta entre peticiones consecutivas, así que si no pides seguido
+     * verás "0 B/s" incluso con tráfico de fondo.
+     */
+    fun setHostLive(enabled: Boolean) {
+        if (_hostLive.value == enabled) return
+        _hostLive.value = enabled
+        hostPollingJob?.cancel()
+        if (enabled) {
+            hostPollingJob = viewModelScope.launch {
+                while (_hostLive.value) {
+                    try {
+                        _host.value = apiService.hostStats()
+                    } catch (ce: CancellationException) {
+                        throw ce
+                    } catch (_: Throwable) { /* silencio: en la próxima iteración lo reintenta */ }
+                    delay(2000)
+                }
+            }
+        }
+    }
+
+    override fun onCleared() {
+        hostPollingJob?.cancel()
+        super.onCleared()
     }
 
     /** Borra los .lrc huérfanos del servidor y refresca el panel. */

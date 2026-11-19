@@ -72,6 +72,15 @@
 		    <artifactId>jaudiotagger</artifactId>
 		    <version>3.0.1</version>
 		</dependency>
+
+		<!-- OSHI: lectura de métricas del SO (CPU, RAM física, swap, disco IO,
+		     red por interfaz, uptime). FOSS, pura Java, Windows/Linux/macOS.
+		     La usa HostStatsService para el panel "Máquina". -->
+		<dependency>
+		    <groupId>com.github.oshi</groupId>
+		    <artifactId>oshi-core</artifactId>
+		    <version>6.6.5</version>
+		</dependency>
 		
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

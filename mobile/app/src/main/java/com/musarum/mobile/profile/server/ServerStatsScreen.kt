@@ -19,8 +19,12 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material3.Switch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -52,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
+import com.musarum.mobile.data.network.dto.HostStatsDto
 import com.musarum.mobile.data.network.dto.ServerStatsDto
 import java.time.Duration
 import java.time.Instant
@@ -67,6 +72,8 @@ fun ServerStatsScreen(onBack: () -> Unit) {
         factory = ServerStatsViewModel.factory(container.apiService)
     )
     val state by viewModel.state.collectAsState()
+    val host by viewModel.host.collectAsState()
+    val hostLive by viewModel.hostLive.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showWipeDialog by remember { mutableStateOf(false) }
@@ -123,6 +130,11 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                 TechnicalCard(
                     t = s.stats.technical,
                     onCleanOrphans = { viewModel.cleanOrphanLyrics() }
+                )
+                MachineCard(
+                    host = host,
+                    live = hostLive,
+                    onLiveChange = { viewModel.setHostLive(it) }
                 )
                 MaintenanceCard(
                     songCount = s.stats.catalog.songs,
@@ -553,6 +565,237 @@ private fun TechnicalCard(
         }
     }
 }
+
+/* ─────────────────────────── Tarjeta Máquina ───────────────────────────── */
+
+@Composable
+private fun MachineCard(
+    host: HostStatsDto?,
+    live: Boolean,
+    onLiveChange: (Boolean) -> Unit
+) {
+    StatCard(title = "Máquina") {
+        // Cabecera con toggle live.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Estado del Windows del servidor",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    if (live) "Refresco en vivo (cada 2s)"
+                    else "Pulsa para refrescar en vivo",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (live) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Switch(checked = live, onCheckedChange = onLiveChange)
+        }
+
+        if (host == null) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                "Cargando métricas del sistema… (o el backend no las expone todavía)",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            return@StatCard
+        }
+
+        // SO + CPU model
+        Spacer(Modifier.height(8.dp))
+        Text(
+            host.cpuModel,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            host.osName,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        // CPU bar
+        Spacer(Modifier.height(14.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Filled.Memory,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.width(18.dp).height(18.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                "CPU · ${host.cpuThreads} hilos",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                "%.0f%%".format(host.cpuLoadSystem * 100),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = { host.cpuLoadSystem.toFloat().coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(50)),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Proceso Musarum: %.0f%%".format(host.cpuLoadProcess * 100),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        // RAM bar
+        Spacer(Modifier.height(14.dp))
+        val memPct = if (host.memTotalBytes > 0)
+            host.memUsedBytes.toFloat() / host.memTotalBytes.toFloat()
+        else 0f
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                Icons.Filled.Storage,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.width(18.dp).height(18.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text("RAM", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.weight(1f))
+            Text(
+                "%.0f%%".format(memPct * 100),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.tertiary
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        LinearProgressIndicator(
+            progress = { memPct.coerceIn(0f, 1f) },
+            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(50)),
+            color = MaterialTheme.colorScheme.tertiary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "${humanBytes(host.memUsedBytes)} de ${humanBytes(host.memTotalBytes)}",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        // Swap (si hay)
+        if (host.swapTotalBytes > 0) {
+            Spacer(Modifier.height(6.dp))
+            StatLine(
+                "Swap",
+                "${humanBytes(host.swapUsedBytes)} / ${humanBytes(host.swapTotalBytes)}"
+            )
+        }
+
+        // Uptime de la máquina + hilos JVM
+        Spacer(Modifier.height(6.dp))
+        StatLine("Uptime del PC", humanDuration(host.osUptimeSeconds * 1000L))
+        StatLine("Hilos JVM", host.jvmThreadCount.toString())
+
+        // Red
+        if (host.networkInterfaces.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Filled.NetworkCheck,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.width(18.dp).height(18.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    "Red",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            host.networkInterfaces.forEach { nif ->
+                NetworkInterfaceRow(nif)
+            }
+        }
+
+        // Disco IO (si el host lo da)
+        if (host.diskIo.isNotEmpty()) {
+            Spacer(Modifier.height(14.dp))
+            Text(
+                "Discos",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+            host.diskIo.forEach { d ->
+                Column(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                    Text(
+                        d.model?.ifBlank { d.name } ?: d.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        "${humanBytes(d.sizeBytes)} · ↓ ${humanBytesPerSec(d.readBytesPerSec)} · ↑ ${humanBytesPerSec(d.writeBytesPerSec)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NetworkInterfaceRow(nif: HostStatsDto.NetworkInterfaceDto) {
+    val color = if (nif.up) MaterialTheme.colorScheme.secondary
+                else MaterialTheme.colorScheme.onSurfaceVariant
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                nif.displayName.ifBlank { nif.name },
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = color,
+                modifier = Modifier.weight(1f)
+            )
+            Text(
+                "↓ ${humanBytesPerSec(nif.rxBytesPerSec)}  ↑ ${humanBytesPerSec(nif.txBytesPerSec)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        val sub = buildString {
+            nif.ipv4?.let { append(it) }
+            if (!nif.up) {
+                if (isNotEmpty()) append(" · ")
+                append("caído")
+            }
+        }
+        if (sub.isNotBlank()) {
+            Text(
+                sub,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** Formatea bytes/segundo con la misma escala que [humanBytes] + "/s". */
+private fun humanBytesPerSec(bps: Long): String = humanBytes(bps) + "/s"
 
 /* ─────────────────────────── Componentes base ──────────────────────────── */
 

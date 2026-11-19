@@ -41,16 +41,31 @@ class AdminController {
 
     private final ServerStatsService statsService;
     private final BackupService backupService;
+    private final HostStatsService hostStatsService;
 
-    AdminController(ServerStatsService statsService, BackupService backupService) {
+    AdminController(ServerStatsService statsService,
+                    BackupService backupService,
+                    HostStatsService hostStatsService) {
         this.statsService = statsService;
         this.backupService = backupService;
+        this.hostStatsService = hostStatsService;
     }
 
     @GetMapping("/stats")
     @PreAuthorize("hasRole('OWNER')")
     ServerStatsDto stats() {
         return statsService.buildSnapshot();
+    }
+
+    /**
+     * Métricas del SISTEMA (no de Musarum): CPU, RAM física, swap, disco IO,
+     * red por interfaz. El móvil lo refresca cada pocos segundos cuando el
+     * OWNER tiene el "modo live" encendido en Análisis del servidor.
+     */
+    @GetMapping("/host-stats")
+    @PreAuthorize("hasRole('OWNER')")
+    HostStatsService.HostStats hostStats() {
+        return hostStatsService.snapshot();
     }
 
     /** Borra ficheros .lrc en {@code _lyrics/} cuyo id ya no existe en {@code songs}. */

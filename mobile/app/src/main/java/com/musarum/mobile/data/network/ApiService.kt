@@ -378,6 +378,11 @@ interface ApiService {
     @GET("admin/server/stats")
     suspend fun serverStats(): com.musarum.mobile.data.network.dto.ServerStatsDto
 
+    // Métricas del SO del servidor (CPU, RAM, swap, red, disco IO). Pensado
+    // para refresco rápido cuando el OWNER tiene "modo live" ON.
+    @GET("admin/server/host-stats")
+    suspend fun hostStats(): com.musarum.mobile.data.network.dto.HostStatsDto
+
     @GET("version")
     suspend fun appVersion(): com.musarum.mobile.data.network.dto.VersionDto
 
