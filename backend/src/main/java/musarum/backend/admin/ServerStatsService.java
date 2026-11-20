@@ -19,6 +19,7 @@ import musarum.backend.album.AlbumRepository;
 import musarum.backend.artist.ArtistRepository;
 import musarum.backend.enrichment.EmendatiumAutoEnricher;
 import musarum.backend.enrichment.EmendatiumClient;
+import musarum.backend.enrichment.EnrichmentProgress;
 import musarum.backend.favorite.FavoriteRepository;
 import musarum.backend.genre.GenreRepository;
 import musarum.backend.playlist.PlaylistRepository;
@@ -63,6 +64,7 @@ public class ServerStatsService {
     private final LibraryScanner libraryScanner;
     private final EmendatiumAutoEnricher emendatiumEnricher;
     private final EmendatiumClient emendatiumClient;
+    private final EnrichmentProgress enrichmentProgress;
     private final musarum.backend.shared.CoverStorage coverStorage;
 
     private final Path musicRoot;
@@ -85,6 +87,7 @@ public class ServerStatsService {
                        LibraryScanner libraryScanner,
                        EmendatiumAutoEnricher emendatiumEnricher,
                        EmendatiumClient emendatiumClient,
+                       EnrichmentProgress enrichmentProgress,
                        musarum.backend.shared.CoverStorage coverStorage,
                        @Value("${MUSARUM_MUSIC_PATH}") String musicPath,
                        @Value("${MUSARUM_COVERS_PATH:#{null}}") String coversPath,
@@ -101,6 +104,7 @@ public class ServerStatsService {
         this.libraryScanner = libraryScanner;
         this.emendatiumEnricher = emendatiumEnricher;
         this.emendatiumClient = emendatiumClient;
+        this.enrichmentProgress = enrichmentProgress;
         this.coverStorage = coverStorage;
 
         this.musicRoot = Path.of(musicPath);
@@ -354,6 +358,13 @@ public class ServerStatsService {
     @Transactional(readOnly = true)
     public ReEnrichSummary reEnrichAll() {
         long total = songRepository.count();
+        // Fijamos el total del progreso ANTES de encolar nada: si lo
+        // inicializamos después, las primeras canciones pueden haber
+        // incrementado "processed" contra un total=0 y falsear el %.
+        // (findReenqueueable es "SELECT s FROM Song s" sin filtros, por eso
+        // igualamos total a count().)
+        enrichmentProgress.startRun(total);
+
         int queued = 0;
         int page = 0;
         int size = 200;
@@ -372,6 +383,11 @@ public class ServerStatsService {
     }
 
     public record ReEnrichSummary(int queued, long total) {}
+
+    /** Snapshot del progreso de "Re-enriquecer todo" para el móvil. */
+    public EnrichmentProgress.EnrichmentProgressDto reEnrichProgress() {
+        return enrichmentProgress.snapshot();
+    }
 
     /**
      * Barre artistas, álbumes y géneros que quedaron SIN canciones. Pensado

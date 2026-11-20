@@ -102,6 +102,17 @@ class AdminController {
     }
 
     /**
+     * Progreso del "Re-enriquecer todo" en curso. El móvil hace polling
+     * aquí mientras running=true para pintar la barra. No cambia nada,
+     * solo devuelve contadores — es barato.
+     */
+    @GetMapping("/enrich-progress")
+    @PreAuthorize("hasRole('OWNER')")
+    musarum.backend.enrichment.EnrichmentProgress.EnrichmentProgressDto enrichProgress() {
+        return statsService.reEnrichProgress();
+    }
+
+    /**
      * Barre artistas / álbumes / géneros sin canciones. Útiles tras borrados
      * masivos: aparecían "fantasmas" en ArtistsScreen con 0 canciones.
      */

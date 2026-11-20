@@ -74,6 +74,7 @@ fun ServerStatsScreen(onBack: () -> Unit) {
     val state by viewModel.state.collectAsState()
     val host by viewModel.host.collectAsState()
     val hostLive by viewModel.hostLive.collectAsState()
+    val enrichProgress by viewModel.enrichProgress.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showWipeDialog by remember { mutableStateOf(false) }
@@ -138,6 +139,8 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                 )
                 MaintenanceCard(
                     songCount = s.stats.catalog.songs,
+                    progress = enrichProgress,
+                    onDismissProgress = { viewModel.dismissEnrichProgress() },
                     onWipeRequested = { showWipeDialog = true },
                     onReEnrichRequested = {
                         viewModel.reEnrichAll { _, msg ->
@@ -198,6 +201,8 @@ fun ServerStatsScreen(onBack: () -> Unit) {
 @Composable
 private fun MaintenanceCard(
     songCount: Long,
+    progress: com.musarum.mobile.data.network.dto.EnrichProgressDto?,
+    onDismissProgress: () -> Unit,
     onWipeRequested: () -> Unit,
     onReEnrichRequested: () -> Unit,
     onCleanOrphansRequested: () -> Unit
@@ -210,10 +215,15 @@ private fun MaintenanceCard(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+
+        // Barra de progreso del run activo (o del último si terminó).
+        EnrichProgressBlock(progress = progress, onDismiss = onDismissProgress)
+
         Spacer(Modifier.height(12.dp))
+        val running = progress?.running == true
         Button(
             onClick = onReEnrichRequested,
-            enabled = songCount > 0,
+            enabled = songCount > 0 && !running,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
                 contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -223,8 +233,11 @@ private fun MaintenanceCard(
             Icon(Icons.Filled.AutoFixHigh, contentDescription = null)
             Spacer(Modifier.width(8.dp))
             Text(
-                if (songCount > 0) "Re-enriquecer todo ($songCount canciones)"
-                else "Nada que enriquecer"
+                when {
+                    songCount <= 0 -> "Nada que enriquecer"
+                    running -> "Enriqueciendo…"
+                    else -> "Re-enriquecer todo ($songCount canciones)"
+                }
             )
         }
 
@@ -564,6 +577,70 @@ private fun TechnicalCard(
             }
         }
     }
+}
+
+/* ─────────────────── Barra de progreso del re-enrich ──────────────────── */
+
+@Composable
+private fun EnrichProgressBlock(
+    progress: com.musarum.mobile.data.network.dto.EnrichProgressDto?,
+    onDismiss: () -> Unit
+) {
+    if (progress == null || progress.total <= 0L) return
+
+    val pct = (progress.processed.toFloat() / progress.total.toFloat()).coerceIn(0f, 1f)
+    val elapsedMs = (progress.finishedAtMs ?: System.currentTimeMillis()) -
+            (progress.startedAtMs ?: System.currentTimeMillis())
+    val etaMs = if (progress.running && progress.processed > 0) {
+        val rate = progress.processed.toDouble() / elapsedMs.toDouble()  // canciones/ms
+        if (rate > 0) ((progress.total - progress.processed) / rate).toLong() else 0L
+    } else 0L
+
+    Spacer(Modifier.height(14.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            if (progress.running) "Enriqueciendo canciones…"
+            else "Enriquecido · ${progress.succeeded} ok / ${progress.failed} fallidas",
+            style = MaterialTheme.typography.labelMedium,
+            color = if (progress.running) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onBackground,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+        if (!progress.running) {
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text("Descartar")
+            }
+        }
+    }
+    Spacer(Modifier.height(6.dp))
+    LinearProgressIndicator(
+        progress = { pct },
+        modifier = Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(50)),
+        color = MaterialTheme.colorScheme.primary,
+        trackColor = MaterialTheme.colorScheme.surfaceVariant
+    )
+    Spacer(Modifier.height(6.dp))
+    val subLine = buildString {
+        append("${progress.processed} / ${progress.total}")
+        append(" · %.0f%%".format(pct * 100))
+        if (progress.running && etaMs > 0) {
+            append(" · quedan ~")
+            append(humanDuration(etaMs))
+        }
+        if (!progress.running && progress.startedAtMs != null && progress.finishedAtMs != null) {
+            append(" · tardó ")
+            append(humanDuration(progress.finishedAtMs - progress.startedAtMs))
+        }
+    }
+    Text(
+        subLine,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 /* ─────────────────────────── Tarjeta Máquina ───────────────────────────── */

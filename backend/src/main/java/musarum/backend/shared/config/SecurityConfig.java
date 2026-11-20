@@ -1,14 +1,14 @@
 package musarum.backend.shared.config;
 
 import musarum.backend.shared.security.JwtAuthFilter;
+import musarum.backend.shared.security.LoggingAccessDeniedHandler;
+import musarum.backend.shared.security.LoggingAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 // EnableMethodSecurity activa @PreAuthorize("hasRole('OWNER')") en los
@@ -40,8 +40,15 @@ public class SecurityConfig {
             // autenticar (token ausente, caducado o firma inválida). Así el
             // UnauthorizedInterceptor del móvil puede hacer logout automático
             // y re-login, en vez de mostrar 403 permanente.
+            // Reemplazamos el HttpStatusEntryPoint vanilla por uno que logea
+            // la causa exacta del 401 (ver LoggingAuthenticationEntryPoint).
+            // Y añadimos un AccessDeniedHandler para separar 401 (sin auth)
+            // de 403 (autenticado pero sin rol) — antes ambos se mezclaban
+            // en 401 y era imposible saber si el token no llegaba o si
+            // llegaba con rol mal.
             .exceptionHandling(ex -> ex
-                    .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+                    .authenticationEntryPoint(new LoggingAuthenticationEntryPoint())
+                    .accessDeniedHandler(new LoggingAccessDeniedHandler()))
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

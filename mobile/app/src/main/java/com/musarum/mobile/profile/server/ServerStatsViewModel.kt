@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.musarum.mobile.data.network.ApiService
+import com.musarum.mobile.data.network.dto.EnrichProgressDto
 import com.musarum.mobile.data.network.dto.HostStatsDto
 import com.musarum.mobile.data.network.dto.ServerStatsDto
 import kotlinx.coroutines.CancellationException
@@ -42,9 +43,19 @@ class ServerStatsViewModel(
 
     private var hostPollingJob: Job? = null
 
+    // Progreso del "Re-enriquecer todo". null = nunca disparado desde este
+    // dispositivo (o el backend reinició). El polling vive mientras el
+    // snapshot indique running=true.
+    private val _enrichProgress = MutableStateFlow<EnrichProgressDto?>(null)
+    val enrichProgress: StateFlow<EnrichProgressDto?> = _enrichProgress.asStateFlow()
+    private var enrichPollingJob: Job? = null
+
     init {
         refresh()
         loadHostOnce()
+        // Si al entrar el backend ya tiene un run en marcha (otro dispositivo
+        // lo lanzó), arrancamos el polling solos.
+        checkInitialEnrichProgress()
     }
 
     fun refresh() {
@@ -107,6 +118,7 @@ class ServerStatsViewModel(
 
     override fun onCleared() {
         hostPollingJob?.cancel()
+        enrichPollingJob?.cancel()
         super.onCleared()
     }
 
@@ -139,6 +151,9 @@ class ServerStatsViewModel(
         viewModelScope.launch {
             try {
                 val summary = apiService.reEnrichAll()
+                // Arrancamos el polling del progreso en cuanto sabemos que
+                // la request superó auth y empezó a encolar.
+                startEnrichPolling()
                 onResult(
                     true,
                     "Encoladas ${summary.queued} canciones. Los datos aparecen poco a poco."
@@ -149,6 +164,47 @@ class ServerStatsViewModel(
                 onResult(false, t.message ?: "No se pudo re-enriquecer")
             }
         }
+    }
+
+    private fun checkInitialEnrichProgress() {
+        viewModelScope.launch {
+            try {
+                val p = apiService.enrichProgress()
+                if (p.running) {
+                    _enrichProgress.value = p
+                    startEnrichPolling()
+                } else if (p.finishedAtMs != null) {
+                    // Terminado hace un rato: lo mostramos como resumen hasta
+                    // que el usuario lo descarte o lance otro run.
+                    _enrichProgress.value = p
+                }
+            } catch (_: Throwable) { /* backend viejo o sin auth: silencio */ }
+        }
+    }
+
+    private fun startEnrichPolling() {
+        enrichPollingJob?.cancel()
+        enrichPollingJob = viewModelScope.launch {
+            while (true) {
+                try {
+                    val p = apiService.enrichProgress()
+                    _enrichProgress.value = p
+                    if (!p.running) break
+                } catch (ce: CancellationException) {
+                    throw ce
+                } catch (_: Throwable) { /* reintenta en el siguiente tick */ }
+                delay(2000)
+            }
+        }
+    }
+
+    /**
+     * El usuario descarta el resumen final (card de "Hecho · N/N en Xm").
+     * Mantener el resumen residual puede confundir si vuelves a Mantenimiento
+     * horas después.
+     */
+    fun dismissEnrichProgress() {
+        _enrichProgress.value = null
     }
 
     /**

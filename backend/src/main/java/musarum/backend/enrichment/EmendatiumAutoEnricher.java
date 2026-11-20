@@ -27,13 +27,16 @@ public class EmendatiumAutoEnricher {
     private final EmendatiumClient client;
     private final BatchResultApplier applier;
     private final SongService songService;
+    private final EnrichmentProgress progress;
 
     EmendatiumAutoEnricher(EmendatiumClient client,
                            BatchResultApplier applier,
-                           SongService songService) {
+                           SongService songService,
+                           EnrichmentProgress progress) {
         this.client = client;
         this.applier = applier;
         this.songService = songService;
+        this.progress = progress;
     }
 
     /**
@@ -44,7 +47,13 @@ public class EmendatiumAutoEnricher {
      */
     @Async("scannerExecutor")
     public void enrichAsync(Long songId, String audioPath) {
-        if (!client.isEnabled()) return;
+        if (!client.isEnabled()) {
+            // Aun así cuenta como "procesada" para que si alguien llamó
+            // startRun(total), el contador cierre y el progreso llegue a 100%.
+            progress.onDone(false);
+            return;
+        }
+        boolean ok = false;
         try {
             EnrichmentResponse resp = client.enrich(audioPath).orElse(null);
             if (resp == null || resp.metadata() == null) {
@@ -63,6 +72,7 @@ public class EmendatiumAutoEnricher {
                 log.info("Emendatium NO MATCH: id={} ({})", songId, audioPath);
                 return;
             }
+            ok = true;
 
             // Log de lo que llega para que el OWNER pueda ver en docker logs
             // por qué BPM/key siguen null aunque Emendatium esté 🟢. Si
@@ -91,6 +101,8 @@ public class EmendatiumAutoEnricher {
             // "Re-enriquecer todo" lo re-intente la próxima vez.
             songService.markEnrichment(songId, EnrichStatus.FAILED_TRANSIENT);
             log.warn("Auto-enrich fallido (transient) id={}: {}", songId, e.getMessage());
+        } finally {
+            progress.onDone(ok);
         }
     }
 }

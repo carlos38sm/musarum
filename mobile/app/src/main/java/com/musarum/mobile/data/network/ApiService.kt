@@ -383,6 +383,11 @@ interface ApiService {
     @GET("admin/server/host-stats")
     suspend fun hostStats(): com.musarum.mobile.data.network.dto.HostStatsDto
 
+    // Progreso del "Re-enriquecer todo" para la barra en Mantenimiento.
+    // Es barato (solo lee contadores atómicos), se puede hacer polling corto.
+    @GET("admin/server/enrich-progress")
+    suspend fun enrichProgress(): com.musarum.mobile.data.network.dto.EnrichProgressDto
+
     @GET("version")
     suspend fun appVersion(): com.musarum.mobile.data.network.dto.VersionDto
 

@@ -53,7 +53,10 @@ public class JwtService { // MÁQUINA DE TOKENS = FABRICA Y LEE TOKENS (TODA CON
     	return parseClaims(token).get("userRole", String.class);
     }
     
-    private Claims parseClaims(String token) {
+    // Público para que JwtAuthFilter pueda cazar excepciones específicas
+    // (ExpiredJwtException, SignatureException, etc) y loggear la razón
+    // exacta del 401. isTokenValid() las traga en silencio.
+    public Claims parseClaims(String token) {
     	return Jwts.parser()
     			.verifyWith(secretKey)
     			.build()
