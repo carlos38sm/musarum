@@ -90,8 +90,19 @@ public class SongDeletionService {
         boolean fileDeleted = deleteFile(audioPath);
         boolean lyricsDeleted = (lyricsPath != null) && deleteFile(lyricsPath);
 
-        int artistsPurged = purgeOrphanArtists(artistIds);
+        // ORDEN CRÍTICO: primero álbumes huérfanos, DESPUÉS artistas.
+        // El álbum (hijo) tiene FK NOT NULL a artist (padre). Si borramos el
+        // artista mientras el Album sigue en la sesión Hibernate, Hibernate
+        // intenta "limpiar" la referencia con un UPDATE album SET artist_id=NULL
+        // antes del DELETE del artista → Postgres rechaza (not-null constraint)
+        // → la transacción revienta con DataIntegrityViolationException.
+        // Esto causaba el "401 misterioso" al borrar canciones.
+        // Los flush() intermedios fuerzan que el DELETE llegue a DB antes de
+        // la siguiente operación, evitando reordenes automáticos de Hibernate.
         int albumsPurged = purgeOrphanAlbum(albumId);
+        albumRepository.flush();
+        int artistsPurged = purgeOrphanArtists(artistIds);
+        artistRepository.flush();
         int genresPurged = purgeOrphanGenre(genreId);
 
         log.info("Canción {} eliminada: favoritos={} entradas={} plays={} "
