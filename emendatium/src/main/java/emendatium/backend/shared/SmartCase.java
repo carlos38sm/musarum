@@ -22,8 +22,9 @@ public final class SmartCase {
             "a", "de", "del", "la", "las", "el", "los", "un", "una",
             "y", "e", "o", "u", "para", "por", "con", "sin", "en", "al",
             "lo", "ni", "que", "si", "se",
-            // Inglés
-            "the", "and", "but", "or", "nor", "a", "an", "as",
+            // Inglés. Nota: "a" ya está arriba (castellano); Set.of rechaza
+            // duplicados en static init y tira NoClassDefFoundError al cargar.
+            "the", "and", "but", "or", "nor", "an", "as",
             "at", "by", "for", "in", "of", "on", "to", "up", "via", "vs", "is",
             // Francés
             "le", "les", "une", "des", "aux", "du", "et"
