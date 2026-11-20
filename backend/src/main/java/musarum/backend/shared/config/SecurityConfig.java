@@ -33,6 +33,15 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/version").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                // /error: endpoint interno al que Spring Boot hace FORWARD
+                // cuando un controller lanza una excepción runtime. En modo
+                // STATELESS el SecurityContext se limpia entre dispatches,
+                // así que el forward llega como anónimo. Si /error exige
+                // auth, el móvil recibe un 401 enmascarando el 500 real
+                // (síntoma clásico: "la canción se borra pero sale 401").
+                // Dejándolo permitAll, el 500 original llega al móvil con
+                // su JSON y podemos diagnosticar la causa raíz de verdad.
+                .requestMatchers("/error").permitAll()
                 .anyRequest().authenticated())
             // Spring Security 6 por defecto devuelve 403 también para peticiones
             // sin token válido, lo que confunde "sin credenciales" con "sin

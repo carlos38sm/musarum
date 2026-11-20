@@ -16,12 +16,16 @@ import musarum.backend.song.exception.LyricsNotFoundException;
 import musarum.backend.song.exception.SongNotFoundException;
 import musarum.backend.streaming.AudioFileNotFoundException;
 import musarum.backend.user.exception.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestControllerAdvice
 class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(UserNotFoundException.class)
     ResponseEntity<ApiError> handleUserNotFound(UserNotFoundException ex) {
@@ -131,6 +135,24 @@ class GlobalExceptionHandler {
     @ExceptionHandler(FolderOutsideUmbrellaException.class)
     ResponseEntity<ApiError> handleFolderOutsideUmbrella(FolderOutsideUmbrellaException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
+    }
+
+    /**
+     * Catch-all: cualquier RuntimeException no cubierta por un handler
+     * específico cae aquí. SIN esto, Spring hacía forward interno a /error
+     * y en modo STATELESS el 401 de /error enmascaraba el 500 real — el
+     * móvil veía "401" aunque el controller ya hubiera corrido con éxito.
+     * Loguear la stacktrace para diagnosticar la causa raíz después.
+     *
+     * No capturamos Throwable para no tragar Error (OutOfMemory, etc).
+     * RuntimeException cubre todo lo que normalmente sale de controllers.
+     */
+    @ExceptionHandler(RuntimeException.class)
+    ResponseEntity<ApiError> handleUnexpectedRuntime(RuntimeException ex) {
+        log.error("500 hunt · excepción no manejada en controller: {}", ex.toString(), ex);
+        return build(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Error inesperado: " + ex.getClass().getSimpleName() +
+                        (ex.getMessage() != null ? " · " + ex.getMessage() : ""));
     }
 
     private ResponseEntity<ApiError> build(HttpStatus status, String message) {
