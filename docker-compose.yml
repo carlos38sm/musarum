@@ -61,6 +61,10 @@ services:
       MUSARUM_OWNER_NICK: ${MUSARUM_OWNER_NICK}
       MUSARUM_OWNER_PASSWORD: ${MUSARUM_OWNER_PASSWORD}
       MUSARUM_MUSIC_PATH: /music
+      # Override de JVM: el Dockerfile ya pone valores razonables, pero
+      # aquí lo repetimos para que un servidor con mucha RAM pueda subirlo
+      # sin reconstruir imagen. Ajusta Xmx según RAM libre del host.
+      JAVA_TOOL_OPTIONS: ${BACKEND_JVM_OPTS:--Xms256m -Xmx1536m -XX:+UseG1GC}
       # Enriquecimiento opcional: si no quieres levantar Emendatium, comenta.
       EMENDATIUM_BASE_URL: http://emendatium:8081
       # Canal de releases que lee el móvil (opcional).

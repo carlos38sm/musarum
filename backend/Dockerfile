@@ -18,10 +18,15 @@ WORKDIR /app
 RUN mkdir -p /music && chmod 755 /music
 # Copiamos el jar sin incluir el nombre exacto (varía con la versión del pom).
 COPY --from=build /app/target/*.jar /app/app.jar
-# JVM tuneada para portátil viejo: 256 MB max, usando los contenedores
-# cgroups para no comerse toda la RAM. Si tu portátil tiene más, sube el
-# valor en docker-compose.yml con JAVA_TOOL_OPTIONS.
-ENV JAVA_TOOL_OPTIONS="-Xms128m -Xmx384m -XX:+UseSerialGC"
+# JVM: heap generoso (1.5 GB) + G1GC concurrente. Antes iba con -Xmx384m
+# + SerialGC "para portátil viejo", pero con 3000+ canciones en catálogo,
+# Spring Boot full, Hibernate caches, OSHI, OkHttp y Flyway la JVM pasaba
+# más tiempo en GC stop-the-world que respondiendo. Síntoma: 114% CPU en
+# el proceso Java mientras Postgres y Emendatium estaban ociosos, y toda
+# la app lenta. En un servidor con ≥3 GB libres esto respira a gusto; si
+# quisieras bajarlo en una máquina más pequeña, override con
+# JAVA_TOOL_OPTIONS en docker-compose.yml.
+ENV JAVA_TOOL_OPTIONS="-Xms256m -Xmx1536m -XX:+UseG1GC"
 EXPOSE 8080
 # Healthcheck sencillo contra Spring Boot: no usamos actuator para no
 # añadir dependencias; /api/v1/version es siempre 200 (público) y rápido.
