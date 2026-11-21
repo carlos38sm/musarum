@@ -113,6 +113,23 @@ class AdminController {
     }
 
     /**
+     * Cancela el "Re-enriquecer todo" en curso. Las tareas @Async que ya
+     * están corriendo en Emendatium NO se abortan (no hay forma limpia de
+     * matar un HTTP en vuelo sin leak), pero las que todavía NO han
+     * arrancado salen pronto y la cola se vacía rápido. En el móvil la
+     * barra llega a 100% en segundos.
+     */
+    @PostMapping("/cancel-enrichment")
+    @PreAuthorize("hasRole('OWNER')")
+    CancelEnrichResult cancelEnrichment() {
+        logCaller("cancel-enrichment");
+        statsService.cancelReEnrich();
+        return new CancelEnrichResult(true);
+    }
+
+    public record CancelEnrichResult(boolean cancelled) {}
+
+    /**
      * Barre artistas / álbumes / géneros sin canciones. Útiles tras borrados
      * masivos: aparecían "fantasmas" en ArtistsScreen con 0 canciones.
      */

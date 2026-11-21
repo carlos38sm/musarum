@@ -53,6 +53,14 @@ public class EmendatiumAutoEnricher {
             progress.onDone(false);
             return;
         }
+        // Si el OWNER canceló el run, salimos sin tocar Emendatium. Contamos
+        // como procesada para que la barra llegue al total rápido y el
+        // "running" pase a false sin que haya que esperar a las N miles de
+        // tareas en cola que ya no vamos a ejecutar.
+        if (progress.isCancelled()) {
+            progress.onDone(false);
+            return;
+        }
         boolean ok = false;
         try {
             EnrichmentResponse resp = client.enrich(audioPath).orElse(null);

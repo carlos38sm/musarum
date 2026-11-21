@@ -27,6 +27,7 @@ public class EnrichmentProgress {
     private final AtomicLong failed = new AtomicLong(0);
     private volatile long startedAtMs = 0L;
     private volatile long finishedAtMs = 0L;
+    private volatile boolean cancelled = false;
 
     public void startRun(long newTotal) {
         total.set(newTotal);
@@ -35,6 +36,22 @@ public class EnrichmentProgress {
         failed.set(0);
         startedAtMs = System.currentTimeMillis();
         finishedAtMs = 0L;
+        cancelled = false;
+    }
+
+    /**
+     * Marca el run como cancelado. Las tareas @Async que ya están en curso
+     * en {@code EmendatiumAutoEnricher} chequean esta bandera al empezar y
+     * salen pronto sin pegar a Emendatium. La barra de progreso del móvil
+     * verá cómo el contador llega al total rápido (procesadas con
+     * {@code onDone(false)} para cada una), y running pasa a false.
+     */
+    public void cancel() {
+        cancelled = true;
+    }
+
+    public boolean isCancelled() {
+        return cancelled;
     }
 
     public void onDone(boolean ok) {

@@ -342,6 +342,24 @@ public class SongService {
      * favoritos, playlist_entries, reproducciones, fichero y huérfanos
      * en el orden correcto (álbum antes que artista, ver el fix de ayer).
      */
+    /**
+     * Aplica SOLO los campos escalares del enrichment (bpm, key, replayGain,
+     * lyricsPath, mbId, isrc) en una tx corta que NO toca la colección
+     * {@code song.artists}. Pensado para que un fallo posterior al aplicar
+     * artist/album enrichment (ej. TransientPropertyValueException porque el
+     * join table song_artists apunta a un Artist que ya no existe) no pierda
+     * los escalares, que son lo más valioso para el usuario (BPM y tonalidad
+     * visibles en el panel Musicalidad del móvil).
+     */
+    @Transactional
+    public void applyScalarEnrichment(Long songId, Integer bpm, String musicalKey,
+                                      Double replayGain, String lyricsPath,
+                                      String mbId, String isrc) {
+        Song song = songRepository.findById(songId)
+                .orElseThrow(() -> new SongNotFoundException(songId));
+        song.applyEnrichment(bpm, musicalKey, replayGain, lyricsPath, mbId, isrc);
+    }
+
     @Transactional
     public int deleteByContentHashes(Set<String> hashes) {
         if (hashes.isEmpty()) return 0;

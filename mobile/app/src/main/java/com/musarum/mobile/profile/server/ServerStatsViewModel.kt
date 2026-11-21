@@ -208,6 +208,26 @@ class ServerStatsViewModel(
     }
 
     /**
+     * Cancela el run en curso. El backend marca la bandera cancelled;
+     * las tareas @Async aún no arrancadas saldrán sin tocar Emendatium,
+     * y las que ya están corriendo terminarán por sí solas (no se abortan
+     * HTTP en vuelo). En pocos segundos la barra llega al 100% y pasa
+     * a Finalizado.
+     */
+    fun cancelEnrichment(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                apiService.cancelEnrichment()
+                onResult(true, "Cancelando… las tareas en vuelo acabarán, el resto se saltará.")
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                onResult(false, t.message ?: "No se pudo cancelar")
+            }
+        }
+    }
+
+    /**
      * Barre artistas / álbumes / géneros sin canciones. Tras borrar
      * canciones pueden quedar como "fantasmas" en las listas. Refresca el
      * panel al terminar para que el OWNER vea el nuevo conteo.

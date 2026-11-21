@@ -141,6 +141,11 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                     songCount = s.stats.catalog.songs,
                     progress = enrichProgress,
                     onDismissProgress = { viewModel.dismissEnrichProgress() },
+                    onCancelEnrich = {
+                        viewModel.cancelEnrichment { _, msg ->
+                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
+                    },
                     onWipeRequested = { showWipeDialog = true },
                     onReEnrichRequested = {
                         viewModel.reEnrichAll { _, msg ->
@@ -203,6 +208,7 @@ private fun MaintenanceCard(
     songCount: Long,
     progress: com.musarum.mobile.data.network.dto.EnrichProgressDto?,
     onDismissProgress: () -> Unit,
+    onCancelEnrich: () -> Unit,
     onWipeRequested: () -> Unit,
     onReEnrichRequested: () -> Unit,
     onCleanOrphansRequested: () -> Unit
@@ -217,7 +223,11 @@ private fun MaintenanceCard(
         )
 
         // Barra de progreso del run activo (o del último si terminó).
-        EnrichProgressBlock(progress = progress, onDismiss = onDismissProgress)
+        EnrichProgressBlock(
+            progress = progress,
+            onDismiss = onDismissProgress,
+            onCancel = onCancelEnrich
+        )
 
         Spacer(Modifier.height(12.dp))
         val running = progress?.running == true
@@ -584,7 +594,8 @@ private fun TechnicalCard(
 @Composable
 private fun EnrichProgressBlock(
     progress: com.musarum.mobile.data.network.dto.EnrichProgressDto?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onCancel: () -> Unit
 ) {
     if (progress == null || progress.total <= 0L) return
 
@@ -610,7 +621,11 @@ private fun EnrichProgressBlock(
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f)
         )
-        if (!progress.running) {
+        if (progress.running) {
+            androidx.compose.material3.TextButton(onClick = onCancel) {
+                Text("Cancelar", color = MaterialTheme.colorScheme.error)
+            }
+        } else {
             androidx.compose.material3.TextButton(onClick = onDismiss) {
                 Text("Descartar")
             }

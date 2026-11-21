@@ -388,6 +388,11 @@ interface ApiService {
     @GET("admin/server/enrich-progress")
     suspend fun enrichProgress(): com.musarum.mobile.data.network.dto.EnrichProgressDto
 
+    // Cancela el "Re-enriquecer todo" en curso. Las tareas @Async en el
+    // backend chequean la bandera al empezar y salen sin tocar Emendatium.
+    @retrofit2.http.POST("admin/server/cancel-enrichment")
+    suspend fun cancelEnrichment(): retrofit2.Response<Unit>
+
     @GET("version")
     suspend fun appVersion(): com.musarum.mobile.data.network.dto.VersionDto
 

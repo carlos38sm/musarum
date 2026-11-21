@@ -5,6 +5,8 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,16 @@ class BatchResultApplier {
     private final LyricsWriter lyricsWriter;
     private final JsonlReader jsonlReader;
     private final String musicFolder;
+
+    // Self-reference inyectada por Spring. Necesaria porque los métodos
+    // applyArtistIsolated / applyAlbumIsolated están marcados @Transactional
+    // y Spring solo aplica el proxy cuando la llamada ENTRA al bean desde
+    // fuera. Si applySingle los llama directamente (this.x), Spring se
+    // salta el proxy y no abre nueva tx. Con self.x() el proxy sí entra en
+    // juego. @Lazy evita el ciclo de instanciación en el constructor.
+    @Autowired
+    @Lazy
+    private BatchResultApplier self;
 
     BatchResultApplier(SongService songService,
                        ArtistService artistService,
@@ -135,14 +147,84 @@ class BatchResultApplier {
     }
 
     /**
-     * Aplica metadatos de una canción. Recarga la entidad DENTRO de la
-     * transacción para evitar operar sobre un {@code Song} detached (que no
-     * persistiría los cambios en BD, p. ej. al enriquecer en async desde
-     * {@link EmendatiumAutoEnricher}).
+     * Aplica metadatos de una canción en TRES transacciones separadas:
+     *   1) Escalares (bpm, key, rg, lyricsPath, mbid, isrc) — songService.
+     *   2) Artist enrichment (bio, country, mbArtistId) — artistService.
+     *   3) Album enrichment (mbRelease, year, coverUrl) — albumService.
+     *
+     * Antes era una sola tx grande. Cuando el commit disparaba
+     * {@code TransientPropertyValueException} por una fila huérfana en
+     * {@code song_artists}, se hacía rollback de TODO — incluido el bpm/key
+     * ya calculado. El móvil no veía nada aunque el cálculo había costado
+     * 20 s de CPU. Ahora si (2) o (3) fallan, los escalares de (1) ya
+     * están commiteados y el usuario ve la Musicalidad.
      */
-    @Transactional
     public void applySingle(Long songId, EnrichedMetadata meta) {
+        // Paso 1: escalares (nunca toca song.artists → no puede fallar por FK stale)
+        String lyricsPath = null;
+        if (meta.syncedLyrics() != null && !meta.syncedLyrics().isBlank()) {
+            try {
+                Song current = songService.findEntityById(songId);
+                boolean alreadyHasLyrics = current.getLyricsPath() != null
+                        && !current.getLyricsPath().isBlank()
+                        && java.nio.file.Files.exists(lyricsWriter.pathFor(songId));
+                if (!alreadyHasLyrics) {
+                    lyricsPath = lyricsWriter.write(songId, meta.syncedLyrics());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo guardar letra embebida id={}: {}", songId, e.getMessage());
+            }
+        }
+
+        log.info("applyMetadata song={} bpm={} key={} rg={} lyrics={} coverUrl={}",
+                songId, meta.bpm(), meta.musicalKey(), meta.replayGainTrackGain(),
+                lyricsPath != null,
+                meta.coverArt() != null ? meta.coverArt().sourceUrl() : "no");
+
+        songService.applyScalarEnrichment(songId,
+                meta.bpm(), meta.musicalKey(), meta.replayGainTrackGain(),
+                lyricsPath, meta.mbReleaseId(), meta.isrc());
+
+        // Paso 2: artist — aislado. Si tira TransientPropertyValueException
+        // porque song_artists apunta a un Artist fantasma, se registra y
+        // seguimos: los escalares ya están guardados.
+        try {
+            self.applyArtistIsolated(songId, meta);
+        } catch (Exception e) {
+            log.warn("Enrichment de artist falló id={} (escalares guardados OK): {}",
+                    songId, e.getMessage());
+        }
+
+        // Paso 3: album — mismo criterio.
+        try {
+            self.applyAlbumIsolated(songId, meta);
+        } catch (Exception e) {
+            log.warn("Enrichment de album falló id={} (escalares guardados OK): {}",
+                    songId, e.getMessage());
+        }
+    }
+
+    @Transactional
+    public void applyArtistIsolated(Long songId, EnrichedMetadata meta) {
+        if (meta.artistInfo() == null) return;
         Song song = songService.findEntityById(songId);
-        applyMetadata(song, meta);
+        if (song.getArtists().isEmpty()) return;
+        Artist primaryArtist = song.getArtists().iterator().next();
+        artistService.applyEnrichment(
+                primaryArtist.getId(),
+                meta.mbArtistId(),
+                meta.artistInfo().biography(),
+                meta.artistInfo().country(),
+                null
+        );
+    }
+
+    @Transactional
+    public void applyAlbumIsolated(Long songId, EnrichedMetadata meta) {
+        Song song = songService.findEntityById(songId);
+        Album album = song.getAlbum();
+        if (album == null) return;
+        String coverUrl = meta.coverArt() != null ? meta.coverArt().sourceUrl() : null;
+        albumService.applyEnrichment(album.getId(), meta.mbReleaseId(), meta.year(), coverUrl);
     }
 }

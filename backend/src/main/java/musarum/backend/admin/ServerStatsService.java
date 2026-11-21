@@ -423,6 +423,12 @@ public class ServerStatsService {
         return enrichmentProgress.snapshot();
     }
 
+    /** Cancela el run en curso (si lo hay). Idempotente. */
+    public void cancelReEnrich() {
+        enrichmentProgress.cancel();
+        log.info("Re-enriquecer todo cancelado por el OWNER");
+    }
+
     /**
      * Barre artistas, álbumes y géneros que quedaron SIN canciones. Pensado
      * para el OWNER tras borrar muchas canciones a mano, o cuando el scanner
