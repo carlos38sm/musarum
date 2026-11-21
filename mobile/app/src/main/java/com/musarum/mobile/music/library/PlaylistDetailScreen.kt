@@ -84,6 +84,16 @@ fun PlaylistDetailScreen(
         factory = PlaylistDetailViewModel.factory(container.playlistRepository, playlistId)
     )
     val state by viewModel.state.collectAsState()
+
+    // Mientras la pantalla esté viva, polling suave cada 10s para ver en
+    // vivo lo que otros colaboradores añadan/quiten/muevan. El backend
+    // responde 304 cuando no cambió nada (ETag), así que el coste real
+    // en los ticks tranquilos es mínimo.
+    androidx.compose.runtime.DisposableEffect(playlistId) {
+        viewModel.startLivePolling()
+        onDispose { viewModel.stopLivePolling() }
+    }
+
     var showInvite by remember { mutableStateOf(false) }
     // Lupa integrada: solo aparece el icono en la TopAppBar; al tocarlo se
     // despliega la InlineSearchBar y la lista filtra por title/artistsLabel.

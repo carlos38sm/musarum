@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.musarum.mobile.data.music.PlaylistRepository
 import com.musarum.mobile.data.network.dto.PlaylistDetailsDto
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -24,15 +27,63 @@ class PlaylistDetailViewModel(
     private val _state = MutableStateFlow<PlaylistDetailUiState>(PlaylistDetailUiState.Loading)
     val state: StateFlow<PlaylistDetailUiState> = _state.asStateFlow()
 
+    private var livePollJob: Job? = null
+
     init { refresh() }
 
     fun refresh() {
-        _state.value = PlaylistDetailUiState.Loading
+        // Solo pisamos a Loading si todavía no habíamos conseguido data —
+        // así el polling periódico no hace parpadear la pantalla.
+        if (_state.value !is PlaylistDetailUiState.Ready) {
+            _state.value = PlaylistDetailUiState.Loading
+        }
         viewModelScope.launch {
             runCatching { repository.details(playlistId) }
                 .onSuccess { _state.value = PlaylistDetailUiState.Ready(it) }
-                .onFailure { _state.value = PlaylistDetailUiState.Error(it.message ?: "Error") }
+                .onFailure {
+                    if (_state.value !is PlaylistDetailUiState.Ready) {
+                        _state.value = PlaylistDetailUiState.Error(it.message ?: "Error")
+                    }
+                    // Si ya teníamos data, dejamos la de antes en pantalla
+                    // en vez de pasarla a Error por un fallo transitorio.
+                }
         }
+    }
+
+    /**
+     * Polling suave cada 10 s mientras la pantalla esté visible, para que
+     * cuando otro colaborador añada/quite/mueva canciones el user que está
+     * mirando lo vea sin tener que salir y volver a entrar. Combinado con
+     * los ETags del backend, la mayoría de peticiones serán 304 sin body —
+     * coste marginal. Se activa desde la pantalla con DisposableEffect.
+     */
+    fun startLivePolling() {
+        if (livePollJob?.isActive == true) return
+        livePollJob = viewModelScope.launch {
+            while (true) {
+                delay(10_000)
+                try {
+                    val fresh = repository.details(playlistId)
+                    _state.value = PlaylistDetailUiState.Ready(fresh)
+                } catch (ce: CancellationException) {
+                    throw ce
+                } catch (_: Throwable) {
+                    // Red caída un segundo, playlist borrada por el owner,
+                    // etc. Dejamos lo que haya en pantalla; el siguiente
+                    // tick lo intenta de nuevo.
+                }
+            }
+        }
+    }
+
+    fun stopLivePolling() {
+        livePollJob?.cancel()
+        livePollJob = null
+    }
+
+    override fun onCleared() {
+        livePollJob?.cancel()
+        super.onCleared()
     }
 
     fun removeEntry(entryId: Long) {

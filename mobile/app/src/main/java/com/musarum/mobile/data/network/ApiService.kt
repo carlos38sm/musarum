@@ -251,6 +251,12 @@ interface ApiService {
     @GET("playlists")
     suspend fun getPlaylists(): List<PlaylistSummaryDto>
 
+    // Playlists en las que SOY colaborador (otro user me invitó). El
+    // backend las separa del /playlists "mías" para que la Biblioteca
+    // pinte dos secciones distintas sin confusión de propiedad.
+    @GET("playlists/shared")
+    suspend fun getSharedPlaylists(): List<PlaylistSummaryDto>
+
     @GET("playlists/{id}")
     suspend fun getPlaylist(
         @Path("id") id: Long,

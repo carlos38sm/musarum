@@ -86,8 +86,8 @@ fun CreatePlaylistDialog(
                 if (isCollaborative) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Podrás invitar a otras personas cuando lancemos esa " +
-                            "función; por ahora queda marcada como tal.",
+                        "Podrás invitar a otras personas desde los detalles " +
+                            "de la playlist (icono \"Añadir colaborador\").",
                         style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
                         color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
                     )

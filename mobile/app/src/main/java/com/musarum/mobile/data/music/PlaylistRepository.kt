@@ -17,9 +17,21 @@ class PlaylistRepository(private val apiService: ApiService) {
     private val _playlists = MutableStateFlow<List<PlaylistSummaryDto>>(emptyList())
     val playlists: StateFlow<List<PlaylistSummaryDto>> = _playlists.asStateFlow()
 
+    // Playlists en las que soy colaborador (me invitó otro user). Se
+    // mantienen en un flow aparte de las propias para que Library pueda
+    // pintarlas en una sección distinta y refrescarlas sin pisar las
+    // otras. Vacío = no soy colaborador en ninguna (lo normal al principio).
+    private val _shared = MutableStateFlow<List<PlaylistSummaryDto>>(emptyList())
+    val shared: StateFlow<List<PlaylistSummaryDto>> = _shared.asStateFlow()
+
     suspend fun refresh(): List<PlaylistSummaryDto> {
         val list = apiService.getPlaylists()
         _playlists.value = list
+        // Refrescamos también las compartidas aquí (en el mismo evento
+        // de "la biblioteca pidió refresh") para que ambas secciones
+        // se actualicen juntas. Si el endpoint no responde — backend
+        // antiguo — dejamos las compartidas como estaban en memoria.
+        runCatching { _shared.value = apiService.getSharedPlaylists() }
         return list
     }
 
@@ -89,5 +101,6 @@ class PlaylistRepository(private val apiService: ApiService) {
 
     fun clear() {
         _playlists.value = emptyList()
+        _shared.value = emptyList()
     }
 }

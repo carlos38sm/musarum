@@ -40,6 +40,15 @@ class PlaylistController {
         return ResponseEntity.ok(playlistService.findByOwner(currentUser.currentUserId()));
     }
 
+    // Playlists en las que soy COLABORADOR (me invitó otro user). El
+    // owner las ve en findMine; esto es el otro lado del espejo, para
+    // que el móvil pueda pintar una sección "Compartidas conmigo" en
+    // la Biblioteca sin que el user tenga que saber el ID.
+    @GetMapping("/shared")
+    ResponseEntity<List<PlaylistSummaryDto>> findSharedWithMe() {
+        return ResponseEntity.ok(playlistService.findWhereCollaborator(currentUser.currentUserId()));
+    }
+
     @GetMapping("/{id}")
     ResponseEntity<PlaylistDetailsDto> findById(@PathVariable Long id, Pageable pageable) {
         return ResponseEntity.ok(playlistService.findById(id, currentUser.currentUserId(), pageable));

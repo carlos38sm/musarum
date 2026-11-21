@@ -21,6 +21,12 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel
     private val _state = MutableStateFlow<PlaylistsUiState>(PlaylistsUiState.Loading)
     val state: StateFlow<PlaylistsUiState> = _state.asStateFlow()
 
+    // Playlists donde SOY colaborador. Se exponen aparte del state principal
+    // (que solo lleva las "mías") para que LibraryScreen las pinte como una
+    // sección distinta sin mezclar propiedad. Null-friendly: emptyList cuando
+    // no soy colaborador en ninguna, que es lo normal al principio.
+    val shared: StateFlow<List<PlaylistSummaryDto>> = repository.shared
+
     private val _refreshing = MutableStateFlow(false)
     val refreshing: StateFlow<Boolean> = _refreshing.asStateFlow()
 

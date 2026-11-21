@@ -69,6 +69,7 @@ fun LibraryScreen(
     val downloads by container.downloadsRepository.entries.collectAsState()
     val snackbar = LocalSnackbar.current
     val playlistsState by playlistsViewModel.state.collectAsState()
+    val shared by playlistsViewModel.shared.collectAsState()
 
     var showCreate by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<PlaylistSummaryDto?>(null) }
@@ -132,25 +133,16 @@ fun LibraryScreen(
                     )
                 }
                 is PlaylistsUiState.Ready -> {
-                    // "Colaborativa" se marca hoy con isPublic=true (mapeo
-                    // temporal mientras la lógica de invitados cuaja).
-                    val collaboratives = s.playlists.filter { it.isPublic }
-                    val own = s.playlists.filter { !it.isPublic }
+                    // Antes repartíamos las propias en "Colaborativas" (las
+                    // isPublic=true) + "Propias" (las privadas). Era un
+                    // mapeo falso: isPublic significa "visible por ID" y
+                    // "colaborativa" significa "tiene colaboradores". Ahora
+                    // las secciones son por propiedad: "Mis playlists" (las
+                    // que creé yo) + "Compartidas conmigo" (donde otro
+                    // user me invitó como colaborador).
+                    val own = s.playlists
 
-                    item { SectionLabel("Colaborativas") }
-                    if (collaboratives.isEmpty()) {
-                        item { CollaborativePlaceholder() }
-                    } else {
-                        items(collaboratives, key = { "col_${it.id}" }) { pl ->
-                            PlaylistRow(
-                                playlist = pl,
-                                onClick = { onOpenPlaylist(pl.id) },
-                                onDelete = { pendingDelete = pl }
-                            )
-                        }
-                    }
-
-                    item { SectionLabel("Propias") }
+                    item { SectionLabel("Mis playlists") }
                     if (own.isEmpty()) {
                         item {
                             Text(
@@ -166,6 +158,23 @@ fun LibraryScreen(
                                 playlist = pl,
                                 onClick = { onOpenPlaylist(pl.id) },
                                 onDelete = { pendingDelete = pl }
+                            )
+                        }
+                    }
+
+                    // Solo pintamos la sección si hay algo: ahorra espacio
+                    // vertical cuando el usuario no participa en ninguna
+                    // playlist ajena (lo normal al principio).
+                    if (shared.isNotEmpty()) {
+                        item { SectionLabel("Compartidas conmigo") }
+                        items(shared, key = { "shared_${it.id}" }) { pl ->
+                            PlaylistRow(
+                                playlist = pl,
+                                onClick = { onOpenPlaylist(pl.id) },
+                                // No le dejamos borrar: no es suya. El
+                                // "salir" de la playlist lo hará el owner
+                                // quitándole como colaborador.
+                                onDelete = null
                             )
                         }
                     }
@@ -500,20 +509,23 @@ private fun CollaborativePlaceholder() {
 private fun PlaylistRow(
     playlist: PlaylistSummaryDto,
     onClick: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: (() -> Unit)?
 ) {
-    // Tap = abrir playlist; long-press = confirmación de borrado. Antes
-    // había un icono "papelera" flotando a la derecha que ensuciaba la
-    // fila — Carlos prefiere limpio. El long-press es el mismo gesto que
-    // SongRow usa para sus acciones avanzadas.
+    // Tap = abrir playlist; long-press = confirmación de borrado (si es
+    // "mía"). Antes había un icono "papelera" flotando a la derecha que
+    // ensuciaba la fila — Carlos prefiere limpio. El long-press es el
+    // mismo gesto que SongRow usa para sus acciones avanzadas. Para las
+    // playlists compartidas conmigo pasamos onDelete=null: solo tap, no
+    // borro algo que no es mío.
+    val rowModifier = Modifier
+        .fillMaxWidth()
+        .let { base ->
+            if (onDelete != null) base.combinedClickable(onClick = onClick, onLongClick = onDelete)
+            else base.clickable(onClick = onClick)
+        }
+        .padding(horizontal = 16.dp, vertical = 10.dp)
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onDelete
-            )
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+        modifier = rowModifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Mosaico 2×2 con las portadas de las 4 primeras canciones
