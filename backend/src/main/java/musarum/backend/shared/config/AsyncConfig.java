@@ -1,6 +1,7 @@
 package musarum.backend.shared.config;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,10 +18,19 @@ public class AsyncConfig {
 
     @Bean(name = "scannerExecutor")
     Executor scannerExecutor() {
-    	ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(2);
         executor.setMaxPoolSize(4);
-        executor.setQueueCapacity(50);
+        // Antes 50: "Re-enriquecer todo" encola ~3000 tareas de golpe
+        // y la 51ª disparaba TaskRejectedException → el controller
+        // devolvía 500 al móvil. Con 10 000 cabe toda una biblioteca
+        // incluso duplicada (watcher + re-enrich simultáneos).
+        executor.setQueueCapacity(10_000);
+        // Red de seguridad: si por lo que sea la cola se llenase, en
+        // lugar de rechazar y propagar excepción, el hilo que
+        // encola (el controller) ejecuta la tarea en sync. Eso
+        // ralentiza el encolado pero evita el 500.
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setThreadNamePrefix("scanner-");
         executor.initialize();
         return executor;
