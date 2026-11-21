@@ -205,7 +205,13 @@ fun NowPlayingScreen(
                 CoverImage(
                     url = playerState.currentCoverUrl,
                     size = coverSize,
-                    cornerRadius = 20.dp
+                    cornerRadius = 20.dp,
+                    // Cuando la canción no tiene portada, servir la
+                    // imagen del pool _placeholders/songs/ (determinista
+                    // por songId) en vez del icono gris plano. Mismo
+                    // criterio que SongRow.
+                    placeholderKind = com.musarum.mobile.music.PlaceholderKind.SONGS,
+                    placeholderSeed = song.id
                 )
             }
         }

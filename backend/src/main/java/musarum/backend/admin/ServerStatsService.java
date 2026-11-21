@@ -122,9 +122,30 @@ public class ServerStatsService {
                 : Path.of(music).resolve(subfolder);
     }
 
+    // Caché corto del snapshot. Carlos reportaba que abrir "Análisis del
+    // servidor" tardaba una eternidad: entre los Files.walk de buildDisk,
+    // abrir cada .lrc en buildLyrics, el ping a Emendatium para
+    // buildEmendatium y el count de ficheros huérfanos en buildTechnical,
+    // un render del endpoint puede llegar a 5-10 s con 3000 canciones en
+    // disco de Windows bind mount. Al abrirlo varias veces seguidas (o si
+    // dos móviles OWNER lo miran a la vez) se re-trabaja todo cada
+    // request. Con TTL 20 s, el panel se nota instantáneo en reaperturas
+    // y seguimos con datos razonablemente frescos. El pull-to-refresh
+    // del móvil llama a refresh() que también pasa por este caché, pero
+    // 20 s es poco bastante para no frustrar.
+    private static final long SNAPSHOT_TTL_MS = 20_000L;
+    private final java.util.concurrent.atomic.AtomicReference<CachedSnapshot> snapshotCache =
+            new java.util.concurrent.atomic.AtomicReference<>();
+    private record CachedSnapshot(long builtAtMs, ServerStatsDto value) {}
+
     @Transactional(readOnly = true)
     public ServerStatsDto buildSnapshot() {
-        return new ServerStatsDto(
+        CachedSnapshot cached = snapshotCache.get();
+        long now = System.currentTimeMillis();
+        if (cached != null && (now - cached.builtAtMs) < SNAPSHOT_TTL_MS) {
+            return cached.value;
+        }
+        ServerStatsDto fresh = new ServerStatsDto(
                 buildCatalog(),
                 buildLyrics(),
                 buildDisk(),
@@ -133,6 +154,18 @@ public class ServerStatsService {
                 buildActivity(),
                 buildTechnical()
         );
+        snapshotCache.set(new CachedSnapshot(now, fresh));
+        return fresh;
+    }
+
+    /**
+     * Invalida el caché: se usa después de operaciones que cambian lo que
+     * el panel muestra (wipeLibrary, cleanOrphanLyrics, cleanOrphanEntities),
+     * para que el siguiente abrir el panel refleje el cambio sin tener que
+     * esperar al TTL.
+     */
+    public void invalidateSnapshotCache() {
+        snapshotCache.set(null);
     }
 
     private ServerStatsDto.EmendatiumStats buildEmendatium() {
@@ -341,6 +374,7 @@ public class ServerStatsService {
         log.info("wipeLibrary: borradas {} canciones, {} artistas, {} álbumes, {} géneros",
                 songsBefore, artistsBefore, albumsBefore, genresBefore);
 
+        invalidateSnapshotCache();
         return new WipeSummary(songsBefore, artistsBefore, albumsBefore, genresBefore);
     }
 
@@ -416,6 +450,7 @@ public class ServerStatsService {
 
         log.info("cleanOrphanEntities: borrados {} artistas, {} álbumes, {} géneros",
                 orphanArtists.size(), orphanAlbums.size(), orphanGenres.size());
+        invalidateSnapshotCache();
         return new CleanOrphansSummary(
                 orphanArtists.size(),
                 orphanAlbums.size(),
@@ -433,6 +468,7 @@ public class ServerStatsService {
                 log.warn("No pude borrar {}: {}", p, e.getMessage());
             }
         }
+        invalidateSnapshotCache();
         return deleted;
     }
 

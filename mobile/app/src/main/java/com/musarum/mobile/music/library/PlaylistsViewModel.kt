@@ -27,11 +27,16 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel
     init {
         viewModelScope.launch {
             repository.playlists.collect { list ->
-                // Si ya pasamos a Ready (por el primer refresh), nos quedamos
-                // suscritos para reflejar cambios posteriores (crear/borrar).
-                if (_state.value is PlaylistsUiState.Ready) {
-                    _state.value = PlaylistsUiState.Ready(list)
-                }
+                // Antes había una guarda "if (_state.value is Ready)" que
+                // descartaba emisiones tempranas y a veces hacía que la
+                // UI no reflejara borrados hasta reabrir la app. Ahora
+                // cualquier cambio del flow (create/delete/addSong/
+                // removeEntry) actualiza el state. Mantenemos Error solo
+                // si todavía no habíamos conseguido un Ready — si ya
+                // estamos navegando la pantalla, un flow nuevo (aunque
+                // sea lista vacía) la saca del Error como respuesta
+                // natural al cambio.
+                _state.value = PlaylistsUiState.Ready(list)
             }
         }
         refresh()
@@ -77,7 +82,14 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel
     }
 
     fun delete(id: Long) {
-        viewModelScope.launch { runCatching { repository.delete(id) } }
+        viewModelScope.launch {
+            // Defensivo: tras borrar, el repo YA emite _playlists.value
+            // filtrado, pero si el collect perdió la emisión por cualquier
+            // motivo (p. ej. VM aún en init), un refresh explícito re-pide
+            // la lista al backend y la pantalla se actualiza seguro.
+            runCatching { repository.delete(id) }
+            runCatching { repository.refresh() }
+        }
     }
 
     companion object {

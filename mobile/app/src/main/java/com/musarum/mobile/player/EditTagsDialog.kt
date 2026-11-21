@@ -130,7 +130,12 @@ fun EditTagsDialog(
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
-                            "“${sanitize(artist.substringBefore(","))} - ${sanitize(title)}.ext”",
+                            // Preview: mismo criterio que el backend —
+                            // separa por "," o ";" y los junta con ", ".
+                            // Antes cortaba con substringBefore(",") y
+                            // mostraba solo el primer artista aunque el
+                            // backend sí renombrara con todos.
+                            "“${sanitize(joinArtistsForPreview(artist))} - ${sanitize(title)}.ext”",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -164,3 +169,16 @@ fun EditTagsDialog(
 
 private fun sanitize(s: String): String =
     s.trim().replace(Regex("[\\\\/:*?\"<>|]"), "_").ifBlank { "…" }
+
+/**
+ * Normaliza el campo "artistas" tal y como lo hace el backend al
+ * renombrar el fichero físico: separa por "," o ";", trimea cada token,
+ * descarta vacíos, los vuelve a juntar con ", ". Así el preview casa con
+ * el nombre real resultante.
+ */
+private fun joinArtistsForPreview(raw: String): String =
+    raw.split(',', ';')
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .joinToString(", ")
+        .ifBlank { raw.trim() }
