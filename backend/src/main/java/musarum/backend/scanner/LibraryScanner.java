@@ -37,6 +37,7 @@ import musarum.backend.library.LibraryFolderService;
 import musarum.backend.scanner.exception.ScanFailedException;
 import musarum.backend.shared.CoverStorage;
 import musarum.backend.shared.Normalizer;
+import musarum.backend.shared.SmartCase;
 import musarum.backend.song.Song;
 import musarum.backend.song.SongService;
 
@@ -374,25 +375,35 @@ public class LibraryScanner {
                                           ScannerCatalog catalog) {
         AudioMetadata meta = tagReader.read(audioPath);
         Set<Artist> artists = resolveArtists(meta.artistName(), catalog);
+        // SmartCase sobre tags ID3 en crudo: muchos ficheros vienen de
+        // ripeos / descargas antiguas con "LA CANCIÓN DEL VERANO" o
+        // "la cancion del verano" — capitalizamos al "estilo libro"
+        // antes de que llegue a DB. Cuando Emendatium identifique
+        // luego por AcoustID, sobreescribirá con el nombre canónico de
+        // MusicBrainz (ya SmartCase-ado también) y la fila converge.
+        String niceTitle = SmartCase.apply(meta.title());
+        String niceAlbum = SmartCase.apply(meta.albumTitle());
+        String niceGenre = SmartCase.apply(meta.genreName());
+
         Album album = null;
-        if (meta.albumTitle() != null && !artists.isEmpty()) {
+        if (niceAlbum != null && !artists.isEmpty()) {
             Artist primaryArtist = artists.iterator().next();
             album = (catalog != null)
-                    ? catalog.resolveAlbum(meta.albumTitle(), primaryArtist)
-                    : albumService.findOrCreate(meta.albumTitle(), primaryArtist);
+                    ? catalog.resolveAlbum(niceAlbum, primaryArtist)
+                    : albumService.findOrCreate(niceAlbum, primaryArtist);
         }
 
         Genre genre = null;
-        if (meta.genreName() != null) {
+        if (niceGenre != null) {
             genre = (catalog != null)
-                    ? catalog.resolveGenre(meta.genreName())
-                    : genreService.findOrCreate(meta.genreName());
+                    ? catalog.resolveGenre(niceGenre)
+                    : genreService.findOrCreate(niceGenre);
         }
 
         Song created = songService.create(
                 audioPath,
                 contentHash,
-                meta.title(),
+                niceTitle,
                 meta.durationMs(),
                 meta.trackNumber(),
                 artists,
@@ -474,11 +485,16 @@ public class LibraryScanner {
         for (String name : names) {
             String cleanName = name.replaceAll("[()\\[\\]]", "").trim();
             if (cleanName.isEmpty()) continue;
-            String key = Normalizer.key(cleanName);
+            // SmartCase ANTES del dedupe-por-key: así "LADY GAGA" y
+            // "lady gaga" mapean al mismo nombre guardado ("Lady Gaga")
+            // y además el findOrCreate por Normalizer.key sigue
+            // deduplicando como siempre (es case-insensitive).
+            String niceName = SmartCase.apply(cleanName);
+            String key = Normalizer.key(niceName);
             if (!seenKeys.add(key)) continue; // ya resuelto en esta misma canción
             Artist a = (catalog != null)
-                    ? catalog.resolveArtist(cleanName)
-                    : artistService.findOrCreate(cleanName);
+                    ? catalog.resolveArtist(niceName)
+                    : artistService.findOrCreate(niceName);
             artists.add(a);
         }
         return artists;
