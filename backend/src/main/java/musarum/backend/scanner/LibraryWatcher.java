@@ -69,15 +69,33 @@ public class LibraryWatcher {
         return active.stream().anyMatch(root -> abs.startsWith(root.toAbsolutePath().normalize()));
     }
 
+    // Si el último escaneo completo terminó hace menos de este umbral,
+    // saltamos el escaneo inicial al arrancar. Evita que un restart cercano
+    // (p. ej. durante despliegue) relance un escaneo de 5-10 min contra el
+    // bind mount lento de Docker en Windows mientras el usuario intenta
+    // reproducir una canción. El watcher sigue vigilando cambios en vivo,
+    // así que los ficheros nuevos que aparezcan durante el "silencio" se
+    // detectan por evento; sólo perdemos los que se añadieron MIENTRAS el
+    // backend estaba apagado — y para eso el OWNER tiene el botón manual
+    // "Escanear" en la app.
+    private static final long SKIP_INITIAL_SCAN_IF_WITHIN_MIN = 10L;
+
     @EventListener(ApplicationReadyEvent.class)
     @Async("scannerExecutor")
     public void startWatching() {
-        log.info("Escaneo inicial al arranque...");
-        try {
-            libraryScanner.importNewSongs().join();
-            log.info("Escaneo inicial completado");
-        } catch (Exception e) {
-            log.warn("Fallo en el escaneo inicial: {}", e.getMessage());
+        long sinceMin = libraryScanner.minutesSinceLastScan();
+        if (sinceMin < SKIP_INITIAL_SCAN_IF_WITHIN_MIN) {
+            log.info("Escaneo inicial OMITIDO (último fue hace {} min < {} min)",
+                    sinceMin, SKIP_INITIAL_SCAN_IF_WITHIN_MIN);
+        } else {
+            log.info("Escaneo inicial al arranque (último fue hace {} min)...",
+                    sinceMin == Long.MAX_VALUE ? "∞" : String.valueOf(sinceMin));
+            try {
+                libraryScanner.importNewSongs().join();
+                log.info("Escaneo inicial completado");
+            } catch (Exception e) {
+                log.warn("Fallo en el escaneo inicial: {}", e.getMessage());
+            }
         }
 
         log.info("Vigilancia de carpeta iniciada en hilo: {}", Thread.currentThread().getName());

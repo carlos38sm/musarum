@@ -36,6 +36,7 @@ import musarum.backend.genre.GenreService;
 import musarum.backend.library.LibraryFolderService;
 import musarum.backend.scanner.exception.ScanFailedException;
 import musarum.backend.shared.CoverStorage;
+import musarum.backend.shared.Normalizer;
 import musarum.backend.song.Song;
 import musarum.backend.song.SongService;
 
@@ -297,6 +298,7 @@ public class LibraryScanner {
                     duplicateFiles.get(), relocated, hashErrors.get()
             );
             lastResult = result;
+            writeScanMarker();
             log.info("Escaneo terminado. En disco: {}, importadas: {}, fallidas: {}, "
                             + "borradas: {}, duplicadas: {}, reubicadas: {}, "
                             + "hashes refrescados: {}, errores hash: {}",
@@ -308,6 +310,41 @@ public class LibraryScanner {
             running.set(false);
             currentFile = null;
             phase = null;
+        }
+    }
+
+    // ── Marker de "último escaneo" ──────────────────────────────────────
+    // Fichero oculto en la raíz de MUSARUM_MUSIC_PATH con el epoch ms del
+    // último escaneo completado. Lo usa LibraryWatcher.startWatching para
+    // saltarse el escaneo inicial cuando el backend se reinicia poco
+    // después (p. ej. durante desarrollo: 3 restarts en 10 min arrastraban
+    // la app a trompicones porque cada uno relanzaba el full-scan sobre
+    // el bind mount lento de Docker Desktop en Windows).
+
+    private Path scanMarker() {
+        return musicFolder.resolve(".musarum-last-scan");
+    }
+
+    private void writeScanMarker() {
+        try {
+            Files.writeString(scanMarker(), String.valueOf(System.currentTimeMillis()));
+        } catch (IOException e) {
+            log.warn("No se pudo escribir marker de scan: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * Minutos transcurridos desde el último escaneo completo, o {@link
+     * Long#MAX_VALUE} si no hay marker (primera instalación o lo borraron).
+     */
+    public long minutesSinceLastScan() {
+        try {
+            Path m = scanMarker();
+            if (!Files.exists(m)) return Long.MAX_VALUE;
+            long ts = Long.parseLong(Files.readString(m).trim());
+            return (System.currentTimeMillis() - ts) / 60_000L;
+        } catch (Exception e) {
+            return Long.MAX_VALUE;
         }
     }
 
@@ -422,10 +459,23 @@ public class LibraryScanner {
     private Set<Artist> resolveArtists(String artistField, ScannerCatalog catalog) {
         Set<Artist> artists = new LinkedHashSet<>();
         if (artistField == null || artistField.isBlank()) return artists;
+        // Dedupe por CLAVE normalizada antes de resolver. Antes se confiaba
+        // en LinkedHashSet<Artist>#add para rechazar duplicados, pero
+        // ScannerCatalog.resolveArtist devuelve un proxy nuevo en cada
+        // llamada (getReferenceById no cachea), así que dos proxies con el
+        // mismo id no son equals() y los dos acababan en el set. Cuando
+        // Hibernate intentaba insertarlos en song_artists, Postgres tiraba
+        // "duplicate key (song_id, artist_id)" y toda la canción fallaba.
+        // Casos típicos: "Dimitri Vegas & Like Mike, Martin Garrix,
+        // Dimitri Vegas - Tremor" (Dimitri sale dos veces), remixes donde
+        // el mismo artista aparece como main + featuring, etc.
+        Set<String> seenKeys = new HashSet<>();
         String[] names = artistField.split(ARTIST_SEPARATOR_REGEX, -1);
         for (String name : names) {
             String cleanName = name.replaceAll("[()\\[\\]]", "").trim();
             if (cleanName.isEmpty()) continue;
+            String key = Normalizer.key(cleanName);
+            if (!seenKeys.add(key)) continue; // ya resuelto en esta misma canción
             Artist a = (catalog != null)
                     ? catalog.resolveArtist(cleanName)
                     : artistService.findOrCreate(cleanName);

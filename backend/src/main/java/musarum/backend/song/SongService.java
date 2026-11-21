@@ -32,19 +32,22 @@ public class SongService {
     private final LrcLibClient lrcLibClient;
     private final LyricsWriter lyricsWriter;
     private final LyricsLookupService lyricsLookupService;
+    private final SongDeletionService songDeletionService;
 
     SongService(SongRepository songRepository,
                 SongMapper songMapper,
                 FavoriteChecker favoriteChecker,
                 LrcLibClient lrcLibClient,
                 LyricsWriter lyricsWriter,
-                LyricsLookupService lyricsLookupService) {
+                LyricsLookupService lyricsLookupService,
+                SongDeletionService songDeletionService) {
         this.songRepository = songRepository;
         this.songMapper = songMapper;
         this.favoriteChecker = favoriteChecker;
         this.lrcLibClient = lrcLibClient;
         this.lyricsWriter = lyricsWriter;
         this.lyricsLookupService = lyricsLookupService;
+        this.songDeletionService = songDeletionService;
     }
 
     @Transactional(readOnly = true)
@@ -328,17 +331,43 @@ public class SongService {
                 .orElse(false);
     }
 
+    /**
+     * Borrado masivo usado por el scanner cuando detecta canciones que ya
+     * NO están en disco. Antes hacía {@code DELETE FROM songs WHERE
+     * content_hash IN (...)} directo, lo que violaba la FK
+     * {@code playlist_entries_song_fk} si alguna de esas canciones seguía
+     * referenciada (síntoma: "Fallo en el escaneo inicial:
+     * DataIntegrityViolationException... playlist_entries"). Ahora
+     * delegamos en {@link SongDeletionService#deleteCompletely} que limpia
+     * favoritos, playlist_entries, reproducciones, fichero y huérfanos
+     * en el orden correcto (álbum antes que artista, ver el fix de ayer).
+     */
     @Transactional
     public int deleteByContentHashes(Set<String> hashes) {
         if (hashes.isEmpty()) return 0;
-        return songRepository.deleteByContentHashIn(hashes);
+        int deleted = 0;
+        for (String hash : hashes) {
+            Long id = songRepository.findByContentHash(hash).map(Song::getId).orElse(null);
+            if (id == null) continue;
+            try {
+                songDeletionService.deleteCompletely(id);
+                deleted++;
+            } catch (Exception e) {
+                // No rompemos el bulk entero por una canción atípica: la
+                // registramos y seguimos con las demás.
+                org.slf4j.LoggerFactory.getLogger(SongService.class)
+                        .warn("Fallo borrando canción id={} (hash={}): {}", id, hash, e.getMessage());
+            }
+        }
+        return deleted;
     }
 
+    /** Variante de una sola canción. Mismo camino que el bulk. */
     @Transactional
     public boolean deleteByContentHash(String contentHash) {
         return songRepository.findByContentHash(contentHash)
                 .map(song -> {
-                    songRepository.delete(song);
+                    songDeletionService.deleteCompletely(song.getId());
                     return true;
                 })
                 .orElse(false);
