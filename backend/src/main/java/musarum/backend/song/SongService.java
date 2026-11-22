@@ -64,6 +64,60 @@ public class SongService {
                 .orElseThrow(() -> new SongNotFoundException(id));
     }
 
+    /**
+     * "Esta canción suena a…": encuentra canciones del catálogo con
+     * tonalidad compatible en Camelot (misma, +1, −1, relativa) y BPM
+     * dentro de ±8. Si la canción fuente no tiene BPM o tonalidad
+     * (todavía no ha pasado Emendatium), devuelve lista vacía — el
+     * móvil oculta la sección en ese caso.
+     */
+    @Transactional(readOnly = true)
+    public List<SongSummaryDto> findSimilar(Long id, int size) {
+        Song source = songRepository.findById(id)
+                .orElseThrow(() -> new SongNotFoundException(id));
+        Integer bpm = source.getBpm();
+        String key = source.getMusicalKey();
+        if (bpm == null || bpm <= 0 || key == null || key.isBlank()) {
+            return List.of();
+        }
+        List<String> compatibleKeys = camelotCompatible(key);
+        if (compatibleKeys.isEmpty()) return List.of();
+        int capped = Math.max(1, Math.min(size, 20));
+        int minBpm = Math.max(1, bpm - 8);
+        int maxBpm = bpm + 8;
+        List<Song> similar = songRepository.findSimilar(
+                id, compatibleKeys, bpm, minBpm, maxBpm, capped);
+        return similar.stream().map(songMapper::toSummary).toList();
+    }
+
+    /**
+     * Rueda Camelot: para una tonalidad {@code "8A"} devuelve las 4
+     * compatibles (misma + vecina ascendente + vecina descendente +
+     * relativa mayor/menor). Wrap circular: 12 ↔ 1. Formato aceptado
+     * "NA" o "NB" con N en 1..12.
+     */
+    private static List<String> camelotCompatible(String key) {
+        if (key == null || key.length() < 2) return List.of();
+        char letter = key.charAt(key.length() - 1);
+        if (letter != 'A' && letter != 'B') return List.of();
+        int num;
+        try {
+            num = Integer.parseInt(key.substring(0, key.length() - 1));
+        } catch (NumberFormatException e) {
+            return List.of();
+        }
+        if (num < 1 || num > 12) return List.of();
+        int prev = num == 1 ? 12 : num - 1;
+        int next = num == 12 ? 1 : num + 1;
+        char opposite = letter == 'A' ? 'B' : 'A';
+        return List.of(
+                num + "" + letter,     // misma
+                prev + "" + letter,    // Camelot −1
+                next + "" + letter,    // Camelot +1
+                num + "" + opposite    // relativa
+        );
+    }
+
     @Transactional(readOnly = true)
     public Optional<Song> findEntityByAudioPath(String audioPath) {
         return songRepository.findByAudioPath(audioPath);

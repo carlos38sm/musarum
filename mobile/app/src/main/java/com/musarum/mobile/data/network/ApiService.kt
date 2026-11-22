@@ -190,6 +190,15 @@ interface ApiService {
         @Query("size") size: Int = 50
     ): List<SongSummaryDto>
 
+    // "Esta canción suena a…": similares por Camelot + BPM ±8. Si la
+    // fuente aún no tiene BPM/key (Emendatium no ha pasado), el
+    // backend devuelve lista vacía — el móvil oculta la sección.
+    @GET("songs/{id}/similar")
+    suspend fun getSimilarSongs(
+        @Path("id") id: Long,
+        @Query("size") size: Int = 5
+    ): List<SongSummaryDto>
+
     @GET("albums")
     suspend fun getAlbums(
         @Query("page") page: Int = 0,

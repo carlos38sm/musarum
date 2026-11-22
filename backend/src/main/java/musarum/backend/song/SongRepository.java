@@ -251,6 +251,29 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     List<Song> findForgottenForUser(Long userId, int size);
 
     /**
+     * "Esta canción suena a…": tonalidad compatible en la rueda Camelot
+     * (misma, +1, −1, relativa) y BPM dentro de ±8 de la canción fuente.
+     * El service pre-calcula las keys compatibles y las pasa como lista.
+     * Orden: menor distancia de BPM primero, con RANDOM() de desempate
+     * para variedad entre visitas.
+     */
+    @Query(value = """
+        SELECT s.* FROM songs s
+        WHERE s.id <> :sourceId
+          AND s.musical_key IN (:compatibleKeys)
+          AND s.bpm IS NOT NULL
+          AND s.bpm BETWEEN :minBpm AND :maxBpm
+        ORDER BY ABS(s.bpm - :sourceBpm) ASC, RANDOM()
+        LIMIT :size
+        """, nativeQuery = true)
+    List<Song> findSimilar(Long sourceId,
+                           List<String> compatibleKeys,
+                           int sourceBpm,
+                           int minBpm,
+                           int maxBpm,
+                           int size);
+
+    /**
      * Posición 0-based de una canción en la vista paginada por defecto.
      * TIENE que usar EXACTAMENTE el mismo ORDER BY que {@link #findPageOrdered}
      * — si se desalinea, el FAB "ir a la canción que suena" scrollea al

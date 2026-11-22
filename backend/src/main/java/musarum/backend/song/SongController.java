@@ -120,6 +120,18 @@ class SongController {
     }
 
     /**
+     * "Esta canción suena a…": canciones del catálogo con tonalidad
+     * Camelot compatible y BPM ±8 respecto a la fuente. Si la fuente
+     * no tiene BPM o musicalKey (Emendatium no la ha enriquecido aún),
+     * devuelve lista vacía — el móvil oculta la sección.
+     */
+    @GetMapping("/{id}/similar")
+    ResponseEntity<List<SongSummaryDto>> similar(@PathVariable Long id,
+                                                 @RequestParam(defaultValue = "5") int size) {
+        return ResponseEntity.ok(songService.findSimilar(id, size));
+    }
+
+    /**
      * Borra la canción del servidor por completo: fila de DB, referencias
      * (favoritos / playlists / historial) y el fichero del disco. Solo
      * OWNER puede hacerlo. Devuelve 204 incluso si el fichero del disco

@@ -1,16 +1,24 @@
 package com.musarum.mobile.player
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.runtime.produceState
+import com.musarum.mobile.data.network.dto.SongSummaryDto
+import com.musarum.mobile.music.CoverImage
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -263,7 +271,74 @@ private fun InfoSections(
             }
         }
 
+        // ── Esta canción suena a…
+        // Carga bajo demanda cuando la pantalla es visible. El backend
+        // devuelve lista vacía si no hay BPM/tonalidad en la fuente
+        // (Emendatium no ha pasado) y aquí ocultamos la sección entera
+        // sin ruido. produceState se rearranca al cambiar details.id,
+        // así que si el user pasa de canción el bloque se refresca.
+        val container = LocalAppContainer.current
+        val similarState = produceState<List<SongSummaryDto>>(
+            initialValue = emptyList(),
+            key1 = details.id
+        ) {
+            value = runCatching {
+                container.apiService.getSimilarSongs(details.id, 5)
+            }.getOrDefault(emptyList())
+        }
+        val similar = similarState.value
+        if (similar.isNotEmpty()) {
+            Section("Esta canción suena a…") {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 2.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(similar) { s ->
+                        SimilarCard(
+                            song = s,
+                            onClick = {
+                                val idx = similar.indexOfFirst { it.id == s.id }.coerceAtLeast(0)
+                                container.playerController.playQueue(similar, idx)
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(Modifier.height(32.dp))
+    }
+}
+
+/**
+ * Tarjeta mini del carrusel "Esta canción suena a…": cover 100dp +
+ * título y artista debajo, ancho fijo para que entren ~3 en pantalla.
+ * Toque = reproduce la cola de similares empezando por ésta.
+ */
+@Composable
+private fun SimilarCard(song: SongSummaryDto, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .width(104.dp)
+            .clickable(onClick = onClick)
+    ) {
+        CoverImage(url = song.coverUrl, size = 100.dp, cornerRadius = 12.dp)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            song.title,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            song.artistsLabel,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
