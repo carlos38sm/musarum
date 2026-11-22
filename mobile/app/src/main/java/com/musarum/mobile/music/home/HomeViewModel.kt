@@ -30,6 +30,10 @@ data class HomeUiState(
     val tasteProfiles: List<TasteProfileDto> = emptyList(),
     val smartPlaylists: List<SmartPlaylistInfoDto> = emptyList(),
     val smartLoadingSlug: String? = null,
+    // Total global de canciones del catálogo (1 petición ligera con
+    // getSongs(size=1).totalElements). Lo usa el SongsHero del Home v2
+    // para mostrar "N pistas". 0 mientras carga o si falla la llamada.
+    val totalSongs: Long = 0L,
     val error: String? = null
 )
 
@@ -61,6 +65,11 @@ class HomeViewModel(
                     val discoveriesDef = async { safeNullable { api.getHomeDiscoveries() } }
                     val tasteDef = async { safeList { api.getHomeTasteProfiles() } }
                     val smartDef = async { safeList { api.getSmartPlaylists() } }
+                    // getSongs(size=1) devuelve PageDto; solo necesitamos
+                    // totalElements. Barato: una fila + headers.
+                    val totalDef = async {
+                        safeNullable { api.getSongs(page = 0, size = 1) }?.totalElements ?: 0L
+                    }
 
                     _state.value = HomeUiState(
                         loading = false,
@@ -71,7 +80,8 @@ class HomeViewModel(
                         presence = presenceDef.await(),
                         discoveries = discoveriesDef.await(),
                         tasteProfiles = tasteDef.await(),
-                        smartPlaylists = smartDef.await()
+                        smartPlaylists = smartDef.await(),
+                        totalSongs = totalDef.await()
                     )
                 }
             } catch (ce: CancellationException) {
