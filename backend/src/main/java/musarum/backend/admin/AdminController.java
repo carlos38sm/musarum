@@ -68,6 +68,18 @@ class AdminController {
         return hostStatsService.snapshot();
     }
 
+    /**
+     * Historial de los últimos 30 min (1 muestra cada 10s) para pintar
+     * sparklines en el panel Máquina del móvil. No depende del "modo
+     * live" ni de peticiones ad-hoc: el backend muestrea solo con un
+     * scheduler y guarda en memoria. Se pierde al reiniciar el backend.
+     */
+    @GetMapping("/host-history")
+    @PreAuthorize("hasRole('OWNER')")
+    HostStatsService.HostHistory hostHistory() {
+        return hostStatsService.history();
+    }
+
     /** Borra ficheros .lrc en {@code _lyrics/} cuyo id ya no existe en {@code songs}. */
     @PostMapping("/clean-orphan-lyrics")
     @PreAuthorize("hasRole('OWNER')")

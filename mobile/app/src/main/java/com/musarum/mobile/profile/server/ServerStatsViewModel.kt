@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.musarum.mobile.data.network.ApiService
 import com.musarum.mobile.data.network.dto.EnrichProgressDto
+import com.musarum.mobile.data.network.dto.HostHistoryDto
 import com.musarum.mobile.data.network.dto.HostStatsDto
 import com.musarum.mobile.data.network.dto.ServerStatsDto
 import kotlinx.coroutines.CancellationException
@@ -43,6 +44,15 @@ class ServerStatsViewModel(
 
     private var hostPollingJob: Job? = null
 
+    // Historial de los últimos 30 min para sparklines. Lo mantenemos aparte
+    // del snapshot ad-hoc: el backend muestrea con su propio scheduler y
+    // devuelve lo que lleve acumulado. null = aún no se cargó o el backend
+    // es viejo y no expone /host-history (cae silencioso y la tarjeta
+    // pinta solo los contadores).
+    private val _hostHistory = MutableStateFlow<HostHistoryDto?>(null)
+    val hostHistory: StateFlow<HostHistoryDto?> = _hostHistory.asStateFlow()
+    private var historyPollingJob: Job? = null
+
     // Progreso del "Re-enriquecer todo". null = nunca disparado desde este
     // dispositivo (o el backend reinició). El polling vive mientras el
     // snapshot indique running=true.
@@ -53,6 +63,7 @@ class ServerStatsViewModel(
     init {
         refresh()
         loadHostOnce()
+        loadHistoryOnce()
         // Si al entrar el backend ya tiene un run en marcha (otro dispositivo
         // lo lanzó), arrancamos el polling solos.
         checkInitialEnrichProgress()
@@ -92,6 +103,33 @@ class ServerStatsViewModel(
     }
 
     /**
+     * Carga puntual del historial y arranca polling cada 10s para que las
+     * sparklines "avancen" mientras la pantalla esté abierta. Backends que
+     * no expongan /host-history dejan el flow en null (lo que la UI usa
+     * para decidir si pinta la sparkline o no).
+     */
+    private fun loadHistoryOnce() {
+        // Fetch inicial + polling continuo cada 10s mientras el VM viva.
+        // Una muestra nueva entra en el buffer del backend cada 10s, así
+        // que pedir más seguido es desperdicio; menos seguido se queda
+        // atrasado respecto a los contadores en vivo.
+        historyPollingJob?.cancel()
+        historyPollingJob = viewModelScope.launch {
+            while (true) {
+                try {
+                    _hostHistory.value = apiService.hostHistory()
+                } catch (ce: CancellationException) {
+                    throw ce
+                } catch (_: Throwable) {
+                    // Backend viejo o red caída: deja lo que había
+                    // y vuelve a intentarlo.
+                }
+                delay(10_000)
+            }
+        }
+    }
+
+    /**
      * Enciende o apaga el "modo live" del panel Máquina: mientras esté ON,
      * pide {@code /host-stats} cada 2s. La velocidad instantánea de red e
      * IO solo tiene sentido con refrescos cortos — el backend calcula el
@@ -118,6 +156,7 @@ class ServerStatsViewModel(
 
     override fun onCleared() {
         hostPollingJob?.cancel()
+        historyPollingJob?.cancel()
         enrichPollingJob?.cancel()
         super.onCleared()
     }

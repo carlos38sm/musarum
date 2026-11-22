@@ -1,5 +1,6 @@
 package com.musarum.mobile.profile.server
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoFixHigh
@@ -74,6 +82,7 @@ fun ServerStatsScreen(onBack: () -> Unit) {
     val state by viewModel.state.collectAsState()
     val host by viewModel.host.collectAsState()
     val hostLive by viewModel.hostLive.collectAsState()
+    val hostHistory by viewModel.hostHistory.collectAsState()
     val enrichProgress by viewModel.enrichProgress.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -134,6 +143,7 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                 )
                 MachineCard(
                     host = host,
+                    history = hostHistory,
                     live = hostLive,
                     onLiveChange = { viewModel.setHostLive(it) }
                 )
@@ -663,6 +673,7 @@ private fun EnrichProgressBlock(
 @Composable
 private fun MachineCard(
     host: HostStatsDto?,
+    history: com.musarum.mobile.data.network.dto.HostHistoryDto?,
     live: Boolean,
     onLiveChange: (Boolean) -> Unit
 ) {
@@ -743,6 +754,17 @@ private fun MachineCard(
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
+        // Sparkline histórica (30 min). Sin backend viejo o buffer vacío
+        // no pinta nada — deja hueco controlado para que el salto no sea
+        // brusco cuando entre la primera muestra.
+        history?.let {
+            Spacer(Modifier.height(6.dp))
+            Sparkline(
+                values = it.samples.map { s -> s.cpuLoadSystem.toFloat().coerceIn(0f, 1f) },
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth().height(36.dp)
+            )
+        }
         Spacer(Modifier.height(4.dp))
         Text(
             "Proceso Musarum: %.0f%%".format(host.cpuLoadProcess * 100),
@@ -779,6 +801,18 @@ private fun MachineCard(
             color = MaterialTheme.colorScheme.tertiary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
+        history?.let {
+            Spacer(Modifier.height(6.dp))
+            Sparkline(
+                values = it.samples.map { s ->
+                    if (s.memTotalBytes > 0)
+                        (s.memUsedBytes.toFloat() / s.memTotalBytes.toFloat()).coerceIn(0f, 1f)
+                    else 0f
+                },
+                color = MaterialTheme.colorScheme.tertiary,
+                modifier = Modifier.fillMaxWidth().height(36.dp)
+            )
+        }
         Spacer(Modifier.height(4.dp))
         Text(
             "${humanBytes(host.memUsedBytes)} de ${humanBytes(host.memTotalBytes)}",
@@ -815,6 +849,20 @@ private fun MachineCard(
                     "Red",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold
+                )
+            }
+            // Sparkline agregada rx+tx. Se normaliza al máximo del propio
+            // buffer: así visualmente siempre hay contraste, sin importar
+            // que la red del portátil tope en 50 KB/s o en 50 MB/s.
+            history?.let {
+                val totals = it.samples.map { s -> (s.rxBytesPerSec + s.txBytesPerSec).toFloat() }
+                val max = (totals.maxOrNull() ?: 0f).coerceAtLeast(1f)
+                val norm = totals.map { v -> (v / max).coerceIn(0f, 1f) }
+                Spacer(Modifier.height(6.dp))
+                Sparkline(
+                    values = norm,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.fillMaxWidth().height(36.dp)
                 )
             }
             Spacer(Modifier.height(6.dp))
@@ -883,6 +931,73 @@ private fun NetworkInterfaceRow(nif: HostStatsDto.NetworkInterfaceDto) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+/**
+ * Mini-gráfica de los últimos N valores normalizados 0..1. Se dibuja
+ * una línea con el color dado + relleno semi-transparente debajo.
+ * Si hay menos de 2 muestras no pinta nada (dejaría líneas/puntos
+ * sueltos que confunden más que ayudan).
+ *
+ * Nota: la escala de X es "una muestra por paso", no por tiempo real.
+ * Eso vale porque el backend muestrea a tick fijo (10s); si saltase
+ * algún tick el hueco se vería como una muestra "repetida" del
+ * último valor conocido — aceptable.
+ */
+@Composable
+private fun Sparkline(
+    values: List<Float>,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    if (values.size < 2) {
+        // Placeholder vacío con la misma altura, para que el layout no
+        // pegue saltos cuando entra la primera muestra.
+        Spacer(modifier)
+        return
+    }
+    val track = MaterialTheme.colorScheme.surfaceVariant
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        // Fondo sutil (sin esto, con valores cerca de 0 la línea se pierde
+        // al tener fondo del card casi del mismo color).
+        drawRect(color = track.copy(alpha = 0.35f))
+
+        val stepX = if (values.size > 1) w / (values.size - 1).toFloat() else 0f
+        // Invertimos Y: valor 0 abajo, valor 1 arriba. Pequeño margen (2px)
+        // para que una línea pegada al 100% no se coma el borde superior.
+        val margin = 2f
+        fun yFor(v: Float): Float = margin + (1f - v.coerceIn(0f, 1f)) * (h - margin * 2)
+
+        val linePath = Path().apply {
+            moveTo(0f, yFor(values[0]))
+            for (i in 1 until values.size) {
+                lineTo(i * stepX, yFor(values[i]))
+            }
+        }
+        // Relleno: cerramos el path hacia abajo a la derecha y a la izquierda
+        // para que quede un área semi-transparente degradada bajo la línea.
+        val fillPath = Path().apply {
+            addPath(linePath)
+            lineTo((values.size - 1) * stepX, h)
+            lineTo(0f, h)
+            close()
+        }
+        drawPath(
+            path = fillPath,
+            brush = Brush.verticalGradient(
+                colors = listOf(color.copy(alpha = 0.35f), color.copy(alpha = 0.0f)),
+                startY = 0f,
+                endY = h
+            )
+        )
+        drawPath(
+            path = linePath,
+            color = color,
+            style = Stroke(width = 2f, cap = StrokeCap.Round)
+        )
     }
 }
 

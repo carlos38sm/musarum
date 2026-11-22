@@ -389,6 +389,11 @@ interface ApiService {
     @GET("admin/server/host-stats")
     suspend fun hostStats(): com.musarum.mobile.data.network.dto.HostStatsDto
 
+    // Historial agregado de los últimos 30 min para sparklines. El backend
+    // devuelve lo que tenga; si arrancó hace poco vendrá con menos muestras.
+    @GET("admin/server/host-history")
+    suspend fun hostHistory(): com.musarum.mobile.data.network.dto.HostHistoryDto
+
     // Progreso del "Re-enriquecer todo" para la barra en Mantenimiento.
     // Es barato (solo lee contadores atómicos), se puede hacer polling corto.
     @GET("admin/server/enrich-progress")
