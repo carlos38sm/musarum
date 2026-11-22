@@ -233,6 +233,16 @@ interface ApiService {
         @Query("sort") sort: String = "title,asc"
     ): PageDto<SongSummaryDto>
 
+    // Artistas que han compartido canciones con éste. El backend
+    // devuelve una lista plana (no PageDto) ordenada por frecuencia
+    // de colaboración. Lo pinta el móvil como carrusel horizontal
+    // "Artistas relacionados" al final de ArtistDetailScreen.
+    @GET("artists/{id}/related")
+    suspend fun getRelatedArtists(
+        @Path("id") id: Long,
+        @Query("limit") limit: Int = 20
+    ): List<ArtistSummaryDto>
+
     @GET("search")
     suspend fun search(@Query("q") query: String): SearchResultDto
 
@@ -280,6 +290,14 @@ interface ApiService {
     suspend fun addSongToPlaylist(
         @Path("id") id: Long,
         @Body request: AddSongToPlaylistRequest
+    ): PlaylistDetailsDto
+
+    // Añadir N canciones de una vez (selección múltiple en móvil).
+    // Las que ya estén en la playlist se saltan en el backend.
+    @POST("playlists/{id}/songs/bulk")
+    suspend fun addSongsToPlaylistBulk(
+        @Path("id") id: Long,
+        @Body request: com.musarum.mobile.data.network.dto.AddSongsBulkRequest
     ): PlaylistDetailsDto
 
     @DELETE("playlists/{id}/entries/{entryId}")

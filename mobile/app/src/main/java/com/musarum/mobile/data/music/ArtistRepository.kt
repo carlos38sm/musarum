@@ -20,4 +20,12 @@ class ArtistRepository(private val apiService: ApiService) {
 
     suspend fun songs(id: Long): List<SongSummaryDto> =
         apiService.getArtistSongs(id).content
+
+    /**
+     * Artistas con colaboraciones (aparecen en canciones compartidas)
+     * ordenados por frecuencia. Si el backend es viejo y no expone el
+     * endpoint, el ViewModel cae a lista vacía — la sección no se pinta.
+     */
+    suspend fun related(id: Long, limit: Int = 20): List<ArtistSummaryDto> =
+        apiService.getRelatedArtists(id, limit)
 }

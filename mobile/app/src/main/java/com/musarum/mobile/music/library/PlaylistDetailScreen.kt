@@ -17,6 +17,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
@@ -24,10 +25,19 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.foundation.background
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import androidx.compose.foundation.layout.Row
@@ -70,12 +80,14 @@ import com.musarum.mobile.ui.SearchActionIcon
 import com.musarum.mobile.ui.humanizeDurationMs
 import com.musarum.mobile.ui.humanizeIso
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlaylistDetailScreen(
     playlistId: Long,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onAddSongs: () -> Unit = {}
 ) {
     val container = LocalAppContainer.current
     val snackbar = LocalSnackbar.current
@@ -180,6 +192,14 @@ fun PlaylistDetailScreen(
                             viewModel.moveEntry(fromKey, fromIdx, toIdx)
                         }
                     }
+                    // State que necesita el LazyColumn (favoritos del user y
+                    // scope de corrutina para el toggle via swipe). Van FUERA
+                    // porque collectAsState / rememberCoroutineScope son
+                    // @Composable y el bloque del LazyColumn body no lo es.
+                    val favoriteIds = container.favoriteRepository.favorites
+                        .collectAsState().value.map { it.songId }.toSet()
+                    val favoriteScope = androidx.compose.runtime.rememberCoroutineScope()
+
                     LazyColumn(state = lazyListState, modifier = Modifier.fillMaxSize()) {
                         item {
                             Column(
@@ -318,6 +338,20 @@ fun PlaylistDetailScreen(
                                             else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
+                                    // El "añadir canciones en lote" lo pueden
+                                    // usar tanto owner como colaboradores
+                                    // (canEdit en el backend acepta a los dos).
+                                    val canEdit = isOwner ||
+                                        (me?.id != null &&
+                                            s.playlist.collaborators.any { it.id == me?.id })
+                                    if (canEdit) {
+                                        IconButton(onClick = onAddSongs) {
+                                            Icon(
+                                                Icons.Filled.Add,
+                                                contentDescription = "Añadir canciones"
+                                            )
+                                        }
+                                    }
                                     if (isOwner) {
                                         IconButton(onClick = { showEditInfo = true }) {
                                             Icon(
@@ -388,6 +422,7 @@ fun PlaylistDetailScreen(
                                 ) { isDragging ->
                                     EntryRow(
                                         entry = entry,
+                                        isFavorite = favoriteIds.contains(entry.songId),
                                         onClick = {
                                             container.playerController.playQueue(
                                                 songs = entries.map { it.toSongSummary() },
@@ -395,6 +430,11 @@ fun PlaylistDetailScreen(
                                             )
                                         },
                                         onRemove = { viewModel.removeEntry(entry.entryId) },
+                                        onToggleFavorite = {
+                                            favoriteScope.launch {
+                                                container.favoriteRepository.toggle(entry.songId)
+                                            }
+                                        },
                                         isDragging = isDragging,
                                         dragHandleModifier = Modifier.draggableHandle(),
                                         dragEnabled = reorderMode && query.isBlank()
@@ -779,79 +819,206 @@ private fun InviteCollaboratorDialog(
 }
 
 /**
- * Fila de la playlist. Soporta drag-and-drop: el icono {@code DragHandle}
- * a la derecha toma el gesto (modifier `.draggableHandle()` que inyecta el
- * caller desde ReorderableItem). Cuando se está arrastrando, elevamos la
- * fila con shadow + fondo para que destaque.
+ * Fila de la playlist. Dos gestos:
+ *   - Swipe izquierda (EndToStart) → eliminar la canción de la playlist.
+ *     Fondo rojo con icono papelera; al soltar, la fila sale.
+ *   - Swipe derecha (StartToEnd) → alternar favorito. Fondo primary
+ *     con corazón; al soltar, la fila vuelve a su sitio y el icono
+ *     actualiza su estado.
+ *   - Drag-and-drop con el icono DragHandle para reordenar (solo con
+ *     reorderMode activo y sin lupa; el modifier draggableHandle lo
+ *     inyecta el ReorderableItem).
+ *
+ * El dismiss izquierda confirma su "going away" (confirmValueChange=true
+ * para EndToStart) y llama onRemove; el derecha NO confirma (false) y
+ * usa el callback como pulso: la fila regresa animada al centro y el
+ * estado de favorito ya ha cambiado en memoria vía FavoriteRepository.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun EntryRow(
     entry: PlaylistEntryDto,
+    isFavorite: Boolean,
     onClick: () -> Unit,
     onRemove: () -> Unit,
+    onToggleFavorite: () -> Unit,
     isDragging: Boolean = false,
     dragHandleModifier: Modifier = Modifier,
     dragEnabled: Boolean = true
 ) {
     val elevation = if (isDragging) 8.dp else 0.dp
-    androidx.compose.material3.Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shadowElevation = elevation,
-        color = if (isDragging) MaterialTheme.colorScheme.surfaceVariant
-                else androidx.compose.ui.graphics.Color.Transparent
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { newValue ->
+            when (newValue) {
+                SwipeToDismissBoxValue.EndToStart -> {
+                    // Swipe a la izquierda = quitar de la playlist.
+                    // Confirmamos la dismiss: la fila desaparece con
+                    // animación, el backend se encargará de restar la
+                    // entry y el flow reemitirá la lista sin ella.
+                    onRemove()
+                    true
+                }
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    // Swipe a la derecha = toggle favorito. No queremos
+                    // que la fila desaparezca — es un pulso visual.
+                    onToggleFavorite()
+                    false
+                }
+                else -> false
+            }
+        },
+        // Umbral del 35% del ancho para disparar — más bajo que el
+        // default (50%) para que el gesto se note confortable con el
+        // pulgar sin requerir recorrido completo.
+        positionalThreshold = { totalDistance: Float -> totalDistance * 0.35f }
+    )
+
+    SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            SwipeBackground(
+                direction = dismissState.dismissDirection,
+                isFavorite = isFavorite
+            )
+        },
+        // El drag reordenable usa el handle lateral; el swipe horizontal
+        // no debe interferir mientras estás arrastrando con los dedos
+        // para reordenar: desactivamos ambas direcciones si isDragging.
+        enableDismissFromStartToEnd = !isDragging,
+        enableDismissFromEndToStart = !isDragging,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+        androidx.compose.material3.Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shadowElevation = elevation,
+            color = if (isDragging) MaterialTheme.colorScheme.surfaceVariant
+                    else MaterialTheme.colorScheme.background
         ) {
-            CoverImage(url = entry.coverUrl, size = 48.dp, cornerRadius = 6.dp)
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    entry.songTitle,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                val subtitle = entry.artists.joinToString(", ") { it.name }
-                if (subtitle.isNotBlank()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CoverImage(url = entry.coverUrl, size = 48.dp, cornerRadius = 6.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        entry.songTitle,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    val subtitle = entry.artists.joinToString(", ") { it.name }
+                    if (subtitle.isNotBlank()) {
+                        Text(
+                            subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                entry.musicalKey?.takeIf { it.isNotBlank() }?.let { key ->
+                    com.musarum.mobile.music.CamelotBadge(musicalKey = key)
+                    Spacer(Modifier.width(6.dp))
+                }
+                // Mini-icono "favorito activo" como feedback visual: si
+                // la canción ya es favorita, se ve un corazón pequeño
+                // aquí. El botón "quitar" clásico se fue — ahora es el
+                // swipe izquierda.
+                if (isFavorite) {
+                    Icon(
+                        Icons.Filled.Favorite,
+                        contentDescription = null,
+                        tint = com.musarum.mobile.ui.FavoriteRed,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
+                // Handle de arrastre — modifier.draggableHandle() lo inyecta
+                // ReorderableItem desde el call site, aquí solo lo aplicamos.
+                // Oculto cuando dragEnabled=false (p. ej. con lupa activa):
+                // reordenar sobre un subset filtrado produciría posiciones
+                // inconsistentes con DB.
+                if (dragEnabled) {
+                    Icon(
+                        imageVector = Icons.Filled.DragIndicator,
+                        contentDescription = "Arrastrar para reordenar",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = dragHandleModifier.padding(start = 4.dp)
+                    )
                 }
             }
-            entry.musicalKey?.takeIf { it.isNotBlank() }?.let { key ->
-                com.musarum.mobile.music.CamelotBadge(musicalKey = key)
-                Spacer(Modifier.width(6.dp))
-            }
-            IconButton(onClick = onRemove) {
-                Icon(
-                    Icons.Filled.RemoveCircleOutline,
-                    contentDescription = "Quitar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            // Handle de arrastre — modifier.draggableHandle() lo inyecta
-            // ReorderableItem desde el call site, aquí solo lo aplicamos.
-            // Oculto cuando dragEnabled=false (p. ej. con lupa activa):
-            // reordenar sobre un subset filtrado produciría posiciones
-            // inconsistentes con DB.
-            if (dragEnabled) {
-                Icon(
-                    imageVector = Icons.Filled.DragIndicator,
-                    contentDescription = "Arrastrar para reordenar",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = dragHandleModifier.padding(start = 4.dp)
-                )
-            }
+        }
+    }
+}
+
+/**
+ * Fondo que asoma bajo la fila al deslizar. Sentido visual:
+ *   - StartToEnd (swipe derecha): barra con primary a la izquierda +
+ *     icono ♥ (relleno si ya es favorita, línea si no). "Añadir/quitar".
+ *   - EndToStart (swipe izquierda): barra con error a la derecha +
+ *     icono papelera. "Eliminar de la playlist".
+ */
+@Composable
+private fun SwipeBackground(
+    direction: SwipeToDismissBoxValue,
+    isFavorite: Boolean
+) {
+    when (direction) {
+        SwipeToDismissBoxValue.StartToEnd -> Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.primary)
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Start
+        ) {
+            Icon(
+                imageVector = if (isFavorite) Icons.Filled.FavoriteBorder
+                              else Icons.Filled.Favorite,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(28.dp)
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                if (isFavorite) "Quitar de favoritas" else "Añadir a favoritas",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimary,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+        SwipeToDismissBoxValue.EndToStart -> Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.error)
+                .padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                "Quitar de la playlist",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onError,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.width(10.dp))
+            Icon(
+                imageVector = Icons.Filled.Delete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onError,
+                modifier = Modifier.size(28.dp)
+            )
+        }
+        SwipeToDismissBoxValue.Settled -> {
+            // En reposo no se debería ver el fondo; dejamos un Box vacío
+            // del tamaño de la fila para que el layout no colapse.
+            Box(modifier = Modifier.fillMaxWidth())
         }
     }
 }

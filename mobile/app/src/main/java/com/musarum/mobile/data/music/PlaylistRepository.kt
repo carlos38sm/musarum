@@ -80,6 +80,19 @@ class PlaylistRepository(private val apiService: ApiService) {
         return result
     }
 
+    /**
+     * Añade N canciones en una sola petición. Mucho más eficiente que
+     * N calls a addSong — el backend ignora las ya existentes.
+     */
+    suspend fun addSongsBulk(playlistId: Long, songIds: List<Long>): PlaylistDetailsDto {
+        val result = apiService.addSongsToPlaylistBulk(
+            playlistId,
+            com.musarum.mobile.data.network.dto.AddSongsBulkRequest(songIds)
+        )
+        refresh()
+        return result
+    }
+
     suspend fun removeEntry(playlistId: Long, entryId: Long): PlaylistDetailsDto {
         val result = apiService.removeSongFromPlaylist(playlistId, entryId)
         refresh()

@@ -80,3 +80,7 @@ data class PlaylistUpdateRequest(
 )
 
 data class AddSongToPlaylistRequest(val songId: Long)
+
+// Añadir N canciones a una playlist en una sola petición. El backend
+// ignora las que ya están dentro; el orden fija la secuencia.
+data class AddSongsBulkRequest(val songIds: List<Long>)

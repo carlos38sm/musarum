@@ -34,6 +34,11 @@ object Routes {
     const val PLAYLIST_DETAIL = "playlist/{id}"
     fun playlistDetail(id: Long) = "playlist/$id"
 
+    // Picker de canciones para añadir a una playlist en lote. Se abre
+    // desde el botón "Añadir canciones" dentro de PlaylistDetailScreen.
+    const val PLAYLIST_ADD_SONGS = "playlist/{id}/add-songs"
+    fun playlistAddSongs(id: Long) = "playlist/$id/add-songs"
+
     const val ALBUM_DETAIL = "album/{id}"
     const val ARTIST_DETAIL = "artist/{id}"
     const val GENRE_DETAIL = "genre/{id}"

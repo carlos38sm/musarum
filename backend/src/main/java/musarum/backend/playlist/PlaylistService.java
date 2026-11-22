@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import musarum.backend.playlist.dto.AddSongRequest;
+import musarum.backend.playlist.dto.AddSongsBulkRequest;
 import musarum.backend.playlist.dto.PlaylistCreateRequest;
 import musarum.backend.playlist.dto.PlaylistDetailsDto;
 import musarum.backend.playlist.dto.PlaylistSummaryDto;
@@ -95,6 +96,42 @@ public class PlaylistService {
         Playlist playlist = playlistRepository.findByIdAndOwnerId(id, requesterId)
                 .orElseThrow(() -> new PlaylistNotFoundException(id));
         playlistRepository.delete(playlist);
+    }
+
+    /**
+     * Añade una lista de canciones a la playlist de una vez. Las que ya
+     * están dentro se ignoran en silencio (no es error). Asigna posiciones
+     * consecutivas al final empezando desde max(position)+1. Lo usa la
+     * pantalla "Añadir canciones" del móvil con selección múltiple —
+     * mucho más barato que N peticiones POST sueltas.
+     */
+    @Transactional
+    public PlaylistDetailsDto addSongsBulk(Long playlistId, AddSongsBulkRequest request,
+                                           Long requesterId, Pageable pageable) {
+        Playlist playlist = playlistRepository.findById(playlistId)
+                .orElseThrow(() -> new PlaylistNotFoundException(playlistId));
+        if (!playlist.canEdit(requesterId)) throw new UnauthenticatedException();
+
+        java.util.Set<Long> existing = playlist.getEntries().stream()
+                .map(e -> e.getSong().getId())
+                .collect(java.util.stream.Collectors.toSet());
+
+        int nextPos = playlistRepository.findMaxPositionInPlaylist(playlistId) + 1;
+        for (Long songId : request.songIds()) {
+            if (songId == null || existing.contains(songId)) continue;
+            Song song = songService.findEntityById(songId);
+            PlaylistEntry entry = PlaylistEntry.builder()
+                    .playlist(playlist)
+                    .song(song)
+                    .position(nextPos++)
+                    .build();
+            playlist.getEntries().add(entry);
+            entryRepository.save(entry);
+            existing.add(songId);
+        }
+
+        Page<PlaylistEntry> entriesPage = entryRepository.findByPlaylistIdOrderByPositionAsc(playlistId, pageable);
+        return playlistMapper.toDetails(playlist, entriesPage);
     }
 
     @Transactional

@@ -53,6 +53,7 @@ import com.musarum.mobile.music.library.DownloadsScreen
 import com.musarum.mobile.music.genres.GenreDetailScreen
 import com.musarum.mobile.music.library.LibraryScreen
 import com.musarum.mobile.inbox.InboxScreen
+import com.musarum.mobile.music.library.PickSongsForPlaylistScreen
 import com.musarum.mobile.music.library.PlaylistDetailScreen
 import com.musarum.mobile.music.search.SearchScreen
 import com.musarum.mobile.player.InfoScreen
@@ -368,7 +369,20 @@ fun MusarumNavHost(
                 val id = backStack.arguments?.getLong("id") ?: return@composable
                 PlaylistDetailScreen(
                     playlistId = id,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onAddSongs = { navController.navigate(Routes.playlistAddSongs(id)) }
+                )
+            }
+
+            composable(
+                route = Routes.PLAYLIST_ADD_SONGS,
+                arguments = listOf(navArgument("id") { type = NavType.LongType })
+            ) { backStack ->
+                val id = backStack.arguments?.getLong("id") ?: return@composable
+                PickSongsForPlaylistScreen(
+                    playlistId = id,
+                    onBack = { navController.popBackStack() },
+                    onDone = { navController.popBackStack() }
                 )
             }
 
@@ -408,6 +422,9 @@ fun MusarumNavHost(
                     onBack = { navController.popBackStack() },
                     onOpenAlbum = { albumId ->
                         navController.navigate(Routes.albumDetail(albumId))
+                    },
+                    onOpenArtist = { otherId ->
+                        navController.navigate(Routes.artistDetail(otherId))
                     }
                 )
             }

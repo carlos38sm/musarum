@@ -59,6 +59,30 @@ public class ArtistService {
                 .map(artistMapper::toSummary);
     }
 
+    /**
+     * Artistas que comparten canciones con el dado (colaboraciones en
+     * song_artists). Lo pinta el móvil como carrusel horizontal al final
+     * de ArtistDetailScreen — tipo Spotify "Fans also like". Preserva el
+     * orden de frecuencia que devuelve la query, por eso recomponemos
+     * manualmente en vez de usar findAllById (que no lo garantiza).
+     */
+    @Transactional(readOnly = true)
+    public List<ArtistSummaryDto> findRelated(Long artistId, int limit) {
+        if (!artistRepository.existsById(artistId)) {
+            throw new ArtistNotFoundException(artistId);
+        }
+        int bounded = Math.max(1, Math.min(limit, 50));
+        List<Long> relatedIds = artistRepository.findRelatedArtistIds(artistId, bounded);
+        if (relatedIds.isEmpty()) return List.of();
+        Map<Long, Artist> byId = artistRepository.findAllById(relatedIds).stream()
+                .collect(Collectors.toMap(Artist::getId, a -> a));
+        return relatedIds.stream()
+                .map(byId::get)
+                .filter(a -> a != null)
+                .map(artistMapper::toSummary)
+                .toList();
+    }
+
     @Transactional
     public Artist findOrCreate(String name) {
         String key = Normalizer.key(name);

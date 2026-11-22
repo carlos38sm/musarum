@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import musarum.backend.playlist.dto.AddCollaboratorRequest;
 import musarum.backend.playlist.dto.AddSongRequest;
+import musarum.backend.playlist.dto.AddSongsBulkRequest;
 import musarum.backend.playlist.dto.MoveEntryRequest;
 import musarum.backend.playlist.dto.PlaylistCreateRequest;
 import musarum.backend.playlist.dto.PlaylistDetailsDto;
@@ -76,6 +77,19 @@ class PlaylistController {
                                               @Valid @RequestBody AddSongRequest request,
                                               Pageable pageable) {
         return ResponseEntity.ok(playlistService.addSong(id, request, currentUser.currentUserId(), pageable));
+    }
+
+    /**
+     * Añadir N canciones de una vez. Lo usa la pantalla de "Añadir
+     * canciones" del móvil con selección múltiple: una sola petición
+     * en lugar de N round-trips.
+     */
+    @PostMapping("/{id}/songs/bulk")
+    ResponseEntity<PlaylistDetailsDto> addSongsBulk(@PathVariable Long id,
+                                                   @Valid @RequestBody AddSongsBulkRequest request,
+                                                   Pageable pageable) {
+        return ResponseEntity.ok(playlistService.addSongsBulk(
+                id, request, currentUser.currentUserId(), pageable));
     }
 
     @DeleteMapping("/{id}/entries/{entryId}")

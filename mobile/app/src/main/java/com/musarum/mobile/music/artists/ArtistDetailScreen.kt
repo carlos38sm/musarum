@@ -64,7 +64,11 @@ import com.musarum.mobile.ui.SearchActionIcon
 fun ArtistDetailScreen(
     artistId: Long,
     onBack: () -> Unit,
-    onOpenAlbum: (Long) -> Unit
+    onOpenAlbum: (Long) -> Unit,
+    // Callback para saltar a otro artista desde el carrusel
+    // "Artistas relacionados" al pie. El navhost lo cablea igual
+    // que onOpenArtist en otras pantallas (navegación push normal).
+    onOpenArtist: (Long) -> Unit = {}
 ) {
     val container = LocalAppContainer.current
     val viewModel: ArtistDetailViewModel = viewModel(
@@ -169,6 +173,28 @@ fun ArtistDetailScreen(
                                 },
                                 onLongPress = { openSongActions(song) }
                             )
+                        }
+                    }
+
+                    // Carrusel "Artistas relacionados" — colaboraciones
+                    // reales según song_artists, no una lista editorial.
+                    // Solo se pinta cuando hay búsqueda vacía (si el user
+                    // está filtrando canciones no tiene sentido saltar a
+                    // otro artista) y hay al menos uno relacionado.
+                    if (query.isBlank() && s.related.isNotEmpty()) {
+                        item { SectionHeader("Artistas relacionados") }
+                        item {
+                            LazyRow(
+                                contentPadding = PaddingValues(horizontal = 16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(14.dp)
+                            ) {
+                                items(s.related, key = { it.id }) { rel ->
+                                    RelatedArtistCard(
+                                        artist = rel,
+                                        onClick = { onOpenArtist(rel.id) }
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -425,4 +451,40 @@ private fun formatLongMinutes(ms: Long): String {
     val h = totalMin / 60
     val m = totalMin % 60
     return if (m == 0) "$h h" else "$h h $m min"
+}
+
+/**
+ * Tarjeta del carrusel "Artistas relacionados": bolita circular con la
+ * foto (o inicial del nombre si no hay imagen) + nombre debajo. Ancho
+ * fijo para que entren ~3 por pantalla, invitando al scroll. Estilo
+ * Spotify "Fans also like".
+ */
+@Composable
+private fun RelatedArtistCard(
+    artist: com.musarum.mobile.data.network.dto.ArtistSummaryDto,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(104.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        ArtistAvatar(
+            url = artist.imageUrl,
+            size = 88.dp,
+            placeholderSeed = artist.id
+        )
+        Spacer(Modifier.height(8.dp))
+        Text(
+            artist.name,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onBackground,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }

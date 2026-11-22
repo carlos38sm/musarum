@@ -62,6 +62,18 @@ class ArtistController {
         return ResponseEntity.ok(songService.findByArtist(id, pageable));
     }
 
+    /**
+     * Artistas que han compartido canciones con éste, ordenados por
+     * frecuencia de colaboración. Lo pinta el móvil como "Artistas
+     * relacionados" al final de ArtistDetailScreen.
+     */
+    @GetMapping("/{id}/related")
+    ResponseEntity<java.util.List<ArtistSummaryDto>> findRelated(
+            @PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "20") int limit) {
+        return ResponseEntity.ok(artistService.findRelated(id, limit));
+    }
+
     /** Sirve la imagen del artista guardada localmente (APIC extraído de un audio del artista). */
     @GetMapping("/{id}/image")
     ResponseEntity<Resource> getImage(@PathVariable Long id) {

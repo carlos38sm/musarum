@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.musarum.mobile.data.music.ArtistRepository
 import com.musarum.mobile.data.network.dto.AlbumCardDto
 import com.musarum.mobile.data.network.dto.ArtistDetailsDto
+import com.musarum.mobile.data.network.dto.ArtistSummaryDto
 import com.musarum.mobile.data.network.dto.SongSummaryDto
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,7 +19,11 @@ sealed class ArtistDetailUiState {
     data class Ready(
         val artist: ArtistDetailsDto,
         val albums: List<AlbumCardDto>,
-        val songs: List<SongSummaryDto>
+        val songs: List<SongSummaryDto>,
+        // "Fans también escuchan X" — colaboraciones ordenadas por
+        // frecuencia. Vacío = no hay relacionados o el backend no
+        // expone el endpoint (caemos silenciosos).
+        val related: List<ArtistSummaryDto> = emptyList()
     ) : ArtistDetailUiState()
     data class Error(val message: String) : ArtistDetailUiState()
 }
@@ -45,7 +50,9 @@ class ArtistDetailViewModel(
                     .getOrDefault(emptyList())
                 val songs = runCatching { repository.songs(artistId) }
                     .getOrDefault(emptyList())
-                _state.value = ArtistDetailUiState.Ready(artist, albums, songs)
+                val related = runCatching { repository.related(artistId) }
+                    .getOrDefault(emptyList())
+                _state.value = ArtistDetailUiState.Ready(artist, albums, songs, related)
             } catch (ce: CancellationException) {
                 throw ce
             } catch (t: Throwable) {

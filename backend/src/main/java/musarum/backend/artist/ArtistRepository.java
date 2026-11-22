@@ -52,4 +52,23 @@ public interface ArtistRepository extends JpaRepository<Artist, Long> {
     @Query("SELECT a.id FROM Artist a "
          + "WHERE NOT EXISTS (SELECT 1 FROM Song s JOIN s.artists sa WHERE sa.id = a.id)")
     List<Long> findOrphanIds();
+
+    /**
+     * Artistas que han compartido canciones con el dado (co-apariciones en
+     * song_artists). Ordena por número de colaboraciones DESC — los más
+     * frecuentes salen primero en el carrusel "Artistas relacionados" del
+     * móvil. Excluye al propio artista. Index: V8 añadió song_artists(artist_id).
+     */
+    @Query(value = """
+            SELECT other.artist_id
+            FROM song_artists me
+            JOIN song_artists other
+              ON me.song_id = other.song_id
+             AND other.artist_id <> me.artist_id
+            WHERE me.artist_id = :artistId
+            GROUP BY other.artist_id
+            ORDER BY COUNT(*) DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Long> findRelatedArtistIds(Long artistId, int limit);
 }
