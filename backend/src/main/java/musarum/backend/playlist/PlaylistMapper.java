@@ -50,7 +50,7 @@ class PlaylistMapper {
         Page<PlaylistEntryDto> entryDtos = entriesPage.map(this::toEntryDto);
 
         List<CollaboratorRef> collaborators = playlist.getCollaborators().stream()
-                .map(u -> new CollaboratorRef(u.getId(), u.getNick()))
+                .map(u -> new CollaboratorRef(u.getId(), u.getNick(), u.getAvatarUrl()))
                 .toList();
 
         long totalMs = 0L;

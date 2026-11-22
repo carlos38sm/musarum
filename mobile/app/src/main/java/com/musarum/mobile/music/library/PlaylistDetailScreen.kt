@@ -488,7 +488,10 @@ private fun EditPlaylistInfoDialog(
 ) {
     var name by remember { mutableStateOf(initialName) }
     var description by remember { mutableStateOf(initialDescription) }
-    var isPublic by remember { mutableStateOf(initialPublic) }
+    // isPublic deja de exponerse al usuario — el concepto "colaborativa" se
+    // maneja desde los detalles invitando por nick. Conservamos el flag en
+    // el callback (y el valor inicial) por compat con el backend y por si
+    // volvemos a añadir un modo "visible por cualquier user".
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -511,23 +514,11 @@ private fun EditPlaylistInfoDialog(
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth()
                 )
-                Spacer(Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.Switch(
-                        checked = isPublic,
-                        onCheckedChange = { isPublic = it }
-                    )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        "Colaborativa (otros users pueden invitarse)",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = { onSave(name.trim(), description.trim(), isPublic) },
+                onClick = { onSave(name.trim(), description.trim(), initialPublic) },
                 enabled = name.isNotBlank()
             ) { Text("Guardar") }
         },
@@ -557,7 +548,9 @@ private fun CollaboratorsBubbles(
             Box {
                 com.musarum.mobile.music.UserAvatar(
                     nick = c.nick,
-                    avatarUrl = null,
+                    // Si el user subió foto, se pinta; si no, cae a la
+                    // inicial coloreada (la lógica vive en UserAvatar).
+                    avatarUrl = c.avatarUrl,
                     size = 32.dp,
                     modifier = Modifier.padding(end = 6.dp)
                 )

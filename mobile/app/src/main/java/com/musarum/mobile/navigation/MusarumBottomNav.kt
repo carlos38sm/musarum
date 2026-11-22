@@ -53,11 +53,11 @@ fun MusarumBottomNav(
         containerColor = MaterialTheme.colorScheme.background,
         tonalElevation = 0.dp,
         contentColor = MaterialTheme.colorScheme.onBackground,
-        // Material3 por defecto da 80dp — demasiado alto para 4 items. 60dp
-        // + label más compacto es cómodo con el pulgar y libera píxeles para
-        // el contenido. windowInsets=0 evita que Material añada su padding
-        // de systemBars (ya lo hace el Scaffold global).
-        modifier = androidx.compose.ui.Modifier.height(60.dp),
+        // Material3 por defecto da 80dp y nosotros estábamos en 60.
+        // Carlos pidió reducir más: 52dp con icono+label pequeños queda
+        // compacto pero clicable con el pulgar. windowInsets=0 evita el
+        // padding extra de systemBars (lo da el Scaffold global).
+        modifier = androidx.compose.ui.Modifier.height(52.dp),
         windowInsets = WindowInsets(0, 0, 0, 0)
     ) {
         navItems.forEach { item ->

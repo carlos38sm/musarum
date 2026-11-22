@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -95,9 +96,10 @@ fun FavoritesContent(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
-                        // Fila de acciones: Reproducir (texto) + Descargar
-                        // todas (icono nube solo, más discreto). El icono
-                        // cambia a CheckCircle cuando ya están todas bajadas.
+                        // Fila de acciones compacta: Reproducir + Descargar
+                        // todas, ambos solo-icono. Antes el botón de play
+                        // llevaba texto "Reproducir" y comía ancho sin
+                        // aportar nada — la flecha es inequívoca.
                         val downloads by container.downloadsRepository.entries.collectAsState()
                         val inProgress by container.downloadsManager.inProgress.collectAsState()
                         val pending = s.favorites.filter {
@@ -111,15 +113,17 @@ fun FavoritesContent(
                             horizontalArrangement = androidx.compose.foundation.layout.Arrangement
                                 .spacedBy(10.dp)
                         ) {
-                            Button(
+                            androidx.compose.material3.FilledIconButton(
                                 onClick = {
                                     val songs = s.favorites.map { it.toSongSummary() }
                                     container.playerController.playQueue(songs, 0)
-                                }
+                                },
+                                modifier = Modifier.size(44.dp)
                             ) {
-                                Icon(Icons.Filled.PlayArrow, contentDescription = null)
-                                Spacer(Modifier.width(6.dp))
-                                Text("Reproducir")
+                                Icon(
+                                    Icons.Filled.PlayArrow,
+                                    contentDescription = "Reproducir favoritas"
+                                )
                             }
                             // Icono nube: descarga todas las pendientes.
                             // Cambia a check cuando ya están todas bajadas.

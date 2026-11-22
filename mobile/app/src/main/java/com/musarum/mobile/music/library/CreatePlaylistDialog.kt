@@ -1,20 +1,13 @@
 package com.musarum.mobile.music.library
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,13 +22,14 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun CreatePlaylistDialog(
     onDismiss: () -> Unit,
-    onConfirm: (name: String, description: String?, isCollaborative: Boolean) -> Unit
+    // Segunda arg intencionalmente nullable: dejamos el callback como estaba
+    // para no forzar refactor del call site. El toggle propia/colaborativa
+    // ha desaparecido — una playlist se crea sin configuración y, cuando
+    // el user quiere invitar, lo hace desde los detalles (igual que Spotify).
+    onConfirm: (name: String, description: String?) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    // Hoy el toggle solo marca la intención. La lógica real de permitir
-    // a otros usuarios editar la playlist llega después.
-    var isCollaborative by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -58,40 +52,13 @@ fun CreatePlaylistDialog(
                     minLines = 2,
                     maxLines = 4
                 )
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(10.dp))
                 Text(
-                    "Tipo",
-                    style = androidx.compose.material3.MaterialTheme.typography.labelMedium,
-                    color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                    "Podrás invitar colaboradores desde los detalles de " +
+                        "la playlist una vez creada.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                    SegmentedButton(
-                        selected = !isCollaborative,
-                        onClick = { isCollaborative = false },
-                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-                        icon = {
-                            if (!isCollaborative) Icon(Icons.Filled.Check, contentDescription = null)
-                        }
-                    ) { Text("Propia") }
-                    SegmentedButton(
-                        selected = isCollaborative,
-                        onClick = { isCollaborative = true },
-                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-                        icon = {
-                            if (isCollaborative) Icon(Icons.Filled.Check, contentDescription = null)
-                        }
-                    ) { Text("Colaborativa") }
-                }
-                if (isCollaborative) {
-                    Spacer(Modifier.height(6.dp))
-                    Text(
-                        "Podrás invitar a otras personas desde los detalles " +
-                            "de la playlist (icono \"Añadir colaborador\").",
-                        style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
         },
         confirmButton = {
@@ -99,8 +66,7 @@ fun CreatePlaylistDialog(
                 onClick = {
                     onConfirm(
                         name.trim(),
-                        description.trim().ifBlank { null },
-                        isCollaborative
+                        description.trim().ifBlank { null }
                     )
                 },
                 enabled = name.trim().isNotEmpty()

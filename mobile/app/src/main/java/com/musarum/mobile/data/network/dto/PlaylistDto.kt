@@ -57,7 +57,13 @@ data class PlaylistDetailsDto(
     val createdAt: String? = null
 )
 
-data class CollaboratorRefDto(val id: Long, val nick: String)
+// avatarUrl nullable: si el colaborador aún no subió foto, el móvil pinta
+// la inicial del nick con fondo coloreado (ver UserAvatar).
+data class CollaboratorRefDto(
+    val id: Long,
+    val nick: String,
+    val avatarUrl: String? = null
+)
 
 data class AddCollaboratorRequest(val nick: String)
 

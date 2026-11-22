@@ -50,17 +50,19 @@ class PlaylistRepository(private val apiService: ApiService) {
 
     suspend fun create(
         name: String,
-        description: String?,
-        isCollaborative: Boolean = false
+        description: String?
     ): PlaylistDetailsDto {
-        // Hoy mapeamos "colaborativa" sobre el flag isPublic porque es lo
-        // que acepta el backend. Cuando añadamos la lógica de invitados,
-        // se separa en un campo dedicado en PlaylistCreateRequest.
+        // La playlist se crea siempre privada (isPublic=false). Si el user
+        // quiere que colaboren otros, lo hace desde los detalles invitando
+        // por nick — los colaboradores pueden ver/editar aunque no sea
+        // pública (canView cubre owner + collaborator). isPublic queda
+        // reservado para un posible modo "visible por cualquier user" sin
+        // necesidad de invitación, que hoy no usa la UI.
         val created = apiService.createPlaylist(
             PlaylistCreateRequest(
                 name = name,
                 description = description,
-                isPublic = isCollaborative
+                isPublic = false
             )
         )
         refresh()

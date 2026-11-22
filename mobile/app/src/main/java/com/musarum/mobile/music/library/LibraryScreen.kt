@@ -186,12 +186,9 @@ fun LibraryScreen(
     if (showCreate) {
         CreatePlaylistDialog(
             onDismiss = { showCreate = false },
-            onConfirm = { name, desc, isCollaborative ->
-                playlistsViewModel.create(name, desc, isCollaborative)
-                snackbar(
-                    if (isCollaborative) "Playlist colaborativa \"$name\" creada"
-                    else "Playlist \"$name\" creada"
-                )
+            onConfirm = { name, desc ->
+                playlistsViewModel.create(name, desc)
+                snackbar("Playlist \"$name\" creada")
                 showCreate = false
             }
         )

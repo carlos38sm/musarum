@@ -73,15 +73,13 @@ class PlaylistsViewModel(private val repository: PlaylistRepository) : ViewModel
     fun create(
         name: String,
         description: String?,
-        isCollaborative: Boolean = false,
         onDone: () -> Unit = {}
     ) {
         viewModelScope.launch {
             runCatching {
                 repository.create(
                     name = name.trim(),
-                    description = description?.trim()?.ifBlank { null },
-                    isCollaborative = isCollaborative
+                    description = description?.trim()?.ifBlank { null }
                 )
             }.onSuccess { onDone() }
         }

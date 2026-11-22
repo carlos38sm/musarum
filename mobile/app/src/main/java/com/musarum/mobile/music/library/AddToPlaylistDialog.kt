@@ -163,13 +163,12 @@ fun AddToPlaylistDialog(
     if (showCreate) {
         CreatePlaylistDialog(
             onDismiss = { showCreate = false },
-            onConfirm = { name, desc, isCollaborative ->
+            onConfirm = { name, desc ->
                 scope.launch {
                     val result = runCatching {
                         val created = container.playlistRepository.create(
                             name = name,
-                            description = desc,
-                            isCollaborative = isCollaborative
+                            description = desc
                         )
                         container.playlistRepository.addSong(created.id, songId)
                         created.name

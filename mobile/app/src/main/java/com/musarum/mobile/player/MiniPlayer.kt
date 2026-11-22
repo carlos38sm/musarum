@@ -122,7 +122,10 @@ fun MiniPlayer(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            // Padding vertical reducido (6→3) para que la pastilla quede
+            // pegada a la nav sin hueco grande. La forma sigue siendo
+            // 22dp — mantiene la curvatura de "cápsula flotante".
+            .padding(horizontal = 10.dp, vertical = 3.dp),
         shape = RoundedCornerShape(22.dp),
         // Dejamos el Surface transparente: el fondo coloreado dinámico se
         // pinta dentro del Box de abajo. Así tenemos degradé suave que se
@@ -211,7 +214,9 @@ fun MiniPlayer(
                     ) { _, dx -> dragX += dx }
                 }
                 .clickable(onClick = onExpand)
-                .padding(start = 8.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                // Padding vertical reducido (8→5) para bajar la altura
+                // total de la pastilla ~6dp sin aplastar los controles.
+                .padding(start = 8.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Bloque desplazable: cover + título + artista. weight(1f) para
@@ -226,8 +231,10 @@ fun MiniPlayer(
             ) {
                 CoverImage(
                     url = state.currentCoverUrl,
-                    size = 44.dp,
-                    cornerRadius = 12.dp
+                    // Cover 40dp (antes 44). Pequeño ajuste de corner
+                    // para que no se vea cuadrado al bajar de tamaño.
+                    size = 40.dp,
+                    cornerRadius = 10.dp
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -267,7 +274,10 @@ fun MiniPlayer(
             Box(contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(
                     progress = { progress },
-                    modifier = Modifier.size(48.dp),
+                    // Anillo 42dp (antes 48) para alinearlo con el cover
+                    // de 40dp — se mantiene proporcional y la pastilla
+                    // deja de "sobresalir" por la derecha.
+                    modifier = Modifier.size(42.dp),
                     color = ringColor,
                     trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f),
                     strokeWidth = 2.dp,
@@ -275,7 +285,7 @@ fun MiniPlayer(
                     strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
                 )
                 Surface(
-                    modifier = Modifier.size(38.dp),
+                    modifier = Modifier.size(34.dp),
                     shape = CircleShape,
                     color = playBgColor
                 ) {
@@ -286,7 +296,7 @@ fun MiniPlayer(
                         Icon(
                             imageVector = if (state.isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
                             contentDescription = if (state.isPlaying) "Pausar" else "Reproducir",
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(18.dp),
                             tint = playIconTint
                         )
                     }
