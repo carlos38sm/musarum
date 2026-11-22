@@ -25,12 +25,12 @@ import musarum.backend.scanner.exception.FileHashException;
  * audio_path hace relocate en vez de duplicar; el content_hash se actualiza).
  */
 @Component
-class FileHasher {
+public class FileHasher {
 
     private static final int BUFFER_SIZE = 8192;
     private static final long SAMPLE_BYTES = 1024L * 1024L; // 1 MB
 
-    String hash(Path filePath) {
+    public String hash(Path filePath) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             long size = Files.size(filePath);

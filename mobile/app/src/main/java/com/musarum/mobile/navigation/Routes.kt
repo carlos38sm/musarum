@@ -22,6 +22,7 @@ object Routes {
     const val SERVER_STATS = "profile/server"
     const val PUBLISH_UPDATE = "profile/publish-update"
     const val EQUALIZER = "profile/equalizer"
+    const val UPLOAD_SONGS = "profile/upload-songs"
 
     const val YOUTUBE_EMBED = "youtube/{songId}/{videoId}"
     fun youtubeEmbed(songId: Long, videoId: String) = "youtube/$songId/$videoId"

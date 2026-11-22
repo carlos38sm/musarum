@@ -407,6 +407,15 @@ interface ApiService {
     @GET("admin/server/host-stats")
     suspend fun hostStats(): com.musarum.mobile.data.network.dto.HostStatsDto
 
+    // Subida de un fichero de audio al servidor (OWNER). Multipart
+    // con la Part llamada "file" — el backend la lee desde
+    // @RequestParam("file"). Respuesta 409 si ya existe por hash.
+    @retrofit2.http.Multipart
+    @POST("admin/songs/upload")
+    suspend fun uploadSong(
+        @retrofit2.http.Part file: okhttp3.MultipartBody.Part
+    ): retrofit2.Response<com.musarum.mobile.data.network.dto.UploadSongResultDto>
+
     // Historial agregado de los últimos 30 min para sparklines. El backend
     // devuelve lo que tenga; si arrancó hace poco vendrá con menos muestras.
     @GET("admin/server/host-history")

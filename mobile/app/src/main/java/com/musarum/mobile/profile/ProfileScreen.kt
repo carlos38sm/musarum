@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PersonAdd
@@ -91,6 +92,7 @@ fun ProfileScreen(
     onOpenServerStats: () -> Unit = {},
     onOpenEqualizer: () -> Unit = {},
     onOpenPublishUpdate: () -> Unit = {},
+    onOpenUploadSongs: () -> Unit = {},
     onOpenCarMode: () -> Unit = {},
     onOpenHandoff: () -> Unit = {},
     onOpenParty: () -> Unit = {},
@@ -467,6 +469,13 @@ fun ProfileScreen(
                     title = "Publicar actualización",
                     subtitle = "Anunciar nueva versión del APK",
                     onClick = onOpenPublishUpdate
+                )
+                Spacer(Modifier.height(10.dp))
+                SettingRow(
+                    icon = Icons.Filled.CloudUpload,
+                    title = "Subir canciones",
+                    subtitle = "Enviar audios al servidor desde el móvil",
+                    onClick = onOpenUploadSongs
                 )
             }
 
