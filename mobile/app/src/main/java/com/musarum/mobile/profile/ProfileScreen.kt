@@ -214,9 +214,27 @@ fun ProfileScreen(
 
             // ── Resumen de reproducción ──
             state.stats?.let { stats -> StatsCard(stats) }
-            if (state.stats != null) Spacer(Modifier.height(18.dp))
+            if (state.stats != null) Spacer(Modifier.height(10.dp))
 
-            // ── Acciones ──
+            // Hooks de preferencias (una sola suscripción por valor) —
+            // los dejamos arriba del todo del bloque de secciones para
+            // que todas las SettingRow que los usan se re-componen
+            // juntas y Compose puede saltarse la invalidación cuando
+            // ninguno cambia.
+            val replayGainEnabled by container.playerPreferences
+                .replayGainEnabled.collectAsState()
+            val gaplessEnabled by container.playerPreferences
+                .gaplessEnabled.collectAsState()
+            val eqEnabled by container.playerPreferences.equalizerEnabled.collectAsState()
+            val me by container.userRepository.me.collectAsState()
+            val downloads by container.downloadsRepository.entries.collectAsState()
+            val tempByDefault by container.playerPreferences
+                .downloadsTemporaryByDefault.collectAsState()
+            val totalMb = (downloads.values.sumOf { it.sizeBytes } / (1024.0 * 1024.0))
+            val ctx = LocalContext.current
+
+            // ── CUENTA ────────────────────────────────────────────────
+            SectionTitle("Cuenta")
             SettingRow(
                 icon = Icons.Filled.Edit,
                 title = "Cambiar nick",
@@ -224,7 +242,7 @@ fun ProfileScreen(
                 onClick = { showEditNick = true },
                 enabled = state.user != null
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             SettingRow(
                 icon = Icons.Filled.Lock,
                 title = "Cambiar contraseña",
@@ -232,7 +250,9 @@ fun ProfileScreen(
                 onClick = { showChangePassword = true },
                 enabled = state.user != null
             )
-            Spacer(Modifier.height(10.dp))
+
+            // ── REPRODUCCIÓN ──────────────────────────────────────────
+            SectionTitle("Reproducción")
             SettingRow(
                 icon = Icons.Filled.Tune,
                 title = "Crossfade",
@@ -240,9 +260,7 @@ fun ProfileScreen(
                 else "$crossfadeSeconds s entre canciones",
                 onClick = { showCrossfade = true }
             )
-            Spacer(Modifier.height(10.dp))
-            val replayGainEnabled by container.playerPreferences
-                .replayGainEnabled.collectAsState()
+            Spacer(Modifier.height(6.dp))
             SettingRowSwitch(
                 icon = Icons.Filled.GraphicEq,
                 title = "Normalizar volumen",
@@ -252,12 +270,10 @@ fun ProfileScreen(
                     container.playerPreferences.setReplayGainEnabled(it)
                 }
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             // Gapless: solo se aplica cuando crossfade está a 0. Para pistas
             // de álbum que enlazan (discos en directo, conceptuales como
             // Dark Side of the Moon) elimina la micro-pausa entre canciones.
-            val gaplessEnabled by container.playerPreferences
-                .gaplessEnabled.collectAsState()
             SettingRowSwitch(
                 icon = Icons.Filled.MusicNote,
                 title = "Reproducción continua",
@@ -268,62 +284,18 @@ fun ProfileScreen(
                     container.playerPreferences.setGaplessEnabled(it)
                 }
             )
-            Spacer(Modifier.height(10.dp))
-            // Convivencia: cada toggle controla una sección del Home de los
-            // demás. shareNowPlaying → "En Musarum ahora"; shareTaste →
-            // "Gustos de la casa". El backend ya los respeta; aquí solo
-            // mostramos el estado actual y disparamos el PATCH.
-            val me by container.userRepository.me.collectAsState()
-            SettingRowSwitch(
-                icon = Icons.Filled.Headphones,
-                title = "Compartir qué escucho",
-                subtitle = "Aparezco en \"En Musarum ahora\" de los demás",
-                checked = me?.shareNowPlaying != false,
-                onCheckedChange = { value -> viewModel.updatePrivacyNowPlaying(value) }
-            )
-            Spacer(Modifier.height(10.dp))
-            SettingRowSwitch(
-                icon = Icons.Filled.Visibility,
-                title = "Mostrar mis gustos",
-                subtitle = "Aparezco en los mini-perfiles de la casa",
-                checked = me?.shareTaste != false,
-                onCheckedChange = { value -> viewModel.updatePrivacyTaste(value) }
-            )
-            Spacer(Modifier.height(10.dp))
-            val eqEnabled by container.playerPreferences.equalizerEnabled.collectAsState()
+            Spacer(Modifier.height(6.dp))
             SettingRow(
                 icon = Icons.Filled.Tune,
                 title = "Ecualizador",
                 subtitle = if (eqEnabled) "Activado · 5 bandas" else "Desactivado",
                 onClick = onOpenEqualizer
             )
-            Spacer(Modifier.height(10.dp))
-            SettingRow(
-                icon = Icons.Filled.DirectionsCar,
-                title = "Modo coche",
-                subtitle = "Controles grandes para conducir con una mano",
-                onClick = onOpenCarMode
-            )
-            Spacer(Modifier.height(10.dp))
-            SettingRow(
-                icon = Icons.Filled.DevicesOther,
-                title = "Continuar en otro dispositivo",
-                subtitle = "Pasa la reproducción entre móviles",
-                onClick = onOpenHandoff
-            )
-            Spacer(Modifier.height(10.dp))
-            SettingRow(
-                icon = Icons.Filled.Celebration,
-                title = "Fiesta musical",
-                subtitle = "Cola compartida entre los móviles de la casa",
-                onClick = onOpenParty
-            )
-            Spacer(Modifier.height(10.dp))
-            // Permite al OWNER (o a cualquier usuario) abrir los ajustes de
-            // batería para desactivar la optimización. Sin ella, Android/Doze
-            // corta la red con la pantalla apagada y los Bluetooth se quedan
-            // sin bytes → handshake → algunos modelos se apagan.
-            val ctx = LocalContext.current
+            Spacer(Modifier.height(6.dp))
+            // Permite abrir los ajustes de batería para desactivar la
+            // optimización. Sin ella, Android/Doze corta la red con la
+            // pantalla apagada y los Bluetooth se quedan sin bytes →
+            // handshake → algunos modelos se apagan.
             SettingRow(
                 icon = Icons.Filled.BatteryChargingFull,
                 title = "Permitir en segundo plano",
@@ -338,8 +310,6 @@ fun ProfileScreen(
                         }
                         ctx.startActivity(intent)
                     }.onFailure {
-                        // Fallback: abrir ajustes de la app por si el intent
-                        // genérico no existe en algún ROM raro.
                         runCatching {
                             val fallback = android.content.Intent(
                                 android.provider.Settings
@@ -353,13 +323,32 @@ fun ProfileScreen(
                     }
                 }
             )
-            Spacer(Modifier.height(10.dp))
 
-            // ── Descargas offline ─────────────────────────────────────────
-            val downloads by container.downloadsRepository.entries.collectAsState()
-            val tempByDefault by container.playerPreferences
-                .downloadsTemporaryByDefault.collectAsState()
-            val totalMb = (downloads.values.sumOf { it.sizeBytes } / (1024.0 * 1024.0))
+            // ── MODOS ─────────────────────────────────────────────────
+            SectionTitle("Modos")
+            SettingRow(
+                icon = Icons.Filled.DirectionsCar,
+                title = "Modo coche",
+                subtitle = "Controles grandes para conducir con una mano",
+                onClick = onOpenCarMode
+            )
+            Spacer(Modifier.height(6.dp))
+            SettingRow(
+                icon = Icons.Filled.DevicesOther,
+                title = "Continuar en otro dispositivo",
+                subtitle = "Pasa la reproducción entre móviles",
+                onClick = onOpenHandoff
+            )
+            Spacer(Modifier.height(6.dp))
+            SettingRow(
+                icon = Icons.Filled.Celebration,
+                title = "Fiesta musical",
+                subtitle = "Cola compartida entre los móviles de la casa",
+                onClick = onOpenParty
+            )
+
+            // ── DESCARGAS ─────────────────────────────────────────────
+            SectionTitle("Descargas")
             SettingRowSwitch(
                 icon = Icons.Filled.CloudDownload,
                 title = "Descargas temporales",
@@ -369,7 +358,7 @@ fun ProfileScreen(
                     container.playerPreferences.setDownloadsTemporaryByDefault(it)
                 }
             )
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             SettingRow(
                 icon = Icons.Filled.DeleteSweep,
                 title = "Borrar todas las descargas",
@@ -381,45 +370,68 @@ fun ProfileScreen(
                     snackbar("Descargas borradas")
                 }
             )
-            Spacer(Modifier.height(10.dp))
-            // Subtítulo dinámico: mientras scanning=true muestra el contador
-            // "1200/7000" en vivo, incluyendo el fichero actual cuando viene.
-            // Al terminar, muestra el resumen del último escaneo si existe
-            // (p. ej. "15 nuevas · 3 duplicadas").
-            val scanSubtitle = run {
-                val s = state.scannerStatus
-                when {
-                    state.scanning && s != null && s.total > 0 -> {
-                        val cur = s.currentFile?.take(28) ?: ""
-                        val label = when (s.phase) {
-                            "hashing" -> "Analizando"
-                            "importing" -> "Importando"
-                            else -> "Escaneando"
-                        }
-                        if (cur.isNotEmpty()) "$label ${s.processed}/${s.total} · $cur"
-                        else "$label ${s.processed}/${s.total}"
-                    }
-                    state.scanning -> "Preparando…"
-                    s?.lastResult != null -> {
-                        val r = s.lastResult
-                        buildString {
-                            append("${r.imported} nuevas")
-                            if (r.duplicates > 0) append(" · ${r.duplicates} duplicadas")
-                            if (r.deleted > 0) append(" · ${r.deleted} borradas")
-                        }
-                    }
-                    else -> "Busca canciones nuevas en el servidor"
-                }
-            }
-            val scanTitle = when {
-                !state.scanning -> "Rescanear biblioteca"
-                state.scannerStatus?.phase == "hashing" -> "Analizando ficheros…"
-                state.scannerStatus?.phase == "importing" -> "Importando canciones…"
-                else -> "Escaneando…"
-            }
-            // Re-escanear: solo el OWNER gestiona la biblioteca. Un MEMBER
-            // verlo era confuso (el backend respondía 403 al tocarlo).
+
+            // ── PRIVACIDAD ────────────────────────────────────────────
+            // Cada toggle controla una sección del Home de los demás.
+            // shareNowPlaying → "Comunidad · está escuchando";
+            // shareTaste → "Comunidad · le gusta". El backend ya los
+            // respeta; aquí solo mostramos el estado actual y disparamos
+            // el PATCH.
+            SectionTitle("Privacidad")
+            SettingRowSwitch(
+                icon = Icons.Filled.Headphones,
+                title = "Compartir qué escucho",
+                subtitle = "Aparezco en Comunidad cuando escucho algo",
+                checked = me?.shareNowPlaying != false,
+                onCheckedChange = { value -> viewModel.updatePrivacyNowPlaying(value) }
+            )
+            Spacer(Modifier.height(6.dp))
+            SettingRowSwitch(
+                icon = Icons.Filled.Visibility,
+                title = "Mostrar mis gustos",
+                subtitle = "Aparezco cuando marco favoritos",
+                checked = me?.shareTaste != false,
+                onCheckedChange = { value -> viewModel.updatePrivacyTaste(value) }
+            )
+
             if (isOwner) {
+                // ── SERVIDOR (solo OWNER) ─────────────────────────────
+                SectionTitle("Servidor")
+                // Subtítulo dinámico: mientras scanning=true muestra el
+                // contador "1200/7000" en vivo, incluyendo el fichero
+                // actual cuando viene. Al terminar, muestra el resumen
+                // del último escaneo si existe.
+                val scanSubtitle = run {
+                    val s = state.scannerStatus
+                    when {
+                        state.scanning && s != null && s.total > 0 -> {
+                            val cur = s.currentFile?.take(28) ?: ""
+                            val label = when (s.phase) {
+                                "hashing" -> "Analizando"
+                                "importing" -> "Importando"
+                                else -> "Escaneando"
+                            }
+                            if (cur.isNotEmpty()) "$label ${s.processed}/${s.total} · $cur"
+                            else "$label ${s.processed}/${s.total}"
+                        }
+                        state.scanning -> "Preparando…"
+                        s?.lastResult != null -> {
+                            val r = s.lastResult
+                            buildString {
+                                append("${r.imported} nuevas")
+                                if (r.duplicates > 0) append(" · ${r.duplicates} duplicadas")
+                                if (r.deleted > 0) append(" · ${r.deleted} borradas")
+                            }
+                        }
+                        else -> "Busca canciones nuevas en el servidor"
+                    }
+                }
+                val scanTitle = when {
+                    !state.scanning -> "Rescanear biblioteca"
+                    state.scannerStatus?.phase == "hashing" -> "Analizando ficheros…"
+                    state.scannerStatus?.phase == "importing" -> "Importando canciones…"
+                    else -> "Escaneando…"
+                }
                 SettingRow(
                     icon = if (state.scanning) Icons.Filled.Refresh else Icons.Filled.LibraryMusic,
                     title = scanTitle,
@@ -429,53 +441,49 @@ fun ProfileScreen(
                         viewModel.triggerScan { _, msg -> snackbar(msg) }
                     }
                 )
-            }
-
-            // Alta y gestión de usuarios + carpetas: solo visible para el
-            // OWNER. Un MEMBER no puede ver siquiera la opción (y el backend
-            // bloquearía 403 aunque la viese).
-            if (isOwner) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 SettingRow(
-                    icon = Icons.Filled.PersonAdd,
-                    title = "Crear usuario",
-                    subtitle = "Alta de nuevo oyente",
-                    onClick = { showCreateUser = true }
+                    icon = Icons.Filled.CloudUpload,
+                    title = "Subir canciones",
+                    subtitle = "Enviar audios al servidor desde el móvil",
+                    onClick = onOpenUploadSongs
                 )
-                Spacer(Modifier.height(10.dp))
-                SettingRow(
-                    icon = Icons.Filled.Group,
-                    title = "Usuarios",
-                    subtitle = "Ver, bloquear o eliminar oyentes",
-                    onClick = onOpenUsers
-                )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 SettingRow(
                     icon = Icons.Filled.Folder,
                     title = "Carpetas de música",
                     subtitle = "Elige qué subcarpetas se escanean",
                     onClick = onOpenFolders
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 SettingRow(
                     icon = Icons.Filled.Insights,
                     title = "Análisis del servidor",
                     subtitle = "Catálogo, letras, disco y actividad",
                     onClick = onOpenServerStats
                 )
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(6.dp))
                 SettingRow(
                     icon = Icons.Filled.NewReleases,
                     title = "Publicar actualización",
                     subtitle = "Anunciar nueva versión del APK",
                     onClick = onOpenPublishUpdate
                 )
-                Spacer(Modifier.height(10.dp))
+
+                // ── USUARIOS (solo OWNER) ─────────────────────────────
+                SectionTitle("Usuarios")
                 SettingRow(
-                    icon = Icons.Filled.CloudUpload,
-                    title = "Subir canciones",
-                    subtitle = "Enviar audios al servidor desde el móvil",
-                    onClick = onOpenUploadSongs
+                    icon = Icons.Filled.PersonAdd,
+                    title = "Crear usuario",
+                    subtitle = "Alta de nuevo oyente",
+                    onClick = { showCreateUser = true }
+                )
+                Spacer(Modifier.height(6.dp))
+                SettingRow(
+                    icon = Icons.Filled.Group,
+                    title = "Ver usuarios",
+                    subtitle = "Bloquear o eliminar oyentes",
+                    onClick = onOpenUsers
                 )
             }
 
@@ -824,6 +832,29 @@ private fun TopRow(
             )
         }
     }
+}
+
+/**
+ * Encabezado de sección estilo InfoScreen: etiqueta pequeña en bold
+ * uppercase con color primary. Encima lleva un margen superior cómodo
+ * para separar visualmente de la sección anterior sin necesitar un
+ * divider duro. La idea nace de lo que Carlos pedía: convertir el
+ * Perfil (lista de la compra) en bloques navegables de un vistazo.
+ */
+@Composable
+private fun SectionTitle(text: String) {
+    Spacer(Modifier.height(18.dp))
+    Text(
+        text.uppercase(),
+        style = MaterialTheme.typography.labelSmall.copy(
+            letterSpacing = 1.2.sp
+        ),
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 6.dp, bottom = 8.dp)
+    )
 }
 
 @Composable
