@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import musarum.backend.home.dto.ActivityEventDto;
 import musarum.backend.home.dto.DiscoveryPageDto;
 import musarum.backend.home.dto.NowPlayingUserDto;
 import musarum.backend.home.dto.SmartPlaylistInfoDto;
@@ -57,6 +58,19 @@ class HomeController {
     @GetMapping("/taste-profiles")
     ResponseEntity<List<TasteProfileDto>> tasteProfiles() {
         return ResponseEntity.ok(service.tasteProfiles(currentUser.currentUserId()));
+    }
+
+    /**
+     * Feed "Comunidad" del Home: eventos recientes de otros users (what are
+     * they listening, what they favorited). Respeta toggles de privacidad
+     * y oculta al propio requester. {@code limit} capado en 5..50 por el
+     * service.
+     */
+    @GetMapping("/activity")
+    ResponseEntity<List<ActivityEventDto>> activity(
+            @RequestParam(defaultValue = "15") int limit
+    ) {
+        return ResponseEntity.ok(service.activity(currentUser.currentUserId(), limit));
     }
 
     /** Lista de las listas inteligentes disponibles (metadatos). */

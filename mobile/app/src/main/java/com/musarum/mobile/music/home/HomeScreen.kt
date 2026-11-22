@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.LocalSnackbar
+import com.musarum.mobile.data.network.dto.ActivityEventDto
 import com.musarum.mobile.data.network.dto.SmartPlaylistInfoDto
 import com.musarum.mobile.data.network.dto.SongSummaryDto
 import com.musarum.mobile.music.CoverImage
@@ -149,6 +150,18 @@ fun HomeScreen(
                         ContinueHero(
                             song = last,
                             onPlay = { container.playerController.playQueue(listOf(last), 0) }
+                        )
+                    }
+                }
+
+                if (state.activity.isNotEmpty()) {
+                    item { SectionBar(title = "Comunidad") }
+                    item {
+                        CommunityCard(
+                            events = state.activity,
+                            onOpenSong = { song ->
+                                container.playerController.playQueue(listOf(song), 0)
+                            }
                         )
                     }
                 }
@@ -840,6 +853,147 @@ private fun smartVisualFor(iconHint: String, scheme: androidx.compose.material3.
             bottom = scheme.tertiary
         )
     }
+}
+
+// ────────────────────────────── Comunidad (feed social) ──────────────────────────────
+
+// Bloque "Comunidad" del Home v2 (Fase 2). Muestra los eventos
+// recientes de los otros users respetando sus toggles de privacidad.
+// Compactos: avatar + 1 línea de acción + mini-cover de la canción.
+// Tap sobre un evento = reproducir esa canción al momento. Un evento
+// huérfano (sin user, p. ej. "nuevo en el catálogo") también cabe
+// porque UserRef es nullable.
+@Composable
+private fun CommunityCard(
+    events: List<ActivityEventDto>,
+    onOpenSong: (SongSummaryDto) -> Unit
+) {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = scheme.surfaceVariant.copy(alpha = 0.55f)
+    ) {
+        Column(modifier = Modifier.padding(vertical = 10.dp)) {
+            events.take(5).forEachIndexed { idx, e ->
+                CommunityRow(event = e, onClick = { onOpenSong(e.song) })
+                if (idx < events.take(5).lastIndex) {
+                    // Separador fino entre filas del feed.
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 56.dp, end = 12.dp)
+                            .height(1.dp)
+                            .background(scheme.outlineVariant.copy(alpha = 0.3f))
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityRow(event: ActivityEventDto, onClick: () -> Unit) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Avatar del user del evento (o un chip neutro si es un evento
+        // sin autor — tipo "nuevo en el catálogo").
+        val user = event.user
+        if (user != null) {
+            if (user.avatarUrl != null) {
+                com.musarum.mobile.music.ArtistAvatar(url = user.avatarUrl, size = 36.dp)
+            } else {
+                Surface(
+                    shape = CircleShape,
+                    color = scheme.primary.copy(alpha = 0.22f),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            user.nick.firstOrNull()?.uppercase() ?: "·",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = scheme.primary
+                        )
+                    }
+                }
+            }
+        } else {
+            Surface(
+                shape = CircleShape,
+                color = scheme.tertiary.copy(alpha = 0.22f),
+                modifier = Modifier.size(36.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.NewReleases,
+                        contentDescription = null,
+                        tint = scheme.tertiary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.width(10.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                verbFor(event),
+                style = MaterialTheme.typography.labelMedium,
+                color = scheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                "${event.song.title} · ${event.song.artistsLabel}",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = scheme.onBackground,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                formatRelative(event.timestampMs),
+                style = MaterialTheme.typography.labelSmall,
+                color = scheme.onSurfaceVariant.copy(alpha = 0.7f),
+                maxLines = 1
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        CoverImage(url = event.song.coverUrl, size = 40.dp, cornerRadius = 8.dp)
+    }
+}
+
+/** Mapea el tipo del evento al verbo que verá el user. */
+private fun verbFor(event: ActivityEventDto): String {
+    val nick = event.user?.nick ?: "Alguien"
+    return when (event.type) {
+        "now_playing" -> "$nick está escuchando"
+        "favorited"   -> "A $nick le gusta"
+        else          -> nick
+    }
+}
+
+/**
+ * "hace Xm" / "hace Xh" / "hace Xd" según diferencia. Se recalcula al
+ * recomponer: con 4-5 filas no hay coste real.
+ */
+private fun formatRelative(timestampMs: Long): String {
+    val diffMs = System.currentTimeMillis() - timestampMs
+    if (diffMs < 60_000L) return "ahora mismo"
+    val minutes = diffMs / 60_000L
+    if (minutes < 60L) return "hace ${minutes}m"
+    val hours = minutes / 60L
+    if (hours < 24L) return "hace ${hours}h"
+    val days = hours / 24L
+    return "hace ${days}d"
 }
 
 // ────────────────────────────── Accesos (chips al final) ──────────────────────────────

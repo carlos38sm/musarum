@@ -23,4 +23,19 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
     @Query(value = "SELECT user_id, song_id, created_at FROM favorites ORDER BY user_id, song_id",
            nativeQuery = true)
     List<Object[]> dumpAll();
+
+    /**
+     * Favoritos recientes del catálogo: (user_id, song_id, created_at).
+     * Lo consume el feed "Comunidad" del Home para sacar eventos tipo
+     * "A marcó X como favorita hace Y". Nativa para evitar lazy-init de
+     * las entidades — el service recompone con findAllById.
+     */
+    @Query(value = """
+            SELECT user_id, song_id, created_at
+            FROM favorites
+            WHERE created_at > :since
+            ORDER BY created_at DESC
+            LIMIT :maxRows
+            """, nativeQuery = true)
+    List<Object[]> findRecentSince(java.time.Instant since, int maxRows);
 }

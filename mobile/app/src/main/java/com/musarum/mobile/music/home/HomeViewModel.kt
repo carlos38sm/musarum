@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.musarum.mobile.data.music.PlayHistoryRepository
 import com.musarum.mobile.data.network.ApiService
+import com.musarum.mobile.data.network.dto.ActivityEventDto
 import com.musarum.mobile.data.network.dto.DiscoveryPageDto
 import com.musarum.mobile.data.network.dto.GenreDto
 import com.musarum.mobile.data.network.dto.NowPlayingUserDto
@@ -34,6 +35,9 @@ data class HomeUiState(
     // getSongs(size=1).totalElements). Lo usa el SongsHero del Home v2
     // para mostrar "N pistas". 0 mientras carga o si falla la llamada.
     val totalSongs: Long = 0L,
+    // Feed "Comunidad": eventos recientes de los otros users. Empty si
+    // nadie tiene actividad o el backend es viejo y no expone /home/activity.
+    val activity: List<ActivityEventDto> = emptyList(),
     val error: String? = null
 )
 
@@ -70,6 +74,7 @@ class HomeViewModel(
                     val totalDef = async {
                         safeNullable { api.getSongs(page = 0, size = 1) }?.totalElements ?: 0L
                     }
+                    val activityDef = async { safeList { api.getHomeActivity(limit = 15) } }
 
                     _state.value = HomeUiState(
                         loading = false,
@@ -81,7 +86,8 @@ class HomeViewModel(
                         discoveries = discoveriesDef.await(),
                         tasteProfiles = tasteDef.await(),
                         smartPlaylists = smartDef.await(),
-                        totalSongs = totalDef.await()
+                        totalSongs = totalDef.await(),
+                        activity = activityDef.await()
                     )
                 }
             } catch (ce: CancellationException) {

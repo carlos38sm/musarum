@@ -499,6 +499,14 @@ interface ApiService {
     @GET("home/presence")
     suspend fun getHomePresence(): List<com.musarum.mobile.data.network.dto.NowPlayingUserDto>
 
+    // Feed "Comunidad" del Home: eventos recientes de otros users.
+    // Respeta los toggles de privacidad: si un user tiene shareNowPlaying
+    // u shareTaste apagados, sus eventos no aparecen.
+    @GET("home/activity")
+    suspend fun getHomeActivity(
+        @Query("limit") limit: Int = 15
+    ): List<com.musarum.mobile.data.network.dto.ActivityEventDto>
+
     @GET("home/discoveries")
     suspend fun getHomeDiscoveries(
         @Query("windowDays") windowDays: Int = 30,

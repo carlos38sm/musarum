@@ -15,8 +15,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import musarum.backend.artist.Artist;
 import musarum.backend.artist.ArtistRepository;
+import musarum.backend.favorite.FavoriteRepository;
 import musarum.backend.genre.Genre;
 import musarum.backend.genre.GenreRepository;
+import musarum.backend.home.dto.ActivityEventDto;
 import musarum.backend.home.dto.DiscoveryPageDto;
 import musarum.backend.home.dto.NowPlayingUserDto;
 import musarum.backend.home.dto.SmartPlaylistInfoDto;
@@ -47,6 +49,7 @@ public class HomeService {
     private final SongRepository songRepository;
     private final ArtistRepository artistRepository;
     private final GenreRepository genreRepository;
+    private final FavoriteRepository favoriteRepository;
     private final SongMapper songMapper;
 
     HomeService(ReproductionRepository reproductionRepository,
@@ -54,12 +57,14 @@ public class HomeService {
                 SongRepository songRepository,
                 ArtistRepository artistRepository,
                 GenreRepository genreRepository,
+                FavoriteRepository favoriteRepository,
                 SongMapper songMapper) {
         this.reproductionRepository = reproductionRepository;
         this.userRepository = userRepository;
         this.songRepository = songRepository;
         this.artistRepository = artistRepository;
         this.genreRepository = genreRepository;
+        this.favoriteRepository = favoriteRepository;
         this.songMapper = songMapper;
     }
 
@@ -232,6 +237,91 @@ public class HomeService {
                     new long[]{((Number) r[1]).longValue(), ((Number) r[2]).longValue()});
         }
         return m;
+    }
+
+    /**
+     * Feed "Comunidad" del Home. Mezcla dos tipos de eventos recientes:
+     *   - Última reproducción de cada otro user en las últimas 24h
+     *     (si shareNowPlaying está activo).
+     *   - Favoritos marcados por otros users en los últimos 7 días
+     *     (si shareTaste está activo — reusamos el flag, la "actividad"
+     *     y los "gustos" son el mismo plano de privacidad).
+     *
+     * Excluye al requester (no quiere verse a sí mismo en su feed) y a
+     * los users bloqueados. Mezcla por timestamp DESC y corta a {@code limit}.
+     *
+     * Los UPLOADED (canciones nuevas del catálogo) ya tienen su propia
+     * sección "Nuevos descubrimientos" en el Home — no los duplicamos aquí.
+     */
+    @Transactional(readOnly = true)
+    public List<ActivityEventDto> activity(Long requesterId, int limit) {
+        int capped = Math.max(5, Math.min(limit, 50));
+        Instant twentyFourHoursAgo = Instant.now().minus(24, ChronoUnit.HOURS);
+        Instant weekAgo = Instant.now().minus(7, ChronoUnit.DAYS);
+
+        // ── Candidatos: todos los users de la red menos yo y bloqueados.
+        List<User> users = userRepository.findAll();
+        Map<Long, User> usersById = users.stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
+
+        List<ActivityEventDto> events = new ArrayList<>();
+
+        // ── now_playing en 24h ──────────────────────────────────────────
+        List<Reproduction> recent = reproductionRepository.findLastPerUserSince(twentyFourHoursAgo);
+        Set<Long> songIds = recent.stream().map(Reproduction::getSongId).collect(Collectors.toSet());
+
+        // ── favorited en 7d ────────────────────────────────────────────
+        // Pedimos 2× el límite al repo porque filtraremos por privacidad
+        // y por anti-duplicados después. Con 4 users y 7 días, no hay
+        // volumen suficiente como para que el over-fetch duela.
+        List<Object[]> favRows = favoriteRepository.findRecentSince(weekAgo, capped * 2);
+        for (Object[] row : favRows) {
+            songIds.add(((Number) row[1]).longValue());
+        }
+
+        // ── Cargamos canciones referenciadas de una tacada ─────────────
+        Map<Long, Song> songsById = songRepository.findAllById(songIds).stream()
+                .collect(Collectors.toMap(Song::getId, s -> s));
+
+        // Emitimos now_playing
+        for (Reproduction r : recent) {
+            if (Objects.equals(r.getUserId(), requesterId)) continue;
+            User u = usersById.get(r.getUserId());
+            if (u == null || u.isBlocked() || !u.isShareNowPlaying()) continue;
+            Song s = songsById.get(r.getSongId());
+            if (s == null) continue;
+            events.add(new ActivityEventDto(
+                    "now_playing",
+                    r.getCreatedAt().toEpochMilli(),
+                    new ActivityEventDto.UserRef(u.getId(), u.getNick(), u.getAvatarUrl()),
+                    songMapper.toSummary(s)
+            ));
+        }
+
+        // Emitimos favorited
+        for (Object[] row : favRows) {
+            Long userId = ((Number) row[0]).longValue();
+            if (Objects.equals(userId, requesterId)) continue;
+            User u = usersById.get(userId);
+            if (u == null || u.isBlocked() || !u.isShareTaste()) continue;
+            Long songId = ((Number) row[1]).longValue();
+            Song s = songsById.get(songId);
+            if (s == null) continue;
+            Instant createdAt = ((java.sql.Timestamp) row[2]).toInstant();
+            events.add(new ActivityEventDto(
+                    "favorited",
+                    createdAt.toEpochMilli(),
+                    new ActivityEventDto.UserRef(u.getId(), u.getNick(), u.getAvatarUrl()),
+                    songMapper.toSummary(s)
+            ));
+        }
+
+        // Orden DESC por timestamp y corte final.
+        events.sort(java.util.Comparator.comparingLong(ActivityEventDto::timestampMs).reversed());
+        if (events.size() > capped) {
+            return events.subList(0, capped);
+        }
+        return events;
     }
 
     /**
