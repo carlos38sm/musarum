@@ -55,6 +55,7 @@ import androidx.compose.material.icons.filled.DownloadDone
 import androidx.compose.material.icons.filled.Downloading
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.MoreVert
@@ -698,21 +699,45 @@ fun PlayerShellScaffold(
                 .offset { IntOffset(0, dragOffset.toInt()) }
                 .padding(WindowInsets.systemBars.asPaddingValues())
         ) {
-            // Handle estilo iOS en la cima — reemplaza al chevron. Solo
-            // afordance visual del swipe-down; no es clickable.
-            // Lo envolvemos en un Box para poder solapar el slot topEnd
-            // (menú "..." vertical) pegado al borde derecho sin empujar
-            // el handle, que sigue centrado.
-            Box(modifier = Modifier.fillMaxWidth()) {
-                HandleBar()
+            // Cabecera unificada: chevron (bajar reproductor) · píldora de
+            // modos (centrada) · slot derecha (menú "..." si lo usa el caller).
+            // Antes el HandleBar vivía centrado arriba y la píldora caía
+            // mucho más abajo tras TopActions + spacer; ahora todo va en una
+            // fila alta para dejar más aire a portada, título y letra.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                GhostCircleButton(
+                    onClick = { onSwipeDown?.invoke() },
+                    contentDescription = "Bajar reproductor"
+                ) {
+                    Icon(
+                        Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier.weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    ModePill(
+                        selected = selectedMode,
+                        onSelect = onSelectMode,
+                        showVideo = showVideo
+                    )
+                }
+                // Equilibrio óptico: si el caller no pinta overflow, un hueco
+                // del mismo ancho que el chevron para que la píldora quede
+                // bien centrada y no escorada a la derecha.
                 if (topEndContent != null) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(end = 4.dp)
-                    ) {
-                        topEndContent()
-                    }
+                    topEndContent()
+                } else {
+                    Spacer(Modifier.size(40.dp))
                 }
             }
 
@@ -724,39 +749,10 @@ fun PlayerShellScaffold(
                 )
             }
 
-            Spacer(Modifier.height(if (topActionsVisible) 8.dp else 16.dp))
-
-            ModePill(
-                selected = selectedMode,
-                onSelect = onSelectMode,
-                showVideo = showVideo
-            )
-
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(if (topActionsVisible) 8.dp else 12.dp))
 
             content()
         }
-    }
-}
-
-/**
- * Barrita iOS-style arriba del todo. 36x4dp, redondeada, color onSurfaceVariant
- * a baja opacidad. Solo visual — el swipe-down lo captura el Box padre.
- */
-@Composable
-private fun HandleBar() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp),
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Box(
-            modifier = Modifier
-                .size(width = 36.dp, height = 4.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f))
-        )
     }
 }
 
