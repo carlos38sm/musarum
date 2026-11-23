@@ -57,7 +57,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Equalizer
-import androidx.compose.material.icons.filled.MoreHoriz
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -156,6 +156,7 @@ fun NowPlayingScreen(
     }
     val currentLine = syncedLines.getOrNull(currentLineIndex)?.text
 
+    var showSleepSheet by remember { mutableStateOf(false) }
     PlayerShellScaffold(
         selectedMode = PlayerMode.TRACK,
         onSelectMode = { mode ->
@@ -172,7 +173,37 @@ fun NowPlayingScreen(
         isFavorite = vmState.isFavorite,
         onToggleFavorite = {}, // ya no se usa en el shell — las acciones viven abajo
         onAddToPlaylist = {}, // idem
-        topActionsVisible = false
+        topActionsVisible = false,
+        topEndContent = {
+            OverflowMenu(
+                onOpenQueue = onOpenQueue,
+                onStartRadio = {
+                    controller.playRadioFromCurrent { _, msg -> snackbar(msg) }
+                },
+                onSearchYouTube = {
+                    scope.launch {
+                        snackbar("Buscando vídeo en YouTube…")
+                        val result = runCatching {
+                            container.apiService.getYoutubeVideo(song.id)
+                        }
+                        val body = result.getOrNull()
+                        if (body != null && body.isSuccessful && body.body() != null) {
+                            onOpenYoutubeEmbed(song.id, body.body()!!.videoId)
+                        } else {
+                            snackbar("Sin resultados en YouTube; abro el navegador")
+                            openYouTubeSearch(context, song)
+                        }
+                    }
+                },
+                visualizerActive = showVisualizer,
+                onToggleVisualizer = { showVisualizer = !showVisualizer },
+                sleepTimerActive = playerState.sleepTimerAt != null,
+                onOpenSleepTimer = { showSleepSheet = true },
+                onSendSong = { showSendSheet = true },
+                isOwner = isOwner,
+                onRequestDelete = { confirmDelete = true }
+            )
+        }
     ) {
         // ── Hero: cover grande ──
         // Swipe izquierda sobre la foto → Info (destino a la derecha en la píldora)
@@ -375,9 +406,8 @@ fun NowPlayingScreen(
         }
 
         // Fila de acciones secundarias justo encima de la barra de progreso.
-        // Orden: mini-letra · más (cola/radio/sleep) · descargar · añadir · ♥.
-        // Alineadas a la derecha para no competir con la bolita del slider.
-        var showSleepSheet by remember { mutableStateOf(false) }
+        // Orden: mini-letra · descargar · añadir · ♥. El menú "..." se
+        // movió a la esquina superior derecha del shell (topEndContent).
         ActionsRow(
             isFavorite = vmState.isFavorite,
             onToggleFavorite = {
@@ -391,37 +421,6 @@ fun NowPlayingScreen(
             onToggleMiniLyric = {
                 if (hasSyncedLyrics) showMiniLyric = !showMiniLyric
             },
-            onStartRadio = {
-                controller.playRadioFromCurrent { _, msg -> snackbar(msg) }
-            },
-            sleepTimerActive = playerState.sleepTimerAt != null,
-            onOpenSleepTimer = { showSleepSheet = true },
-            onOpenQueue = onOpenQueue,
-            isOwner = isOwner,
-            onRequestDelete = { confirmDelete = true },
-            onSearchYouTube = {
-                // Primero intentamos resolver el videoId en el backend y
-                // abrir el embed dentro de la app. Si el backend devuelve 204
-                // (no se encontró), caemos al navegador externo (comportamiento
-                // viejo) como fallback. El scraping de YouTube puede tardar
-                // hasta 6s → snackbar para que el user sepa que algo pasa.
-                scope.launch {
-                    snackbar("Buscando vídeo en YouTube…")
-                    val result = runCatching {
-                        container.apiService.getYoutubeVideo(song.id)
-                    }
-                    val body = result.getOrNull()
-                    if (body != null && body.isSuccessful && body.body() != null) {
-                        onOpenYoutubeEmbed(song.id, body.body()!!.videoId)
-                    } else {
-                        snackbar("Sin resultados en YouTube; abro el navegador")
-                        openYouTubeSearch(context, song)
-                    }
-                }
-            },
-            visualizerActive = showVisualizer,
-            onToggleVisualizer = { showVisualizer = !showVisualizer },
-            onSendSong = { showSendSheet = true },
             downloadState = run {
                 val entries by container.downloadsRepository.entries.collectAsState()
                 val inProgress by container.downloadsManager.inProgress.collectAsState()
@@ -583,6 +582,10 @@ fun PlayerShellScaffold(
     // Si el caller va a pintar fav/add en otro sitio (p. ej. NowPlaying los
     // lleva sobre la progress bar), que oculte este bloque superior.
     topActionsVisible: Boolean = true,
+    // Slot libre pegado a la esquina superior derecha, por encima del
+    // HandleBar. NowPlaying lo usa para el menú "..." vertical. Se pinta
+    // siempre, independientemente de topActionsVisible.
+    topEndContent: (@Composable () -> Unit)? = null,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
 ) {
     val primary = MaterialTheme.colorScheme.primary
@@ -697,7 +700,21 @@ fun PlayerShellScaffold(
         ) {
             // Handle estilo iOS en la cima — reemplaza al chevron. Solo
             // afordance visual del swipe-down; no es clickable.
-            HandleBar()
+            // Lo envolvemos en un Box para poder solapar el slot topEnd
+            // (menú "..." vertical) pegado al borde derecho sin empujar
+            // el handle, que sigue centrado.
+            Box(modifier = Modifier.fillMaxWidth()) {
+                HandleBar()
+                if (topEndContent != null) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(end = 4.dp)
+                    ) {
+                        topEndContent()
+                    }
+                }
+            }
 
             if (topActionsVisible) {
                 TopActions(
@@ -787,6 +804,121 @@ private fun TopActions(
  */
 internal enum class DownloadState { NOT_DOWNLOADED, IN_PROGRESS, TEMPORARY, PERMANENT }
 
+/**
+ * Menú "..." vertical (3 puntos verticales) pegado a la esquina superior
+ * derecha del shell del player. Antes vivía dentro de la fila horizontal
+ * de acciones, pero esas opciones se usan poco comparadas con ♥ y
+ * descarga, así que el menú se mueve arriba del todo y libera un hueco
+ * en la fila inferior.
+ */
+@Composable
+internal fun OverflowMenu(
+    onOpenQueue: () -> Unit,
+    onStartRadio: () -> Unit,
+    onSearchYouTube: () -> Unit,
+    visualizerActive: Boolean,
+    onToggleVisualizer: () -> Unit,
+    sleepTimerActive: Boolean,
+    onOpenSleepTimer: () -> Unit,
+    onSendSong: () -> Unit,
+    isOwner: Boolean,
+    onRequestDelete: () -> Unit
+) {
+    Box {
+        var showMore by remember { mutableStateOf(false) }
+        GhostCircleButton(
+            onClick = { showMore = true },
+            contentDescription = "Más acciones"
+        ) {
+            Icon(
+                Icons.Filled.MoreVert,
+                contentDescription = null,
+                tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
+                       else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+        DropdownMenu(
+            expanded = showMore,
+            onDismissRequest = { showMore = false },
+            // El botón está pegado al borde derecho del shell: desplazamos
+            // ligeramente a la izquierda para que el popup no sobresalga.
+            offset = DpOffset(x = (-8).dp, y = 4.dp),
+            modifier = Modifier
+                .widthIn(min = 200.dp, max = 240.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+        ) {
+            DropdownMenuItem(
+                text = { Text("Cola") },
+                leadingIcon = { Icon(Icons.Filled.PlaylistPlay, null) },
+                onClick = { showMore = false; onOpenQueue() }
+            )
+            DropdownMenuItem(
+                text = { Text("Radio") },
+                leadingIcon = { Icon(Icons.Filled.Radio, null) },
+                onClick = { showMore = false; onStartRadio() }
+            )
+            DropdownMenuItem(
+                text = { Text("YouTube") },
+                leadingIcon = { Icon(Icons.Filled.OpenInNew, null) },
+                onClick = { showMore = false; onSearchYouTube() }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(if (visualizerActive) "Ocultar visualizador" else "Visualizador")
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Equalizer,
+                        null,
+                        tint = if (visualizerActive) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                onClick = { showMore = false; onToggleVisualizer() }
+            )
+            DropdownMenuItem(
+                text = {
+                    Text(if (sleepTimerActive) "Temporizador activo" else "Temporizador")
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Filled.Bedtime,
+                        null,
+                        tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
+                               else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                onClick = { showMore = false; onOpenSleepTimer() }
+            )
+            DropdownMenuItem(
+                text = { Text("Enviar") },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, null) },
+                onClick = { showMore = false; onSendSong() }
+            )
+            if (isOwner) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            "Eliminar",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Filled.Delete,
+                            null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    onClick = { showMore = false; onRequestDelete() }
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ActionsRow(
     isFavorite: Boolean,
@@ -796,16 +928,6 @@ private fun ActionsRow(
     miniLyricAvailable: Boolean,
     miniLyricActive: Boolean,
     onToggleMiniLyric: () -> Unit,
-    onStartRadio: () -> Unit,
-    sleepTimerActive: Boolean,
-    onOpenSleepTimer: () -> Unit,
-    onOpenQueue: () -> Unit,
-    isOwner: Boolean,
-    onRequestDelete: () -> Unit,
-    onSearchYouTube: () -> Unit,
-    visualizerActive: Boolean,
-    onToggleVisualizer: () -> Unit,
-    onSendSong: () -> Unit,
     downloadState: DownloadState,
     onDownload: () -> Unit
 ) {
@@ -830,115 +952,6 @@ private fun ActionsRow(
                 },
                 modifier = Modifier.size(22.dp)
             )
-        }
-        Spacer(Modifier.width(6.dp))
-        // Overflow: antes había 3 iconos (Radio / Sleep / Cola) aquí; ahora
-        // viven en este menú desplegable para no saturar la fila. El icono
-        // se tinta en primary si hay sleep activo, para que el OWNER vea
-        // "hay algo activo ahí dentro" sin abrirlo.
-        Box {
-            var showMore by remember { mutableStateOf(false) }
-            GhostCircleButton(
-                onClick = { showMore = true },
-                contentDescription = "Más acciones"
-            ) {
-                Icon(
-                    Icons.Filled.MoreHoriz,
-                    contentDescription = null,
-                    tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
-                           else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-            // Offset: el ⋯ vive cerca del centro de la fila y sin este nudge
-            // el popup caía anclado a la izquierda del botón y quedaba feo
-            // pegado al borde. Lo desplazamos ligeramente hacia la derecha +
-            // abajo para que respire sobre el botón. El modifier le da ancho
-            // mínimo, esquinas redondeadas y usa surfaceContainer para que
-            // contraste bien con el gradiente del shell.
-            DropdownMenu(
-                expanded = showMore,
-                onDismissRequest = { showMore = false },
-                // offset negativo grande: por defecto el menú se anclaba
-                // pegado a la izquierda del botón y quedaba feo. Lo
-                // desplazamos para que se abra hacia la izquierda y quede
-                // alineado con el borde derecho de la fila de acciones.
-                offset = DpOffset(x = (-180).dp, y = 8.dp),
-                modifier = Modifier
-                    .widthIn(min = 200.dp, max = 240.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            ) {
-                // Nombres cortos — más fáciles de leer y el menú no se
-                // alarga. Orden: Cola · Radio · YouTube · Visualizador ·
-                // Temporizador · Enviar · Eliminar (si OWNER).
-                DropdownMenuItem(
-                    text = { Text("Cola") },
-                    leadingIcon = { Icon(Icons.Filled.PlaylistPlay, null) },
-                    onClick = { showMore = false; onOpenQueue() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Radio") },
-                    leadingIcon = { Icon(Icons.Filled.Radio, null) },
-                    onClick = { showMore = false; onStartRadio() }
-                )
-                DropdownMenuItem(
-                    text = { Text("YouTube") },
-                    leadingIcon = { Icon(Icons.Filled.OpenInNew, null) },
-                    onClick = { showMore = false; onSearchYouTube() }
-                )
-                DropdownMenuItem(
-                    text = {
-                        Text(if (visualizerActive) "Ocultar visualizador" else "Visualizador")
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Filled.Equalizer,
-                            null,
-                            tint = if (visualizerActive) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    onClick = { showMore = false; onToggleVisualizer() }
-                )
-                DropdownMenuItem(
-                    text = {
-                        Text(if (sleepTimerActive) "Temporizador activo" else "Temporizador")
-                    },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Filled.Bedtime,
-                            null,
-                            tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
-                                   else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    onClick = { showMore = false; onOpenSleepTimer() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Enviar") },
-                    leadingIcon = { Icon(Icons.AutoMirrored.Filled.Send, null) },
-                    onClick = { showMore = false; onSendSong() }
-                )
-                if (isOwner) {
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                "Eliminar",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Filled.Delete,
-                                null,
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        },
-                        onClick = { showMore = false; onRequestDelete() }
-                    )
-                }
-            }
         }
         Spacer(Modifier.width(6.dp))
         GhostCircleButton(onClick = onDownload, contentDescription = downloadContentDescription(downloadState)) {

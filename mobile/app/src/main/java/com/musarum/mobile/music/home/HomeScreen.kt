@@ -71,21 +71,19 @@ import kotlinx.coroutines.launch
 // ─────────────────────────────────────────────────────────────────────
 // Home v2 — rediseño estilo Apple Music (nov-2026)
 //
-// El Home antiguo apilaba 9 secciones (greeting ocupado, 3 QuickTiles,
-// presence, descubrimientos, taste profile, smart playlists, podio
-// semanal, carrusel de géneros) y Carlos reportó que solo usaba una.
-// En Fase 1 reorganizamos en pocos bloques intencionales:
-//
+// Bloques ACTUALES, ordenados:
 //   1. Saludo de 1 línea
-//   2. Continúa escuchando (si hay lastPlayed)
+//   2. Comunidad (si hay actividad reciente de otros)
 //   3. SongsHero — bloque principal, atajo a SongsScreen + shuffle all
-//   4. Vuelve a escuchar (carrusel compacto)
-//   5. Nuevos descubrimientos (carrusel compacto)
-//   6. Hecho para ti (listas inteligentes)
+//   4. Vuelve a escuchar (si tienes historial propio)
+//   5. Nuevos descubrimientos — SIEMPRE visible (fallback a CTA si vacío)
+//   6. Hecho para ti — SIEMPRE visible (fallback a las 4 smart playlists
+//      base con slugs predefinidos, para que la sección nunca quede vacía
+//      aunque el backend aún no las haya hidratado)
 //   7. Accesos: Álbumes · Artistas (chips pequeños)
 //
-// Fuera: podio Top semana, Presencia, Perfil de gustos, Géneros carrusel
-// (Presencia se recupera en Fase 2 dentro del nuevo bloque "Comunidad").
+// Eliminado: "Continúa escuchando" — redundante con "Vuelve a escuchar"
+// y Carlos no lo usaba.
 // ─────────────────────────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -145,15 +143,6 @@ fun HomeScreen(
                     )
                 }
 
-                state.lastPlayed?.let { last ->
-                    item {
-                        ContinueHero(
-                            song = last,
-                            onPlay = { container.playerController.playQueue(listOf(last), 0) }
-                        )
-                    }
-                }
-
                 if (state.activity.isNotEmpty()) {
                     item { SectionBar(title = "Comunidad") }
                     item {
@@ -211,57 +200,68 @@ fun HomeScreen(
                     }
                 }
 
-                state.discoveries?.takeIf { it.items.isNotEmpty() }?.let { page ->
-                    item {
-                        SectionBar(
-                            title = "Nuevos descubrimientos",
-                            badge = if (page.totalNew > 0) "${page.totalNew}" else null,
-                            onSeeAll = onOpenDiscoveries
-                        )
-                    }
+                // Nuevos descubrimientos: SIEMPRE visible. Si el backend
+                // devolvió items los pintamos; si no, mostramos una CTA
+                // que lleva al catálogo entero. Así el Home nunca queda
+                // "pelado" aunque el backend aún no soporte /home/discoveries.
+                item {
+                    SectionBar(
+                        title = "Nuevos descubrimientos",
+                        badge = (state.discoveries?.totalNew ?: 0L)
+                            .takeIf { it > 0L }?.toString(),
+                        onSeeAll = onOpenDiscoveries
+                    )
+                }
+                val discoveryItems = state.discoveries?.items.orEmpty()
+                if (discoveryItems.isNotEmpty()) {
                     item {
                         LazyRow(
                             contentPadding = PaddingValues(horizontal = 20.dp),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            itemsIndexed(page.items) { idx, song ->
+                            itemsIndexed(discoveryItems) { idx, song ->
                                 DiscoveryCard(
                                     song = song,
                                     onClick = {
-                                        container.playerController.playQueue(page.items, idx)
+                                        container.playerController.playQueue(discoveryItems, idx)
                                     }
                                 )
                             }
                         }
                     }
+                } else {
+                    item { EmptyDiscoveriesCTA(onOpenAlbums = onOpenAlbums) }
                 }
 
-                if (state.smartPlaylists.isNotEmpty()) {
-                    item { SectionBar(title = "Hecho para ti") }
-                    item {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(state.smartPlaylists, key = { it.slug }) { info ->
-                                SmartPlaylistCard(
-                                    info = info,
-                                    loading = state.smartLoadingSlug == info.slug,
-                                    onClick = {
-                                        viewModel.loadSmartPlaylist(
-                                            slug = info.slug,
-                                            onReady = { songs ->
-                                                container.playerController.playQueue(songs, 0)
-                                            },
-                                            onEmpty = {
-                                                snackbar(
-                                                    "Nada que mostrar en \"${info.title}\" por ahora"
-                                                )
-                                            }
-                                        )
-                                    }
-                                )
-                            }
+                // Hecho para ti: SIEMPRE visible. Si el backend aún no manda
+                // las smart playlists (p.ej. imagen desactualizada), caemos a
+                // las 4 base conocidas — al tocar una, loadSmartPlaylist llama
+                // al backend y si éste responde vacío se enseña snackbar.
+                item { SectionBar(title = "Hecho para ti") }
+                val playlists = state.smartPlaylists.ifEmpty { FallbackSmartPlaylists }
+                item {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(playlists, key = { it.slug }) { info ->
+                            SmartPlaylistCard(
+                                info = info,
+                                loading = state.smartLoadingSlug == info.slug,
+                                onClick = {
+                                    viewModel.loadSmartPlaylist(
+                                        slug = info.slug,
+                                        onReady = { songs ->
+                                            container.playerController.playQueue(songs, 0)
+                                        },
+                                        onEmpty = {
+                                            snackbar(
+                                                "Nada que mostrar en \"${info.title}\" por ahora"
+                                            )
+                                        }
+                                    )
+                                }
+                            )
                         }
                     }
                 }
@@ -271,19 +271,6 @@ fun HomeScreen(
                         onOpenAlbums = onOpenAlbums,
                         onOpenArtists = onOpenArtists
                     )
-                }
-
-                if (state.lastPlayed == null && state.recent.isEmpty() &&
-                    state.discoveries?.items.isNullOrEmpty() &&
-                    state.smartPlaylists.isEmpty()) {
-                    item {
-                        Text(
-                            "Reproduce algo para que esto se llene — todo lo que escuches más de 30s pasará por aquí.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
-                        )
-                    }
                 }
             }
         }
@@ -400,77 +387,96 @@ private fun greetingFor(nick: String?): String {
     return if (name != null) "$prefix, $name" else prefix
 }
 
-// ────────────────────────────── Continúa escuchando ──────────────────────────────
+// ────────────────────────────── Fallbacks del Home ──────────────────────────────
 
+/**
+ * Smart playlists "base" que se muestran cuando el backend aún no las
+ * expone (p. ej. imagen vieja desplegada). Los slugs coinciden con los
+ * que resuelve HomeService.smartPlaylist(slug, …) en el backend nuevo,
+ * así que al tocar una el flujo normal funciona en cuanto el backend
+ * está al día. Si no lo está, loadSmartPlaylist muestra un snackbar.
+ */
+private val FallbackSmartPlaylists: List<SmartPlaylistInfoDto> = listOf(
+    SmartPlaylistInfoDto(
+        slug = "party",
+        title = "Para la fiesta",
+        subtitle = "BPM alto, energía arriba",
+        iconHint = "party"
+    ),
+    SmartPlaylistInfoDto(
+        slug = "focus",
+        title = "Para concentrarte",
+        subtitle = "Bajo en revoluciones",
+        iconHint = "focus"
+    ),
+    SmartPlaylistInfoDto(
+        slug = "undiscovered",
+        title = "Sin descubrir",
+        subtitle = "Canciones que no has puesto nunca",
+        iconHint = "undiscovered"
+    ),
+    SmartPlaylistInfoDto(
+        slug = "forgotten",
+        title = "Olvidadas",
+        subtitle = "Te gustaban y las dejaste",
+        iconHint = "forgotten"
+    )
+)
+
+/**
+ * CTA que aparece en lugar del carrusel de "Nuevos descubrimientos"
+ * cuando el backend no ha servido ninguna canción. Lleva al listado
+ * de Álbumes como atajo para explorar manualmente.
+ */
 @Composable
-private fun ContinueHero(song: SongSummaryDto, onPlay: () -> Unit) {
+private fun EmptyDiscoveriesCTA(onOpenAlbums: () -> Unit) {
     val scheme = MaterialTheme.colorScheme
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp)
-            .clickable(onClick = onPlay),
-        shape = RoundedCornerShape(24.dp),
+            .clickable(onClick = onOpenAlbums),
+        shape = RoundedCornerShape(20.dp),
         color = Color.Transparent
     ) {
         Box(
             modifier = Modifier
                 .background(
                     Brush.linearGradient(
-                        0f to scheme.primary.copy(alpha = 0.22f),
-                        1f to scheme.tertiary.copy(alpha = 0.12f)
+                        0f to scheme.tertiary.copy(alpha = 0.18f),
+                        1f to scheme.primary.copy(alpha = 0.10f)
                     )
                 )
-                .padding(14.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                CoverImage(url = song.coverUrl, size = 96.dp, cornerRadius = 16.dp)
-                Spacer(Modifier.width(14.dp))
+                Icon(
+                    Icons.Filled.Explore,
+                    contentDescription = null,
+                    tint = scheme.tertiary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = scheme.primary.copy(alpha = 0.22f)
-                    ) {
-                        Text(
-                            "Continúa escuchando",
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = scheme.primary,
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
                     Text(
-                        song.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = scheme.onBackground,
+                        "Explora el catálogo",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = scheme.onBackground
+                    )
+                    Text(
+                        "Aún no hay descubrimientos recientes — toca para abrir Álbumes",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = scheme.onSurfaceVariant,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        song.artistsLabel,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = scheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
                 }
-                Spacer(Modifier.width(8.dp))
-                Surface(
-                    shape = CircleShape,
-                    color = scheme.primary,
-                    modifier = Modifier.size(46.dp).clickable(onClick = onPlay)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Filled.PlayArrow,
-                            contentDescription = "Reproducir",
-                            tint = scheme.onPrimary,
-                            modifier = Modifier.size(26.dp)
-                        )
-                    }
-                }
+                Icon(
+                    Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = scheme.onSurfaceVariant
+                )
             }
         }
     }
