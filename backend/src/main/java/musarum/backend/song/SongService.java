@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -80,7 +82,7 @@ public class SongService {
         if (bpm == null || bpm <= 0 || key == null || key.isBlank()) {
             return List.of();
         }
-        List<String> compatibleKeys = camelotCompatible(key);
+        List<String> compatibleKeys = compatibleKeyAliases(key);
         if (compatibleKeys.isEmpty()) return List.of();
         int capped = Math.max(1, Math.min(size, 20));
         int minBpm = Math.max(1, bpm - 8);
@@ -91,31 +93,149 @@ public class SongService {
     }
 
     /**
-     * Rueda Camelot: para una tonalidad {@code "8A"} devuelve las 4
-     * compatibles (misma + vecina ascendente + vecina descendente +
-     * relativa mayor/menor). Wrap circular: 12 ↔ 1. Formato aceptado
-     * "NA" o "NB" con N en 1..12.
+     * Devuelve TODAS las representaciones textuales de las 4 tonalidades
+     * compatibles en Camelot (misma, −1, +1, relativa mayor/menor) para
+     * una key que puede llegar en varios formatos: Camelot ("8A", "12B"),
+     * nombre musical ("A minor", "D# major"), enarmónico ("Bb major",
+     * "F#m") o abreviado ("Am", "C#"). Así la query nativa casa aunque
+     * el catálogo mezcle formatos (Emendatium guarda "D minor",
+     * jaudiotagger a veces "Dm", el user podría teclear "7A").
      */
-    private static List<String> camelotCompatible(String key) {
-        if (key == null || key.length() < 2) return List.of();
-        char letter = key.charAt(key.length() - 1);
-        if (letter != 'A' && letter != 'B') return List.of();
+    private static List<String> compatibleKeyAliases(String rawKey) {
+        String camelot = toCamelot(rawKey);
+        if (camelot == null) return List.of();
+        char letter = camelot.charAt(camelot.length() - 1);
         int num;
         try {
-            num = Integer.parseInt(key.substring(0, key.length() - 1));
+            num = Integer.parseInt(camelot.substring(0, camelot.length() - 1));
         } catch (NumberFormatException e) {
             return List.of();
         }
-        if (num < 1 || num > 12) return List.of();
         int prev = num == 1 ? 12 : num - 1;
         int next = num == 12 ? 1 : num + 1;
         char opposite = letter == 'A' ? 'B' : 'A';
-        return List.of(
-                num + "" + letter,     // misma
-                prev + "" + letter,    // Camelot −1
-                next + "" + letter,    // Camelot +1
-                num + "" + opposite    // relativa
+        List<String> targets = List.of(
+                num + "" + letter,
+                prev + "" + letter,
+                next + "" + letter,
+                num + "" + opposite
         );
+        // Para cada Camelot incluimos el propio código + todos los
+        // nombres musicales equivalentes (ambas enarmónicas + abreviado).
+        Set<String> aliases = new LinkedHashSet<>();
+        for (String t : targets) {
+            aliases.add(t);
+            List<String> names = CAMELOT_TO_KEYS.get(t);
+            if (names != null) aliases.addAll(names);
+        }
+        return new java.util.ArrayList<>(aliases);
+    }
+
+    /**
+     * Normaliza una key (Camelot o nombre musical, con enarmónicos y
+     * abreviaturas) al código Camelot canónico (p. ej. "A minor"→"8A",
+     * "Bb major"→"6B", "F#m"→"11A"). Devuelve null si no reconoce el
+     * formato.
+     */
+    private static String toCamelot(String rawKey) {
+        if (rawKey == null || rawKey.isBlank()) return null;
+        String k = rawKey.trim().replaceAll("\\s+", " ");
+        // Camelot directo "8A" / "12B"
+        if (k.length() >= 2 && k.length() <= 3) {
+            char last = Character.toUpperCase(k.charAt(k.length() - 1));
+            if (last == 'A' || last == 'B') {
+                try {
+                    int n = Integer.parseInt(k.substring(0, k.length() - 1));
+                    if (n >= 1 && n <= 12) return n + "" + last;
+                } catch (NumberFormatException ignored) {}
+            }
+        }
+        return KEY_TO_CAMELOT.get(k.toLowerCase());
+    }
+
+    private static final Map<String, String> KEY_TO_CAMELOT = buildKeyToCamelot();
+    private static final Map<String, List<String>> CAMELOT_TO_KEYS = buildCamelotToKeys();
+
+    private static Map<String, String> buildKeyToCamelot() {
+        Map<String, String> m = new HashMap<>();
+        // Menores (lado A) + enarmónicos + abreviaturas (ej. "Am", "G#m")
+        addMinor(m, "1A",  "G#", "Ab");
+        addMinor(m, "2A",  "D#", "Eb");
+        addMinor(m, "3A",  "A#", "Bb");
+        addMinor(m, "4A",  "F",  null);
+        addMinor(m, "5A",  "C",  null);
+        addMinor(m, "6A",  "G",  null);
+        addMinor(m, "7A",  "D",  null);
+        addMinor(m, "8A",  "A",  null);
+        addMinor(m, "9A",  "E",  null);
+        addMinor(m, "10A", "B",  null);
+        addMinor(m, "11A", "F#", "Gb");
+        addMinor(m, "12A", "C#", "Db");
+        // Mayores (lado B)
+        addMajor(m, "1B",  "B",  null);
+        addMajor(m, "2B",  "F#", "Gb");
+        addMajor(m, "3B",  "C#", "Db");
+        addMajor(m, "4B",  "G#", "Ab");
+        addMajor(m, "5B",  "D#", "Eb");
+        addMajor(m, "6B",  "A#", "Bb");
+        addMajor(m, "7B",  "F",  null);
+        addMajor(m, "8B",  "C",  null);
+        addMajor(m, "9B",  "G",  null);
+        addMajor(m, "10B", "D",  null);
+        addMajor(m, "11B", "A",  null);
+        addMajor(m, "12B", "E",  null);
+        return m;
+    }
+
+    private static void addMinor(Map<String, String> m, String camelot, String note, String alt) {
+        m.put((note + " minor").toLowerCase(), camelot);
+        m.put((note + "m").toLowerCase(), camelot);
+        m.put((note + " min").toLowerCase(), camelot);
+        if (alt != null) {
+            m.put((alt + " minor").toLowerCase(), camelot);
+            m.put((alt + "m").toLowerCase(), camelot);
+            m.put((alt + " min").toLowerCase(), camelot);
+        }
+    }
+
+    private static void addMajor(Map<String, String> m, String camelot, String note, String alt) {
+        m.put((note + " major").toLowerCase(), camelot);
+        m.put((note + " maj").toLowerCase(), camelot);
+        m.put(note.toLowerCase(), camelot);
+        if (alt != null) {
+            m.put((alt + " major").toLowerCase(), camelot);
+            m.put((alt + " maj").toLowerCase(), camelot);
+            m.put(alt.toLowerCase(), camelot);
+        }
+    }
+
+    private static Map<String, List<String>> buildCamelotToKeys() {
+        Map<String, List<String>> m = new HashMap<>();
+        m.put("1A",  List.of("G# minor", "Ab minor", "G#m", "Abm"));
+        m.put("2A",  List.of("D# minor", "Eb minor", "D#m", "Ebm"));
+        m.put("3A",  List.of("A# minor", "Bb minor", "A#m", "Bbm"));
+        m.put("4A",  List.of("F minor",  "Fm"));
+        m.put("5A",  List.of("C minor",  "Cm"));
+        m.put("6A",  List.of("G minor",  "Gm"));
+        m.put("7A",  List.of("D minor",  "Dm"));
+        m.put("8A",  List.of("A minor",  "Am"));
+        m.put("9A",  List.of("E minor",  "Em"));
+        m.put("10A", List.of("B minor",  "Bm"));
+        m.put("11A", List.of("F# minor", "Gb minor", "F#m", "Gbm"));
+        m.put("12A", List.of("C# minor", "Db minor", "C#m", "Dbm"));
+        m.put("1B",  List.of("B major",  "B"));
+        m.put("2B",  List.of("F# major", "Gb major", "F#", "Gb"));
+        m.put("3B",  List.of("C# major", "Db major", "C#", "Db"));
+        m.put("4B",  List.of("G# major", "Ab major", "G#", "Ab"));
+        m.put("5B",  List.of("D# major", "Eb major", "D#", "Eb"));
+        m.put("6B",  List.of("A# major", "Bb major", "A#", "Bb"));
+        m.put("7B",  List.of("F major",  "F"));
+        m.put("8B",  List.of("C major",  "C"));
+        m.put("9B",  List.of("G major",  "G"));
+        m.put("10B", List.of("D major",  "D"));
+        m.put("11B", List.of("A major",  "A"));
+        m.put("12B", List.of("E major",  "E"));
+        return m;
     }
 
     @Transactional(readOnly = true)
