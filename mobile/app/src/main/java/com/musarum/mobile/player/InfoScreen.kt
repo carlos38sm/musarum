@@ -272,33 +272,59 @@ private fun InfoSections(
         }
 
         // ── Esta canción suena a…
-        // Carga bajo demanda cuando la pantalla es visible. El backend
-        // devuelve lista vacía si no hay BPM/tonalidad en la fuente
-        // (Emendatium no ha pasado) y aquí ocultamos la sección entera
-        // sin ruido. produceState se rearranca al cambiar details.id,
-        // así que si el user pasa de canción el bloque se refresca.
+        // La sección SIEMPRE se muestra. Según el caso pinta cards o un
+        // mensaje que explica por qué no hay sugerencias. produceState
+        // se rearranca al cambiar details.id.
+        //
+        //   bpm/key en null en la canción → "Falta BPM o tonalidad"
+        //   endpoint devuelve []          → "Sin canciones compatibles"
+        //   endpoint falla (red/5xx)      → "No se pudo cargar"
+        //   lista no vacía                → cards
         val container = LocalAppContainer.current
-        val similarState = produceState<List<SongSummaryDto>>(
-            initialValue = emptyList(),
-            key1 = details.id
+        val hasMusicalMeta = details.bpm != null && details.musicalKey != null
+        val similarState = produceState<SimilarState>(
+            initialValue = SimilarState.Loading,
+            key1 = details.id,
+            key2 = hasMusicalMeta
         ) {
-            value = runCatching {
-                container.apiService.getSimilarSongs(details.id, 5)
-            }.getOrDefault(emptyList())
+            value = if (!hasMusicalMeta) {
+                SimilarState.NoMeta
+            } else {
+                runCatching {
+                    container.apiService.getSimilarSongs(details.id, 5)
+                }.fold(
+                    onSuccess = { list ->
+                        if (list.isEmpty()) SimilarState.Empty else SimilarState.Loaded(list)
+                    },
+                    onFailure = { SimilarState.Error }
+                )
+            }
         }
-        val similar = similarState.value
-        if (similar.isNotEmpty()) {
-            Section("Esta canción suena a…") {
-                LazyRow(
+        Section("Esta canción suena a…") {
+            when (val s = similarState.value) {
+                SimilarState.Loading -> SimilarHint("Buscando canciones similares…")
+                SimilarState.NoMeta -> SimilarHint(
+                    "Esta canción no tiene BPM ni tonalidad en la DB. " +
+                            "Pide un re-enriquecimiento desde Análisis del servidor."
+                )
+                SimilarState.Empty -> SimilarHint(
+                    "Sin canciones compatibles en tu catálogo. " +
+                            "Añade más música o re-enriquece para ampliar el abanico."
+                )
+                SimilarState.Error -> SimilarHint(
+                    "No se pudieron cargar las sugerencias (¿se perdió la conexión?)."
+                )
+                is SimilarState.Loaded -> LazyRow(
                     contentPadding = PaddingValues(horizontal = 2.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(similar) { s ->
+                    items(s.songs) { song ->
                         SimilarCard(
-                            song = s,
+                            song = song,
                             onClick = {
-                                val idx = similar.indexOfFirst { it.id == s.id }.coerceAtLeast(0)
-                                container.playerController.playQueue(similar, idx)
+                                val idx = s.songs.indexOfFirst { it.id == song.id }
+                                    .coerceAtLeast(0)
+                                container.playerController.playQueue(s.songs, idx)
                             }
                         )
                     }
@@ -308,6 +334,33 @@ private fun InfoSections(
 
         Spacer(Modifier.height(32.dp))
     }
+}
+
+/**
+ * Estados del bloque "Esta canción suena a…". Permite diferenciar
+ * entre "aún cargando", "la canción no tiene metadata musical",
+ * "no hay nada que casar en el catálogo" y "falló la petición",
+ * para pintar un mensaje adecuado en cada caso.
+ */
+private sealed class SimilarState {
+    object Loading : SimilarState()
+    object NoMeta : SimilarState()
+    object Empty : SimilarState()
+    object Error : SimilarState()
+    data class Loaded(val songs: List<SongSummaryDto>) : SimilarState()
+}
+
+/**
+ * Texto neutro para los casos en que el carrusel no tiene cards que
+ * mostrar. Comparte estilo con otras pistas inline del InfoScreen.
+ */
+@Composable
+private fun SimilarHint(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 /**
