@@ -14,7 +14,7 @@ import jakarta.persistence.Table;
  */
 @Entity
 @Table(name = "app_updates")
-class AppUpdate {
+public class AppUpdate {
 
     static final long SINGLETON_ID = 1L;
 
@@ -38,12 +38,12 @@ class AppUpdate {
 
     protected AppUpdate() {}
 
-    Long getId() { return id; }
-    String getLatestApk() { return latestApk; }
-    String getApkUrl() { return apkUrl; }
-    boolean isMandatory() { return mandatory; }
-    Instant getUpdatedAt() { return updatedAt; }
-    Long getUpdatedBy() { return updatedBy; }
+    public Long getId() { return id; }
+    public String getLatestApk() { return latestApk; }
+    public String getApkUrl() { return apkUrl; }
+    public boolean isMandatory() { return mandatory; }
+    public Instant getUpdatedAt() { return updatedAt; }
+    public Long getUpdatedBy() { return updatedBy; }
 
     void update(String latestApk, String apkUrl, boolean mandatory, Long updatedBy) {
         this.latestApk = latestApk;

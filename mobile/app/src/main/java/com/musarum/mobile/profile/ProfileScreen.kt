@@ -41,6 +41,7 @@ import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.NewReleases
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Schedule
@@ -97,7 +98,10 @@ fun ProfileScreen(
     onOpenHandoff: () -> Unit = {},
     onOpenParty: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(
-        factory = ProfileViewModel.factory(LocalAppContainer.current.userRepository)
+        factory = ProfileViewModel.factory(
+            LocalAppContainer.current.userRepository,
+            LocalAppContainer.current.apiService
+        )
     )
 ) {
     val container = LocalAppContainer.current
@@ -109,6 +113,12 @@ fun ProfileScreen(
     var showChangePassword by remember { mutableStateOf(false) }
     var showCrossfade by remember { mutableStateOf(false) }
     var showCreateUser by remember { mutableStateOf(false) }
+    // Estado del diálogo "Buscar actualizaciones":
+    //   null     → cerrado
+    //   Loading  → consulta en vuelo
+    //   Report   → reporte del backend
+    //   Error    → petición revienta (red, 401, etc.)
+    var updateDialog by remember { mutableStateOf<UpdateDialogState?>(null) }
     val isOwner = state.user?.userRole == "OWNER"
 
     Scaffold(
@@ -464,6 +474,19 @@ fun ProfileScreen(
                 )
                 Spacer(Modifier.height(6.dp))
                 SettingRow(
+                    icon = Icons.Filled.SystemUpdate,
+                    title = "Buscar actualizaciones",
+                    subtitle = "1 clic: anuncia APK nueva y recarga backend",
+                    onClick = {
+                        updateDialog = UpdateDialogState.Loading
+                        viewModel.checkUpdates { report, err ->
+                            updateDialog = if (err != null) UpdateDialogState.Error(err)
+                            else UpdateDialogState.Report(report!!)
+                        }
+                    }
+                )
+                Spacer(Modifier.height(6.dp))
+                SettingRow(
                     icon = Icons.Filled.NewReleases,
                     title = "Publicar actualización",
                     subtitle = "Anunciar nueva versión del APK",
@@ -518,6 +541,10 @@ fun ProfileScreen(
                 }
             }
         )
+    }
+
+    updateDialog?.let { d ->
+        CheckUpdatesDialog(state = d, onDismiss = { updateDialog = null })
     }
 
     if (showChangePassword) {
@@ -1120,6 +1147,109 @@ private fun CrossfadeDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) { Text("Listo") }
+        }
+    )
+}
+
+/**
+ * Estado del diálogo "Buscar actualizaciones": loading / resultado / error.
+ * Vive en memoria del composable — no se propaga al ViewModel porque solo
+ * importa durante esta sesión de pantalla.
+ */
+private sealed class UpdateDialogState {
+    object Loading : UpdateDialogState()
+    data class Report(val data: com.musarum.mobile.data.network.dto.UpdateCheckDto) : UpdateDialogState()
+    data class Error(val message: String) : UpdateDialogState()
+}
+
+@Composable
+private fun CheckUpdatesDialog(
+    state: UpdateDialogState,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                when (state) {
+                    is UpdateDialogState.Loading -> "Buscando actualizaciones…"
+                    is UpdateDialogState.Error -> "No se pudo comprobar"
+                    is UpdateDialogState.Report -> "Resultado"
+                }
+            )
+        },
+        text = {
+            when (state) {
+                is UpdateDialogState.Loading -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text("Mirando GitHub y pidiéndole a Watchtower que recargue el backend…")
+                    }
+                }
+                is UpdateDialogState.Error -> {
+                    Text(state.message)
+                }
+                is UpdateDialogState.Report -> {
+                    Column {
+                        val report = state.data
+                        // ── APK ──────────────────────────────
+                        val apk = report.apk
+                        val apkLine = when {
+                            apk == null -> "APK: no se pudo detectar."
+                            apk.published ->
+                                "APK ${apk.latestTag}: anunciada. Al reabrir la app verás el diálogo de actualizar."
+                            apk.latestTag != null && apk.latestTag == apk.previouslyAnnounced ->
+                                "APK ${apk.latestTag}: ya estaba anunciada."
+                            apk.latestTag != null ->
+                                "APK ${apk.latestTag}: detectada pero no se pudo publicar (ver abajo)."
+                            else -> "APK: sin releases en GitHub."
+                        }
+                        Text(apkLine, style = MaterialTheme.typography.bodyMedium)
+
+                        Spacer(Modifier.height(10.dp))
+
+                        // ── Backend ──────────────────────────
+                        val be = report.backend
+                        val beLine = when {
+                            be == null -> "Backend: no se pudo detectar."
+                            be.watchtowerTriggered && be.latestTag != null ->
+                                "Backend ${be.latestTag}: pedida recarga a Watchtower (se aplica solo si hay imagen nueva)."
+                            be.watchtowerTriggered ->
+                                "Backend: recarga pedida a Watchtower."
+                            be.latestTag != null ->
+                                "Backend ${be.latestTag}: Watchtower no respondió (ver abajo)."
+                            else -> "Backend: no se pudo contactar con Watchtower."
+                        }
+                        Text(beLine, style = MaterialTheme.typography.bodyMedium)
+
+                        // ── Errores no fatales ─────────────────
+                        if (report.errors.isNotEmpty()) {
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "Avisos:",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            report.errors.forEach { err ->
+                                Text(
+                                    "· $err",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(if (state is UpdateDialogState.Loading) "Cancelar" else "Listo")
+            }
         }
     )
 }

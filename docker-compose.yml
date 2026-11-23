@@ -71,6 +71,14 @@ services:
       MUSARUM_APK_LATEST: ${MUSARUM_APK_LATEST:-}
       MUSARUM_APK_URL: ${MUSARUM_APK_URL:-}
       MUSARUM_APK_MANDATORY: ${MUSARUM_APK_MANDATORY:-false}
+      # Actualizaciones automáticas (botón "Buscar actualizaciones" en Perfil).
+      # GITHUB_REPO = "owner/repo" sin https. Si está vacío, el botón del
+      # móvil responderá que no hay repo configurado.
+      MUSARUM_GITHUB_REPO: ${GITHUB_OWNER:-carlos38sm}/musarum
+      MUSARUM_APK_URL_PATTERN: ${MUSARUM_APK_URL_PATTERN:-https://github.com/${GITHUB_OWNER:-carlos38sm}/musarum/releases/download/android-v{v}/musarum-{v}.apk}
+      # Token para disparar Watchtower vía HTTP API desde el backend.
+      MUSARUM_WATCHTOWER_URL: http://watchtower:8080
+      MUSARUM_WATCHTOWER_TOKEN: ${WATCHTOWER_HTTP_API_TOKEN:-}
     volumes:
       - ${MUSARUM_MUSIC_PATH}:/music
     ports:
@@ -117,6 +125,11 @@ services:
       WATCHTOWER_POLL_INTERVAL: 1800
       WATCHTOWER_LABEL_ENABLE: "true"
       WATCHTOWER_CLEANUP: "true"
+      # HTTP API para disparar updates al instante desde el botón
+      # "Buscar actualizaciones" del móvil. El puerto 8080 queda dentro
+      # de la red Docker — NO se mapea al host, así nadie fuera lo ve.
+      WATCHTOWER_HTTP_API_UPDATE: "true"
+      WATCHTOWER_HTTP_API_TOKEN: ${WATCHTOWER_HTTP_API_TOKEN:-}
       TZ: Europe/Madrid
 
 volumes:

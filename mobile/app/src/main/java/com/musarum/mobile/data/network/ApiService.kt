@@ -466,6 +466,12 @@ interface ApiService {
     @retrofit2.http.POST("admin/server/re-enrich-all")
     suspend fun reEnrichAll(): com.musarum.mobile.data.network.dto.ReEnrichSummaryDto
 
+    // "Buscar actualizaciones": detecta tags nuevos en GitHub Releases,
+    // publica el anuncio de APK si hay una nueva y dispara Watchtower para
+    // recrear el backend al instante.
+    @retrofit2.http.POST("admin/server/check-updates")
+    suspend fun checkUpdates(): com.musarum.mobile.data.network.dto.UpdateCheckDto
+
     // Barre artistas / álbumes / géneros que quedaron sin canciones.
     @retrofit2.http.POST("admin/server/clean-orphan-entities")
     suspend fun cleanOrphanEntities():

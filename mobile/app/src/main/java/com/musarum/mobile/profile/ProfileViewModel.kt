@@ -3,7 +3,9 @@ package com.musarum.mobile.profile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.musarum.mobile.data.network.ApiService
 import com.musarum.mobile.data.network.dto.ScannerStatusDto
+import com.musarum.mobile.data.network.dto.UpdateCheckDto
 import com.musarum.mobile.data.network.dto.UserResponseDto
 import com.musarum.mobile.data.network.dto.UserStatsDto
 import com.musarum.mobile.data.user.UserRepository
@@ -27,7 +29,10 @@ data class ProfileUiState(
     val lastMessage: String? = null
 )
 
-class ProfileViewModel(private val repository: UserRepository) : ViewModel() {
+class ProfileViewModel(
+    private val repository: UserRepository,
+    private val apiService: ApiService
+) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileUiState())
     val state: StateFlow<ProfileUiState> = _state.asStateFlow()
@@ -208,12 +213,33 @@ class ProfileViewModel(private val repository: UserRepository) : ViewModel() {
         }
     }
 
+    /**
+     * "Buscar actualizaciones" del Perfil (OWNER). Llama al backend, que
+     * mira GitHub Releases + dispara Watchtower. onDone recibe el reporte
+     * ya resuelto o un mensaje de error si la petición revienta.
+     */
+    fun checkUpdates(onDone: (UpdateCheckDto?, String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val report = apiService.checkUpdates()
+                onDone(report, null)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                onDone(null, t.message ?: "Error contactando con el servidor")
+            }
+        }
+    }
+
     companion object {
-        fun factory(repository: UserRepository): ViewModelProvider.Factory =
+        fun factory(
+            repository: UserRepository,
+            apiService: ApiService
+        ): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    ProfileViewModel(repository) as T
+                    ProfileViewModel(repository, apiService) as T
             }
     }
 }

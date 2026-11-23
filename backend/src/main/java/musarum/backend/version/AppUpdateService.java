@@ -5,7 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-class AppUpdateService {
+public class AppUpdateService {
 
     private final AppUpdateRepository repo;
 
@@ -14,12 +14,12 @@ class AppUpdateService {
     }
 
     @Transactional(readOnly = true)
-    Optional<AppUpdate> current() {
+    public Optional<AppUpdate> current() {
         return repo.findById(AppUpdate.SINGLETON_ID);
     }
 
     @Transactional
-    AppUpdate publish(String latestApk, String apkUrl, boolean mandatory, Long updatedBy) {
+    public AppUpdate publish(String latestApk, String apkUrl, boolean mandatory, Long updatedBy) {
         AppUpdate row = repo.findById(AppUpdate.SINGLETON_ID)
                 .orElseThrow(() -> new IllegalStateException(
                         "La fila singleton de app_updates no existe. ¿Falta la migración V5?"));

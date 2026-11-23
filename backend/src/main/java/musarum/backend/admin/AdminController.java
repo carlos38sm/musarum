@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import musarum.backend.backups.BackupService;
+import musarum.backend.shared.security.CurrentUserResolver;
 
 /**
  * Endpoints de administración (OWNER-only). Hoy solo expone el snapshot de
@@ -42,13 +43,19 @@ class AdminController {
     private final ServerStatsService statsService;
     private final BackupService backupService;
     private final HostStatsService hostStatsService;
+    private final UpdateCheckService updateCheckService;
+    private final CurrentUserResolver currentUser;
 
     AdminController(ServerStatsService statsService,
                     BackupService backupService,
-                    HostStatsService hostStatsService) {
+                    HostStatsService hostStatsService,
+                    UpdateCheckService updateCheckService,
+                    CurrentUserResolver currentUser) {
         this.statsService = statsService;
         this.backupService = backupService;
         this.hostStatsService = hostStatsService;
+        this.updateCheckService = updateCheckService;
+        this.currentUser = currentUser;
     }
 
     @GetMapping("/stats")
@@ -140,6 +147,21 @@ class AdminController {
     }
 
     public record CancelEnrichResult(boolean cancelled) {}
+
+    /**
+     * Botón "Buscar actualizaciones" del móvil (Perfil → OWNER). Detecta el
+     * último tag de APK y backend en GitHub Releases, publica el anuncio de
+     * APK si hay nueva versión y dispara Watchtower vía HTTP API para que
+     * recree el contenedor del backend al instante. Devuelve siempre un
+     * reporte estructurado; los errores se acumulan sin tumbar la operación.
+     */
+    @PostMapping("/check-updates")
+    @PreAuthorize("hasRole('OWNER')")
+    UpdateCheckService.UpdateReport checkUpdates() {
+        logCaller("check-updates");
+        Long requesterId = currentUser.currentUserId();
+        return updateCheckService.runAll(requesterId);
+    }
 
     /**
      * Barre artistas / álbumes / géneros sin canciones. Útiles tras borrados
