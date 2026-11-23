@@ -281,14 +281,16 @@ private fun InfoSections(
         //   endpoint falla (red/5xx)      → "No se pudo cargar"
         //   lista no vacía                → cards
         val container = LocalAppContainer.current
-        val hasMusicalMeta = details.bpm != null && details.musicalKey != null
+        val hasBpm = details.bpm != null && details.bpm > 0
+        val hasKey = !details.musicalKey.isNullOrBlank()
+        val hasMusicalMeta = hasBpm && hasKey
         val similarState = produceState<SimilarState>(
             initialValue = SimilarState.Loading,
             key1 = details.id,
             key2 = hasMusicalMeta
         ) {
             value = if (!hasMusicalMeta) {
-                SimilarState.NoMeta
+                SimilarState.NoMeta(bpm = hasBpm, key = hasKey)
             } else {
                 runCatching {
                     container.apiService.getSimilarSongs(details.id, 5)
@@ -303,10 +305,17 @@ private fun InfoSections(
         Section("Esta canción suena a…") {
             when (val s = similarState.value) {
                 SimilarState.Loading -> SimilarHint("Buscando canciones similares…")
-                SimilarState.NoMeta -> SimilarHint(
-                    "Esta canción no tiene BPM ni tonalidad en la DB. " +
-                            "Pide un re-enriquecimiento desde Análisis del servidor."
-                )
+                is SimilarState.NoMeta -> {
+                    val falta = when {
+                        !s.bpm && !s.key -> "BPM ni tonalidad"
+                        !s.bpm -> "BPM"
+                        else -> "tonalidad"
+                    }
+                    SimilarHint(
+                        "Esta canción no tiene $falta en la DB. " +
+                                "Pide un re-enriquecimiento desde Análisis del servidor."
+                    )
+                }
                 SimilarState.Empty -> SimilarHint(
                     "Sin canciones compatibles en tu catálogo. " +
                             "Añade más música o re-enriquece para ampliar el abanico."
@@ -344,7 +353,7 @@ private fun InfoSections(
  */
 private sealed class SimilarState {
     object Loading : SimilarState()
-    object NoMeta : SimilarState()
+    data class NoMeta(val bpm: Boolean, val key: Boolean) : SimilarState()
     object Empty : SimilarState()
     object Error : SimilarState()
     data class Loaded(val songs: List<SongSummaryDto>) : SimilarState()
