@@ -254,10 +254,49 @@ public class LibraryWatcher {
         }
     }
 
+    /**
+     * Espera hasta que {@code file} deje de crecer entre dos muestras. Si el
+     * tamaño actual y el de hace {@code quietMs} coinciden, se considera
+     * "copia terminada". {@code totalTimeoutMs} evita bloqueos indefinidos.
+     */
+    private void waitUntilStable(Path file, long quietMs, long totalTimeoutMs) throws InterruptedException {
+        long start = System.currentTimeMillis();
+        long prevSize = -1L;
+        while (true) {
+            long size = sizeOrNeg(file);
+            if (size < 0) {
+                // Puede que todavía no exista (evento prematuro); esperamos un
+                // tick corto. Si pasa demasiado, salimos.
+                if (System.currentTimeMillis() - start > totalTimeoutMs) return;
+                Thread.sleep(100);
+                continue;
+            }
+            if (size == prevSize) return;  // dos lecturas iguales → estable
+            if (System.currentTimeMillis() - start > totalTimeoutMs) return;
+            prevSize = size;
+            Thread.sleep(quietMs);
+        }
+    }
+
+    private long sizeOrNeg(Path file) {
+        try {
+            return Files.size(file);
+        } catch (IOException e) {
+            return -1L;
+        }
+    }
+
     private void handleCreate(Path fullPath) {
         String normalizedPath = libraryScanner.normalize(fullPath);
         try {
-            Thread.sleep(500); // esperar a que el archivo termine de copiarse
+            // Antes: sleep(500) ciego → suficiente para ficheros pequeños, pero
+            // copiar un FLAC de 50 MB tarda varios segundos y al hashear antes
+            // de tiempo salía un hash incorrecto (o IOException). Ahora
+            // esperamos a que el tamaño se estabilice entre dos lecturas con
+            // 300ms de margen — típico "file is complete" check. Timeout a
+            // 10s para no bloquear el watcher si alguien hace un `touch` y
+            // nunca escribe más (en cuyo caso procesamos lo que haya).
+            waitUntilStable(fullPath, 300L, 10_000L);
             String hash = fileHasher.hash(fullPath);
 
             boolean relocated = songService.relocateByHash(hash, normalizedPath);
