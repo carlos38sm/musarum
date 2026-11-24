@@ -52,6 +52,26 @@ public class CoverStorage {
                 .orElse(null);
     }
 
+    /**
+     * Guarda una portada específica de canción (sobrescribe la del álbum
+     * en el móvil cuando existe). El canal normal es "el álbum tiene su
+     * cover y todas las canciones lo reutilizan"; esto es para cuando el
+     * OWNER quiere darle una cara única a un single sin album art.
+     */
+    public String saveSongCover(Long songId, byte[] bytes, String mimeType) {
+        return save("song-" + songId, bytes, mimeType)
+                .map(ignored -> "/songs/" + songId + "/cover")
+                .orElse(null);
+    }
+
+    public Optional<Path> findSongCover(Long songId) {
+        return findFirst("song-" + songId);
+    }
+
+    public void deleteSongCover(Long songId) {
+        deleteAll("song-" + songId);
+    }
+
     /** Devuelve el fichero físico para servirlo, si existe. */
     public Optional<Path> findAlbumCover(Long albumId) {
         return findFirst("album-" + albumId);

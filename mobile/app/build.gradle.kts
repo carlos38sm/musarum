@@ -138,6 +138,10 @@ dependencies {
     // videoId lo resuelve el backend con scraping ligero de youtube.com/results
     // y lo cachea en songs.youtube_video_id.
     implementation(libs.pierfrancescosoffritti.android.youtube.player)
+    // MediaRouter — selector de salida de audio (altavoz, auriculares,
+    // Bluetooth, Cast). Lo pinta un botón en NowPlaying que abre el
+    // diálogo nativo de Android con los dispositivos disponibles.
+    implementation("androidx.mediarouter:mediarouter:1.7.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

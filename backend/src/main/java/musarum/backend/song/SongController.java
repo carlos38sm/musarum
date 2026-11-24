@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import musarum.backend.enrichment.EmendatiumAutoEnricher;
+import musarum.backend.shared.CoverStorage;
 import musarum.backend.shared.VideoStorage;
 import musarum.backend.shared.security.CurrentUserResolver;
 import musarum.backend.song.dto.SongDetailsDto;
@@ -35,25 +36,46 @@ class SongController {
     private final CurrentUserResolver currentUser;
     private final VideoStorage videoStorage;
     private final EmendatiumAutoEnricher emendatiumEnricher;
+    private final CoverStorage coverStorage;
+    private final SongRepository songRepository;
 
     SongController(SongService songService,
                    SongDeletionService songDeletionService,
                    TagEditService tagEditService,
                    CurrentUserResolver currentUser,
                    VideoStorage videoStorage,
-                   EmendatiumAutoEnricher emendatiumEnricher) {
+                   EmendatiumAutoEnricher emendatiumEnricher,
+                   CoverStorage coverStorage,
+                   SongRepository songRepository) {
         this.songService = songService;
         this.songDeletionService = songDeletionService;
         this.tagEditService = tagEditService;
         this.currentUser = currentUser;
         this.videoStorage = videoStorage;
         this.emendatiumEnricher = emendatiumEnricher;
+        this.coverStorage = coverStorage;
+        this.songRepository = songRepository;
     }
 
     @GetMapping
     ResponseEntity<Page<SongSummaryDto>> findAll(Pageable pageable) {
         return ResponseEntity.ok(songService.findAll(pageable));
     }
+
+    /**
+     * KPIs globales de la biblioteca: total de canciones + duración total
+     * en ms. Lo consume el hero de SongsScreen para pintar "X pistas · Y h".
+     * Público (cualquier user autenticado), no solo OWNER.
+     */
+    @GetMapping("/library-stats")
+    LibraryStats libraryStats() {
+        return new LibraryStats(
+                songService.countAll(),
+                songService.totalDurationMs()
+        );
+    }
+
+    public record LibraryStats(long totalSongs, long totalDurationMs) {}
 
     @GetMapping("/{id}")
     ResponseEntity<SongDetailsDto> findById(@PathVariable Long id) {
@@ -147,6 +169,72 @@ class SongController {
     ResponseEntity<Void> delete(@PathVariable Long id) {
         songDeletionService.deleteCompletely(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Sirve la portada propia de una canción (fichero físico en _covers/
+     * song-{id}.ext). 404 si no hay custom cover subida — en ese caso el
+     * móvil cae al cover del álbum (criterio del SongMapper).
+     */
+    @GetMapping("/{id}/cover")
+    ResponseEntity<Resource> getCover(@PathVariable Long id) {
+        return coverStorage.findSongCover(id)
+                .map(path -> ResponseEntity.ok()
+                        .contentType(MediaType.parseMediaType(coverStorage.contentTypeFor(path)))
+                        .body((Resource) new FileSystemResource(path)))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Sube una portada propia para esta canción (solo OWNER). Guarda el
+     * fichero en _covers/song-{id}.ext, marca has_custom_cover=true y
+     * devuelve el detalle actualizado — el cliente puede repintar con
+     * el nuevo coverUrl inmediatamente.
+     */
+    @org.springframework.web.bind.annotation.PostMapping(
+            value = "/{id}/cover",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    @PreAuthorize("hasRole('OWNER')")
+    @org.springframework.transaction.annotation.Transactional
+    ResponseEntity<SongDetailsDto> uploadCover(
+            @PathVariable Long id,
+            @org.springframework.web.bind.annotation.RequestPart("file")
+            org.springframework.web.multipart.MultipartFile file
+    ) throws IOException {
+        Song song = songRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Canción no existe"));
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        String saved = coverStorage.saveSongCover(id, file.getBytes(), file.getContentType());
+        if (saved == null) {
+            return ResponseEntity.internalServerError().build();
+        }
+        song.setHasCustomCover(true);
+        songRepository.save(song);
+        return ResponseEntity.ok(
+                songService.findById(id, currentUser.currentUserId())
+        );
+    }
+
+    /**
+     * Elimina la portada propia (vuelve al cover del álbum). Idempotente.
+     */
+    @org.springframework.web.bind.annotation.DeleteMapping("/{id}/cover")
+    @PreAuthorize("hasRole('OWNER')")
+    @org.springframework.transaction.annotation.Transactional
+    ResponseEntity<SongDetailsDto> deleteCover(@PathVariable Long id) {
+        Song song = songRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Canción no existe"));
+        coverStorage.deleteSongCover(id);
+        song.setHasCustomCover(false);
+        songRepository.save(song);
+        return ResponseEntity.ok(
+                songService.findById(id, currentUser.currentUserId())
+        );
     }
 
     /**

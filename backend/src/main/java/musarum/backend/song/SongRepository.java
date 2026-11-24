@@ -29,6 +29,10 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     @Query("SELECT COALESCE(SUM(s.durationMs), 0) FROM Song s WHERE s.album.id = :albumId")
     long sumDurationMsByAlbumId(Long albumId);
 
+    /** Duración total de todas las canciones del catálogo (ms). 0 si vacío. */
+    @Query("SELECT COALESCE(SUM(s.durationMs), 0) FROM Song s")
+    long sumDurationMsAll();
+
     @Query("SELECT COALESCE(SUM(DISTINCT s.durationMs), 0) FROM Song s JOIN s.artists a WHERE a.id = :artistId")
     long sumDurationMsByArtistId(Long artistId);
 

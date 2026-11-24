@@ -128,6 +128,17 @@ public class Song extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private EnrichStatus enrichStatus;
 
+    /**
+     * Si TRUE el móvil pide /songs/{id}/cover (y existe _covers/song-{id}.ext).
+     * Si FALSE cae al cover del álbum. El OWNER lo cambia desde InfoScreen
+     * con POST /songs/{id}/cover (multipart).
+     */
+    @Column(name = "has_custom_cover", nullable = false)
+    private boolean hasCustomCover = false;
+
+    public boolean hasCustomCover() { return hasCustomCover; }
+    public void setHasCustomCover(boolean value) { this.hasCustomCover = value; }
+
     public void applyEnrichment(Integer bpm, String musicalKey, Double replayGain,
                                 String lyricsPath, String mbId, String isrc) {
         if (bpm != null) this.bpm = bpm;

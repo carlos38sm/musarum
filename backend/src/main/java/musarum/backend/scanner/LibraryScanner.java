@@ -448,22 +448,19 @@ public class LibraryScanner {
 
     /** Extrae la portada embebida y la guarda si álbum/artista aún no la tienen. */
     private void extractAndStoreCovers(String audioPath, Album album, Set<Artist> artists) {
-        boolean albumNeedsCover = album != null && (album.getCoverUrl() == null || album.getCoverUrl().isBlank());
-        Artist primaryArtist = artists.isEmpty() ? null : artists.iterator().next();
-        boolean artistNeedsImage = primaryArtist != null
-                && (primaryArtist.getImageUrl() == null || primaryArtist.getImageUrl().isBlank());
-
-        if (!albumNeedsCover && !artistNeedsImage) return;
-
+        // Importante: el APIC embebido en el audio es la portada del ÁLBUM,
+        // NUNCA una foto del artista. Antes aquí también se asignaba al
+        // artista como "imagen por defecto si no tiene", pero el resultado
+        // era que casi todos los artistas de la biblioteca terminaban con
+        // la carátula de un álbum como "cara". Solo álbumes a partir de nov-24
+        // 2026. Las fotos reales de artista llegan por Emendatium (MB /
+        // TheAudioDB) o por upload manual futuro. Si no hay ninguna, el
+        // móvil pinta placeholder determinista por artistId.
+        if (album == null) return;
+        if (album.getCoverUrl() != null && !album.getCoverUrl().isBlank()) return;
         coverExtractor.extract(audioPath).ifPresent(cover -> {
-            if (albumNeedsCover) {
-                String url = coverStorage.saveAlbumCover(album.getId(), cover.bytes(), cover.mimeType());
-                if (url != null) albumService.setCoverUrl(album.getId(), url);
-            }
-            if (artistNeedsImage) {
-                String url = coverStorage.saveArtistImage(primaryArtist.getId(), cover.bytes(), cover.mimeType());
-                if (url != null) artistService.setImageUrl(primaryArtist.getId(), url);
-            }
+            String url = coverStorage.saveAlbumCover(album.getId(), cover.bytes(), cover.mimeType());
+            if (url != null) albumService.setCoverUrl(album.getId(), url);
         });
     }
 

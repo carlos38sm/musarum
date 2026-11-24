@@ -20,14 +20,13 @@ public class SongMapper {
     }
 
     public SongSummaryDto toSummary(Song song) {
-        Album album = song.getAlbum();
         return new SongSummaryDto(
                 song.getId(),
                 song.getTitle(),
                 song.getDurationMs(),
                 song.getTrackNumber(),
                 mapArtists(song),
-                album != null ? album.getCoverUrl() : null
+                effectiveCoverUrl(song)
         );
     }
 
@@ -40,8 +39,21 @@ public class SongMapper {
                 mapArtists(song),
                 album != null ? album.getTitle() : null,
                 album != null ? album.getId() : null,
-                album != null ? album.getCoverUrl() : null
+                effectiveCoverUrl(song)
         );
+    }
+
+    /**
+     * Portada efectiva de la canción: si el OWNER le puso una propia
+     * (has_custom_cover = true) priorizamos ese endpoint específico;
+     * si no, caemos al cover del álbum (criterio histórico).
+     */
+    private String effectiveCoverUrl(Song song) {
+        if (song.hasCustomCover()) {
+            return "/songs/" + song.getId() + "/cover";
+        }
+        Album album = song.getAlbum();
+        return album != null ? album.getCoverUrl() : null;
     }
 
     SongDetailsDto toDetails(Song song, boolean isFavorite) {
@@ -60,7 +72,7 @@ public class SongMapper {
                 mapArtists(song),
                 album != null ? album.getTitle() : null,
                 album != null ? album.getId() : null,
-                album != null ? album.getCoverUrl() : null,
+                effectiveCoverUrl(song),
                 genre != null ? genre.getName() : null,
                 genre != null ? genre.getId() : null,
                 isFavorite,

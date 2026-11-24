@@ -67,6 +67,22 @@ interface ApiService {
     @retrofit2.http.POST("songs/{id}/re-enrich")
     suspend fun reEnrichSong(@Path("id") id: Long): retrofit2.Response<Unit>
 
+    // KPIs globales del catálogo: total de canciones + duración total (ms).
+    // Consumido por el hero de SongsScreen.
+    @GET("songs/library-stats")
+    suspend fun libraryStats(): com.musarum.mobile.data.network.dto.LibraryStatsDto
+
+    // Sube una portada propia para esta canción (OWNER, multipart).
+    @retrofit2.http.Multipart
+    @retrofit2.http.POST("songs/{id}/cover")
+    suspend fun uploadSongCover(
+        @Path("id") id: Long,
+        @retrofit2.http.Part file: okhttp3.MultipartBody.Part
+    ): SongDetailsDto
+
+    @retrofit2.http.DELETE("songs/{id}/cover")
+    suspend fun deleteSongCover(@Path("id") id: Long): SongDetailsDto
+
     // Reordenar canciones dentro de una playlist (drag-and-drop del móvil).
     @retrofit2.http.PATCH("playlists/{id}/entries/{entryId}/position")
     suspend fun moveEntry(

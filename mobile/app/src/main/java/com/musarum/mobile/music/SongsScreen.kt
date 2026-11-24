@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,8 +23,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -165,6 +168,24 @@ fun SongsScreen(
                                     snackbar("No se pudo localizar \"$title\": $reason")
                                 }
                             )
+                        },
+                        onPlayAll = {
+                            viewModel.loadAllOrdered { all ->
+                                if (all.isNotEmpty()) {
+                                    container.playerController.playQueue(all, 0)
+                                } else {
+                                    snackbar("No hay canciones en el catálogo")
+                                }
+                            }
+                        },
+                        onShuffleAll = {
+                            viewModel.loadAllOrdered { all ->
+                                if (all.isNotEmpty()) {
+                                    container.playerController.playQueue(all.shuffled(), 0)
+                                } else {
+                                    snackbar("No hay canciones en el catálogo")
+                                }
+                            }
                         }
                     )
                 }
@@ -216,7 +237,9 @@ private fun SongsList(
     onAdd: (SongSummaryDto) -> Unit,
     onJumpToIndex: (absoluteIndex: Int) -> Unit,
     onEnsureLoaded: (absoluteIndex: Int) -> Unit,
-    onJumpToCurrent: () -> Unit
+    onJumpToCurrent: () -> Unit,
+    onPlayAll: () -> Unit,
+    onShuffleAll: () -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
 
@@ -271,9 +294,10 @@ private fun SongsList(
             contentPadding = PaddingValues(end = 30.dp)
         ) {
             item {
-                LibraryStatsHeader(
-                    primary = "${state.totalCount} canciones",
-                    secondary = null
+                SongsLibraryHero(
+                    total = state.totalCount,
+                    onPlayAll = onPlayAll,
+                    onShuffleAll = onShuffleAll
                 )
             }
             // Un item por posición absoluta. key = índice (no song.id) porque
@@ -460,3 +484,122 @@ internal fun formatDuration(ms: Long): String {
     val seconds = totalSeconds % 60
     return "%d:%02d".format(minutes, seconds)
 }
+
+/**
+ * Hero de la pantalla de Canciones — mismo lenguaje visual que
+ * FavoritesHero / DownloadsHero: gradient radial del primary al fondo,
+ * icono MusicNote grande, título + stats (total + horas) y una fila
+ * de acciones Play / Aleatorio solo con iconos.
+ *
+ * El total de canciones llega como argumento (lo tiene el ViewModel);
+ * el tiempo total lo pide una vez a /songs/library-stats y lo cachea.
+ */
+@Composable
+private fun SongsLibraryHero(
+    total: Int,
+    onPlayAll: () -> Unit,
+    onShuffleAll: () -> Unit
+) {
+    val container = LocalAppContainer.current
+    val durationMs by androidx.compose.runtime.produceState<Long?>(initialValue = null) {
+        value = runCatching { container.apiService.libraryStats().totalDurationMs }.getOrNull()
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .height(180.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(
+                    androidx.compose.ui.graphics.Brush.radialGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                        )
+                    )
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Filled.MusicNote,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.size(96.dp)
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+        ) {
+            Text(
+                "Canciones",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                buildString {
+                    append(
+                        when (total) {
+                            1 -> "1 pista"
+                            else -> "$total pistas"
+                        }
+                    )
+                    durationMs?.let {
+                        append(" · ")
+                        append(humanizeHours(it))
+                    }
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            androidx.compose.material3.FilledIconButton(
+                onClick = onPlayAll,
+                modifier = Modifier.size(52.dp)
+            ) {
+                Icon(
+                    androidx.compose.material.icons.Icons.Filled.PlayArrow,
+                    contentDescription = "Reproducir todo",
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            androidx.compose.material3.Surface(
+                modifier = Modifier.size(48.dp).clickable(onClick = onShuffleAll),
+                shape = androidx.compose.foundation.shape.CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        androidx.compose.material.icons.Icons.Filled.Shuffle,
+                        contentDescription = "Reproducir aleatorio",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * "Y h" ó "Y h M min" según convenga. Útil para el hero de Canciones.
+ */
+private fun humanizeHours(ms: Long): String {
+    val totalMinutes = ms / 60_000L
+    if (totalMinutes < 60) return "$totalMinutes min"
+    val hours = totalMinutes / 60
+    val minutes = totalMinutes % 60
+    return if (minutes == 0L) "$hours h" else "$hours h $minutes min"
+}
+

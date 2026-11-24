@@ -279,6 +279,16 @@ public class SongService {
     }
 
     @Transactional(readOnly = true)
+    /** Total de canciones del catálogo. Barato (COUNT(*)). */
+    public long countAll() {
+        return songRepository.count();
+    }
+
+    /** Duración total del catálogo en ms (SUM sobre todas las canciones). */
+    public long totalDurationMs() {
+        return songRepository.sumDurationMsAll();
+    }
+
     public Page<SongSummaryDto> findAll(Pageable pageable) {
         // Ignoramos el sort del Pageable: el orden "humano" (letras primero,
         // luego números/símbolos/no-latinos) lo fija la query nativa, y tiene

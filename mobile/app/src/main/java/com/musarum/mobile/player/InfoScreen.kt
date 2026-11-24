@@ -44,6 +44,7 @@ import com.musarum.mobile.data.network.dto.SongDetailsDto
 import com.musarum.mobile.music.library.AddToPlaylistDialog
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -339,14 +340,58 @@ private fun InfoSections(
         }
 
         // ── Mantenimiento (solo OWNER) ──
-        // Re-enriquecimiento DIRIGIDO a esta canción. Útil cuando falta BPM,
-        // tonalidad o portada en UNA pista concreta — más preciso que lanzar
-        // el re-enrich global del Análisis del servidor. Fire-and-forget.
         if (isOwner) {
             val snackbar = LocalSnackbar.current
             val scope = rememberCoroutineScope()
+            val ctx = androidx.compose.ui.platform.LocalContext.current
             var requesting by remember { mutableStateOf(false) }
+            var uploading by remember { mutableStateOf(false) }
+            val coverPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+                androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+            ) { uri ->
+                if (uri != null) {
+                    uploading = true
+                    scope.launch {
+                        val ok = runCatching {
+                            val bytes = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                                ?: error("No se pudo leer la imagen")
+                            val mime = ctx.contentResolver.getType(uri) ?: "image/jpeg"
+                            val mediaType = okhttp3.MediaType.Companion.run { mime.toMediaTypeOrNull() }
+                            val part = okhttp3.MultipartBody.Part.createFormData(
+                                "file",
+                                "cover.jpg",
+                                okhttp3.RequestBody.create(mediaType, bytes)
+                            )
+                            container.apiService.uploadSongCover(details.id, part)
+                        }.isSuccess
+                        snackbar(if (ok) "Portada actualizada" else "No se pudo cambiar la portada")
+                        uploading = false
+                    }
+                }
+            }
             Section("Mantenimiento") {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        if (!uploading) {
+                            coverPicker.launch(
+                                androidx.activity.result.PickVisualMediaRequest(
+                                    androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly
+                                )
+                            )
+                        }
+                    },
+                    enabled = !uploading,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Filled.Image,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (uploading) "Subiendo…" else "Cambiar portada de esta canción")
+                }
+                Spacer(Modifier.height(8.dp))
                 androidx.compose.material3.OutlinedButton(
                     onClick = {
                         if (!requesting) {
@@ -381,6 +426,7 @@ private fun InfoSections(
         Spacer(Modifier.height(32.dp))
     }
 }
+
 
 /**
  * Estados del bloque "Esta canción suena a…". Permite diferenciar
