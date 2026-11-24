@@ -71,8 +71,24 @@ class PlayerService : MediaSessionService() {
         val mediaSourceFactory = DefaultMediaSourceFactory(this)
             .setDataSourceFactory(dataSourceFactory)
 
+        // LoadControl tuneado para arranque rápido: por defecto ExoPlayer no
+        // empieza a sonar hasta tener 2500ms de buffer, y rebufferea cuando
+        // bajamos de 5000ms. Para música comprimida sobre Tailscale (que ya es
+        // red local baja latencia) podemos arrancar con 600ms y rebuffer a
+        // 1200ms sin riesgo real de underrun. Lo que gana el user: en vez
+        // de tocar play y esperar 1-2s a que empiece, suena casi instantáneo.
+        val loadControl = androidx.media3.exoplayer.DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                /* minBufferMs = */ 15_000,
+                /* maxBufferMs = */ 50_000,
+                /* bufferForPlaybackMs = */ 600,
+                /* bufferForPlaybackAfterRebufferMs = */ 1_200
+            )
+            .build()
+
         val player: ExoPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
+            .setLoadControl(loadControl)
             .setAudioAttributes(
                 AudioAttributes.Builder()
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
