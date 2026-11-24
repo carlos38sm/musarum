@@ -116,10 +116,21 @@ public class PlaylistService {
                 .map(e -> e.getSong().getId())
                 .collect(java.util.stream.Collectors.toSet());
 
+        // Antes: findEntityById por cada songId → N selects. Para 50 canciones,
+        // 50 round-trips a Postgres. Ahora un solo findAllById que trae todas
+        // de golpe. Las songs inexistentes se filtran (songsById.get == null).
+        java.util.List<Long> toLookup = request.songIds().stream()
+                .filter(id -> id != null && !existing.contains(id))
+                .distinct()
+                .toList();
+        java.util.Map<Long, Song> songsById = songService.findEntitiesByIds(toLookup).stream()
+                .collect(java.util.stream.Collectors.toMap(Song::getId, s -> s));
+
         int nextPos = playlistRepository.findMaxPositionInPlaylist(playlistId) + 1;
         for (Long songId : request.songIds()) {
             if (songId == null || existing.contains(songId)) continue;
-            Song song = songService.findEntityById(songId);
+            Song song = songsById.get(songId);
+            if (song == null) continue;  // id inválido, saltar sin romper
             PlaylistEntry entry = PlaylistEntry.builder()
                     .playlist(playlist)
                     .song(song)

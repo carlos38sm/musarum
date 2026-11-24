@@ -18,6 +18,10 @@ public interface FavoriteRepository extends JpaRepository<Favorite, Long> {
      *  canción. Útil al eliminar la canción entera del servidor. */
     long deleteBySongId(Long songId);
 
+    /** Borra todos los favoritos de un usuario. Usado al eliminar el usuario
+     *  (antes se cargaba findBy...() a memoria y se borraba uno a uno). */
+    long deleteByUserId(Long userId);
+
     /** Snapshot plano para el BackupService: (user_id, song_id, created_at).
      *  Nativa para no cargar entidades Favorite completas en memoria. */
     @Query(value = "SELECT user_id, song_id, created_at FROM favorites ORDER BY user_id, song_id",

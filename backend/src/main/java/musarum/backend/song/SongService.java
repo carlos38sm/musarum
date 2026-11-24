@@ -66,6 +66,13 @@ public class SongService {
                 .orElseThrow(() -> new SongNotFoundException(id));
     }
 
+    /** Lote de entidades por id — evita N+1 en callers que necesitan varias. */
+    @Transactional(readOnly = true)
+    public List<Song> findEntitiesByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        return songRepository.findAllById(ids);
+    }
+
     /**
      * "Esta canción suena a…": encuentra canciones del catálogo con
      * tonalidad compatible en Camelot (misma, +1, −1, relativa) y BPM

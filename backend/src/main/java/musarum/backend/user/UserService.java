@@ -234,8 +234,10 @@ public class UserService {
             }
         }
 
-        favoriteRepository.deleteAll(
-                favoriteRepository.findByUserIdOrderByCreatedAtDesc(userId));
+        // Antes cargábamos findByUserIdOrderByCreatedAtDesc → List<Favorite>
+        // y llamábamos deleteAll(). Innecesario: una query derivada
+        // deleteByUserId hace un solo DELETE ... WHERE user_id = ?.
+        favoriteRepository.deleteByUserId(userId);
         // Reproducciones del user: query derivada (DELETE FROM reproductions
         // WHERE user_id = ?) con índice (user_id, created_at). Antes se hacía
         // findAll().stream().filter → O(N) memoria sobre toda la tabla de
