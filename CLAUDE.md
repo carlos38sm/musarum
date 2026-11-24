@@ -429,11 +429,19 @@ Bloques 24, long-press, playlist, sección Biblioteca e indicador en SongRow. Ya
 
 ### 🟡 Media prioridad (vivos)
 1. **Multi-artista en nombres de archivo** — hoy el renombrado (lógica en Emendatium) solo toma 1 artista. Juntar `artist-credit[]` de MusicBrainz con separador ", ". **Nota**: el TAG editor del bloque 46 ya acepta multi-artista por coma en `artist` del request, pero solo sobre edición manual — el renombrado automático al escanear sigue siendo single-artist.
-2. **Capitalización inteligente** en títulos — preservar "de", "la", "el", "the", "and", "para"... en minúsculas. ~15 líneas en `TitleBuilder` de Emendatium.
+2. ~~**Capitalización inteligente** en títulos~~ → ya implementado en [SmartCase.java](backend/src/main/java/musarum/backend/shared/SmartCase.java) con preposiciones ES/EN/FR, siglas y camelCase (regla Chicago Manual of Style).
 3. **Mover definición de ReplayGain de Info a Ajustes** — pendiente de localizar la referencia exacta en InfoScreen; si la sigue mencionando, moverla.
 4. **Playlists colaborativas end-to-end** — backend existe (`canEdit`, `addCollaborator`, `removeCollaborator`), diálogo invitar en mobile existe, pero falta probar flujo e2e. Sin notificaciones push (Tailscale, 4 users).
 5. **Emendatium desplegado** — hoy sigue sin contenedor levantado. El Dockerfile existe desde el bloque 39; falta meterlo en el compose real del portátil + variable `EMENDATIUM_BASE_URL` en `.env`. Hasta entonces, las letras y el bloque 42 "Re-enriquecer todo" dependen del pipeline interno del backend (bloque 35), no del Emendatium real.
 6. **Comandos de voz avanzados** — el router del bloque 47-I solo cubre comandos cortos. Faltaría "añade a favoritos", "quita de favoritos", "abre playlist X", "cancela sleep", "pon modo fiesta" (apoyarse en smart playlists del bloque 44).
+
+### 🟢 Auditoría nov-24: pendientes blandos (no urgentes)
+- ~~**LibraryScanner self-invocation @Transactional**~~ → arreglado con `@Lazy @Autowired LibraryScanner self` (backend-v1.0.53).
+- ~~**LibraryWatcher solo vigila la raíz**~~ → ahora recursivo con `Files.walkFileTree` + registro dinámico de sub-carpetas (backend-v1.0.53).
+- ~~**LibraryWatcher sleep(500) ciego**~~ → `waitUntilStable()` espera a que el tamaño deje de crecer (backend-v1.0.54).
+- ~~**Índices faltantes name_key/title_key**~~ → V16 (backend-v1.0.54).
+- **`SongService.deleteByContentHashes` bulk N count queries** — para el usuario de hoy no muerde; revisar si se borrara una biblioteca entera de 7000+.
+- **Mobile 82× `collectAsState()` → `collectAsStateWithLifecycle()`** — ahorro de batería marginal; cambio mecánico a futuro.
 
 ### 🟢 Baja prioridad / nice-to-have
 7. **Modo gapless** real (más allá del crossfade).
