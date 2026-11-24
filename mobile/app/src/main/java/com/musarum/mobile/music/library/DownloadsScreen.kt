@@ -89,6 +89,24 @@ fun DownloadsScreen(onBack: () -> Unit) {
 
     var confirmClearAll by remember { mutableStateOf(false) }
 
+    // Backfill transparente: las descargas anteriores a nov-24-pm 2026 no
+    // tenían snapshot de coverUrl, así que todas pintaban placeholder.
+    // Al entrar en esta pantalla, por cada info.coverUrl=null preguntamos
+    // al backend /songs/{id} y actualizamos el index.json. Una sola pasada
+    // por apertura; si falla la red, se reintenta la próxima vez.
+    LaunchedEffect(Unit) {
+        val missing = container.downloadsRepository.entries.value.values
+            .filter { it.coverUrl.isNullOrBlank() }
+        for (info in missing) {
+            val cover = runCatching {
+                container.songRepository.details(info.songId).coverUrl
+            }.getOrNull()
+            if (!cover.isNullOrBlank()) {
+                container.downloadsRepository.upsert(info.copy(coverUrl = cover))
+            }
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
