@@ -18,7 +18,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +65,13 @@ public class LibraryScanner {
     private final EmendatiumAutoEnricher emendatiumEnricher;
     private final LyricsWriter lyricsWriter;
     private final LibraryFolderService libraryFolderService;
+    // Self-reference para forzar que las llamadas internas a métodos
+    // @Transactional (importSingleSongWithCatalog) pasen por el proxy de
+    // Spring. Sin esto, invocar this.importSingleSongWithCatalog(...) desde
+    // importNewSongs es self-invocation y la @Transactional se ignora.
+    // @Lazy rompe el ciclo A → B → A al construir el bean.
+    @Autowired @Lazy
+    private LibraryScanner self;
 
     public LibraryScanner(@Value("${MUSARUM_MUSIC_PATH}") String musicPath,
                           SongService songService,
@@ -271,9 +280,14 @@ public class LibraryScanner {
                         boolean updated = songService.refreshHashByAudioPath(path, hash);
                         if (updated) refreshed++;
                     } else {
-                        // Cada canción abre su propia transacción corta.
-                        // La variante con catalog usa el cache pre-cargado.
-                        importSingleSongWithCatalog(path, hash, catalog);
+                        // Cada canción abre su propia transacción corta a
+                        // través del proxy (self.importSingleSongWithCatalog).
+                        // Llamar this.importSingleSongWithCatalog sería
+                        // self-invocation y la @Transactional no aplicaría —
+                        // esto nos protege contra futuros pasos que necesiten
+                        // atomicidad global de "crear canción + aplicar
+                        // enriquecimiento + cover + letra".
+                        self.importSingleSongWithCatalog(path, hash, catalog);
                         imported++;
                         log.debug("Importada: {}", path);
                     }
