@@ -3,6 +3,7 @@ package com.musarum.mobile.player
 import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -140,11 +141,13 @@ private fun DeviceRow(
     selected: Boolean,
     onClick: () -> Unit
 ) {
-    val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-             else androidx.compose.ui.graphics.Color.Transparent
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(
+                if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+                else androidx.compose.ui.graphics.Color.Transparent
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -192,13 +195,6 @@ private fun DeviceRow(
                 tint = MaterialTheme.colorScheme.primary
             )
         }
-    }
-    // Tintamos la fila entera si está seleccionada (pintamos un Box detrás
-    // con el color del bg). El `bg` ya se calculó pero Compose aplica a
-    // los modifiers del Row — no al ancho total. Overlay fino para el efecto.
-    if (bg != androidx.compose.ui.graphics.Color.Transparent) {
-        // No-op: la indicación la da el círculo del icono + check, bg
-        // queda reservado por si lo queremos usar más adelante.
     }
 }
 
