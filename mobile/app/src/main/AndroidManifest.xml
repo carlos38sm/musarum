@@ -24,6 +24,13 @@
          de batería, Android/Doze no corta la red con la pantalla apagada y
          los Bluetooth no se quedan sin stream entre canciones. -->
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <!-- Para leer el nombre comercial del dispositivo Bluetooth cuando
+         Android 12+ bloquea productName sin este permiso (p. ej. mostrar
+         "Alexa" en lugar de "Bluetooth"). neverForLocation para que Google
+         no lo trate como permiso de localización. -->
+    <uses-permission
+        android:name="android.permission.BLUETOOTH_CONNECT"
+        android:usesPermissionFlags="neverForLocation" />
     <application
         android:name=".MusarumApplication"
         android:networkSecurityConfig="@xml/network_security_config"

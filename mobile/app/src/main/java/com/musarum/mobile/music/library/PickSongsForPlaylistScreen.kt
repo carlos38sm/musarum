@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Checkbox
@@ -192,16 +194,49 @@ private fun PickerSongRow(
     selected: Boolean,
     onToggle: () -> Unit
 ) {
+    // Selección por resaltado (fondo primary semi-transparente + check
+    // pequeño en la portada), sin checkboxes a la izquierda. Pedido
+    // Carlos nov-24-pm: los cuadraditos quedaban feos. El toggle sigue
+    // siendo tap en toda la fila.
+    val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+             else androidx.compose.ui.graphics.Color.Transparent
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(bg)
             .clickable(onClick = onToggle)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Checkbox(checked = selected, onCheckedChange = { onToggle() })
-        Spacer(Modifier.width(4.dp))
-        CoverImage(url = song.coverUrl, size = 48.dp, cornerRadius = 6.dp)
+        Box(modifier = Modifier.size(48.dp)) {
+            CoverImage(
+                url = song.coverUrl,
+                size = 48.dp,
+                cornerRadius = 6.dp,
+                placeholderKind = com.musarum.mobile.music.PlaceholderKind.SONGS,
+                placeholderSeed = song.id
+            )
+            if (selected) {
+                // Overlay translúcido + check en el centro: feedback claro
+                // de "esta canción está seleccionada".
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.55f),
+                            androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        androidx.compose.material.icons.Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(28.dp)
+                    )
+                }
+            }
+        }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(

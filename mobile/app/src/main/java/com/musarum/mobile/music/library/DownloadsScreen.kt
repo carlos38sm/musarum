@@ -97,19 +97,6 @@ fun DownloadsScreen(onBack: () -> Unit) {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
                     }
-                },
-                actions = {
-                    // Papelera global (borrar todas) — pedida Carlos nov-24.
-                    // Solo visible si hay algo que borrar; evita acción vacía.
-                    if (list.isNotEmpty()) {
-                        IconButton(onClick = { confirmClearAll = true }) {
-                            Icon(
-                                Icons.Filled.DeleteSweep,
-                                contentDescription = "Borrar todas las descargas",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
                 }
             )
         }
@@ -158,7 +145,8 @@ fun DownloadsScreen(onBack: () -> Unit) {
                                 if (shuffled.isNotEmpty()) {
                                     container.playerController.playQueue(shuffled, 0)
                                 }
-                            }
+                            },
+                            onClearAll = { confirmClearAll = true }
                         )
                         HorizontalDivider()
                     }
@@ -227,7 +215,8 @@ private fun DownloadsHero(
     count: Int,
     totalBytes: Long,
     onPlay: () -> Unit,
-    onShuffle: () -> Unit
+    onShuffle: () -> Unit,
+    onClearAll: () -> Unit
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(
@@ -275,12 +264,14 @@ private fun DownloadsHero(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        // Fila de acciones. Play/Shuffle a la izquierda, papelera global
+        // a la derecha (misma fila, pedido Carlos nov-24-pm). Spacer con
+        // weight empuja la papelera al margen opuesto.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
             FilledIconButton(
                 onClick = onPlay,
@@ -296,6 +287,7 @@ private fun DownloadsHero(
                     modifier = Modifier.size(28.dp)
                 )
             }
+            Spacer(Modifier.width(12.dp))
             Surface(
                 modifier = Modifier.size(48.dp).clickable(onClick = onShuffle),
                 shape = CircleShape,
@@ -306,6 +298,22 @@ private fun DownloadsHero(
                         Icons.Filled.Shuffle,
                         contentDescription = "Reproducir aleatorio",
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            // Papelera en el extremo derecho — borra TODAS las descargas
+            // (con AlertDialog de confirmación).
+            Surface(
+                modifier = Modifier.size(48.dp).clickable(onClick = onClearAll),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Filled.DeleteSweep,
+                        contentDescription = "Borrar todas las descargas",
+                        tint = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }
@@ -388,14 +396,15 @@ private fun DownloadRow(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Portada de la canción + badge esquina sup derecha señalando
+        // Portada real de la canción + badge esquina sup derecha señalando
         // modo (reloj = temporal, check = permanente). Idea pedida por
         // Carlos nov-24: "como una notificación, un puntito arriba".
-        // DownloadInfo no guarda coverUrl, así que usamos el placeholder
-        // determinista por songId (mismo que SongRow cuando no hay cover).
+        // Desde nov-24-pm DownloadInfo guarda coverUrl, así se pinta la
+        // portada real; las descargas viejas (coverUrl=null) caen al
+        // placeholder determinista por songId.
         Box(modifier = Modifier.size(48.dp)) {
             CoverImage(
-                url = null,
+                url = info.coverUrl,
                 size = 48.dp,
                 cornerRadius = 8.dp,
                 placeholderKind = com.musarum.mobile.music.PlaceholderKind.SONGS,
@@ -454,5 +463,7 @@ private fun DownloadInfo.toSongSummary(): SongSummaryDto = SongSummaryDto(
     durationMs = null,
     trackNumber = null,
     artists = listOf(ArtistRefDto(id = 0, name = artistsLabel)),
-    coverUrl = null
+    // Reutilizamos el coverUrl que se guardó al descargar, así al reproducir
+    // desde Descargas el NowPlaying muestra portada correcta sin ir al backend.
+    coverUrl = coverUrl
 )

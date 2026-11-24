@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
@@ -317,20 +318,27 @@ private fun SwipeableFavoriteRow(
                 androidx.compose.material3.SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
                 else -> Alignment.Center
             }
+            // Fondo rellena toda la fila (alto+ancho) y pinta papelera en
+            // ambos lados — cualquier swipe elimina la favorita. El icono
+            // corazón de antes confundía (parecía "añadir" en vez de
+            // "quitar"). Pedido Carlos nov-24-pm.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .background(MaterialTheme.colorScheme.error)
                     .padding(horizontal = 24.dp),
                 contentAlignment = alignment
             ) {
                 Icon(
-                    Icons.Filled.Favorite,
+                    Icons.Filled.Delete,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onErrorContainer
+                    tint = MaterialTheme.colorScheme.onError
                 )
             }
         },
+        // Ambos lados: eliminar. En Favoritas no hay otra acción válida
+        // (no se "añade" lo que ya es favorito); dos direcciones quitando
+        // es menos cargado que meter algo arbitrario en uno de ellos.
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true
     ) {

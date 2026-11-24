@@ -29,6 +29,8 @@ class PlayerService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var equalizer: Equalizer? = null
     private var equalizerJob: Job? = null
+    // Elevado a campo para que applyPreferredAudioDevice pueda tocarlo.
+    private var exoPlayer: ExoPlayer? = null
     private val serviceScope: CoroutineScope = MainScope()
     private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
 
@@ -69,7 +71,7 @@ class PlayerService : MediaSessionService() {
         val mediaSourceFactory = DefaultMediaSourceFactory(this)
             .setDataSourceFactory(dataSourceFactory)
 
-        val player = ExoPlayer.Builder(this)
+        val player: ExoPlayer = ExoPlayer.Builder(this)
             .setMediaSourceFactory(mediaSourceFactory)
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -87,6 +89,7 @@ class PlayerService : MediaSessionService() {
             .setWakeMode(C.WAKE_MODE_NETWORK)
             .build()
 
+        exoPlayer = player
         mediaSession = MediaSession.Builder(this, player).build()
 
         // Ecualizador 5 bandas enganchado al audio session del ExoPlayer.
@@ -148,6 +151,29 @@ class PlayerService : MediaSessionService() {
                     }
                 }
         }
+
+        // Observa el dispositivo de salida preferido. Cuando el BottomSheet
+        // de NowPlayingScreen elige uno, ExoPlayer enruta la pista hacia él.
+        // null = "deja decidir al sistema" (comportamiento original).
+        serviceScope.launch {
+            container.preferredAudioDeviceId.collect { deviceId ->
+                runCatching { applyPreferredAudioDevice(deviceId) }
+            }
+        }
+    }
+
+    /**
+     * Resuelve el AudioDeviceInfo por id en AudioManager y se lo aplica al
+     * ExoPlayer. Si el id es null o el dispositivo ya no está disponible
+     * (lo desconectaron), pasa null → el sistema vuelve a decidir.
+     */
+    private fun applyPreferredAudioDevice(deviceId: Int?) {
+        val target: android.media.AudioDeviceInfo? = if (deviceId == null) null else {
+            val am = getSystemService(AUDIO_SERVICE) as android.media.AudioManager
+            am.getDevices(android.media.AudioManager.GET_DEVICES_OUTPUTS)
+                .firstOrNull { it.id == deviceId }
+        }
+        runCatching { exoPlayer?.setPreferredAudioDevice(target) }
     }
 
     private var equalizerSessionId: Int = 0

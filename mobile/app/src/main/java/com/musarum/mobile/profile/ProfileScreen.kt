@@ -287,8 +287,8 @@ fun ProfileScreen(
             SettingRowSwitch(
                 icon = Icons.Filled.MusicNote,
                 title = "Reproducción continua",
-                subtitle = if (crossfadeSeconds > 0) "Ignorado mientras uses crossfade"
-                           else "Sin pausa entre canciones de un álbum",
+                subtitle = if (crossfadeSeconds > 0) "Ignorado con crossfade"
+                           else "Sin pausa entre canciones",
                 checked = gaplessEnabled,
                 onCheckedChange = {
                     container.playerPreferences.setGaplessEnabled(it)
@@ -391,7 +391,7 @@ fun ProfileScreen(
             SettingRowSwitch(
                 icon = Icons.Filled.Headphones,
                 title = "Compartir qué escucho",
-                subtitle = "Aparezco en Comunidad cuando escucho algo",
+                subtitle = "Aparezco en Comunidad",
                 checked = me?.shareNowPlaying != false,
                 onCheckedChange = { value -> viewModel.updatePrivacyNowPlaying(value) }
             )

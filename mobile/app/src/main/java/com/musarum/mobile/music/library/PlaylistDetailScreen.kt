@@ -969,56 +969,58 @@ private fun SwipeBackground(
     direction: SwipeToDismissBoxValue,
     isFavorite: Boolean
 ) {
-    when (direction) {
-        SwipeToDismissBoxValue.StartToEnd -> Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.primary)
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Start
-        ) {
-            Icon(
-                imageVector = if (isFavorite) Icons.Filled.FavoriteBorder
-                              else Icons.Filled.Favorite,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(28.dp)
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                if (isFavorite) "Quitar de favoritas" else "Añadir a favoritas",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.SemiBold
-            )
+    // Fondo que RELLENA toda la fila (alto + ancho). Antes solo el Row
+    // con iconos ocupaba altura del contenido y quedaba un marco vacío
+    // arriba y abajo mostrando el fondo de la lista. Nov-24 2026.
+    val bg = when (direction) {
+        SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primary
+        SwipeToDismissBoxValue.EndToStart -> MaterialTheme.colorScheme.error
+        SwipeToDismissBoxValue.Settled -> androidx.compose.ui.graphics.Color.Transparent
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(bg)
+            .padding(horizontal = 20.dp),
+        contentAlignment = when (direction) {
+            SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+            SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+            SwipeToDismissBoxValue.Settled -> Alignment.Center
         }
-        SwipeToDismissBoxValue.EndToStart -> Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.error)
-                .padding(horizontal = 20.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.End
-        ) {
-            Text(
-                "Quitar de la playlist",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onError,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.width(10.dp))
-            Icon(
-                imageVector = Icons.Filled.Delete,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onError,
-                modifier = Modifier.size(28.dp)
-            )
-        }
-        SwipeToDismissBoxValue.Settled -> {
-            // En reposo no se debería ver el fondo; dejamos un Box vacío
-            // del tamaño de la fila para que el layout no colapse.
-            Box(modifier = Modifier.fillMaxWidth())
+    ) {
+        when (direction) {
+            SwipeToDismissBoxValue.StartToEnd -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = if (isFavorite) Icons.Filled.FavoriteBorder
+                                  else Icons.Filled.Favorite,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(28.dp)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    if (isFavorite) "Quitar de favoritas" else "Añadir a favoritas",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            SwipeToDismissBoxValue.EndToStart -> Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Quitar de la playlist",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onError,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Spacer(Modifier.width(10.dp))
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onError,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+            SwipeToDismissBoxValue.Settled -> {}
         }
     }
 }

@@ -47,12 +47,12 @@ import androidx.compose.ui.unit.dp
 enum class PlayerMode { TRACK, LYRICS, INFO, VIDEO }
 
 private const val PILL_ANIM_MS = 280
-// Píldora compacta — estilo YT Music. Antes 44dp; ahora 36dp para dejar
-// más aire a la cabecera del NowPlaying. Icono 18dp dentro.
-private val PILL_HEIGHT = 36.dp
-private val PILL_TAB_WIDTH = 40.dp
+// Píldora extra-fina — iteración nov-24-pm. Antes 36dp, aun demasiado
+// gorda según Carlos; ahora 30dp con tabs 36dp e iconos 16dp.
+private val PILL_HEIGHT = 30.dp
+private val PILL_TAB_WIDTH = 36.dp
 private val PILL_INNER_PADDING = 2.dp
-private val PILL_ICON_SIZE = 18.dp
+private val PILL_ICON_SIZE = 16.dp
 
 private data class PillTab(val mode: PlayerMode, val icon: ImageVector, val label: String)
 

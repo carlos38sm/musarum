@@ -147,6 +147,7 @@ fun NowPlayingScreen(
     // Toggle de mini-letra persistente mientras no se cambie de sesión. El
     // botón solo responde si hay lyrics sincronizadas en la pista actual.
     var showMiniLyric by rememberSaveable { mutableStateOf(false) }
+    var showOutputSheet by remember { mutableStateOf(false) }
 
     // Parseo LRC — vacío si no hay o si no está sincronizada.
     val syncedLines = remember(vmState.lyrics) { LrcParser.parse(vmState.lyrics) }
@@ -304,6 +305,7 @@ fun NowPlayingScreen(
         // Orden: mini-letra · descargar · añadir · ♥. El menú "..." se
         // movió a la esquina superior derecha del shell (topEndContent).
         ActionsRow(
+            onOpenOutput = { showOutputSheet = true },
             isFavorite = vmState.isFavorite,
             onToggleFavorite = {
                 // Sin snackbar: el cambio de color del ♥ ya es feedback claro.
@@ -369,6 +371,10 @@ fun NowPlayingScreen(
                 }
             )
         }
+    }
+
+    if (showOutputSheet) {
+        AudioOutputSheet(onDismiss = { showOutputSheet = false })
     }
 
     if (showAddToPlaylist) {
@@ -816,6 +822,7 @@ internal fun OverflowMenu(
 
 @Composable
 private fun ActionsRow(
+    onOpenOutput: () -> Unit,
     isFavorite: Boolean,
     onToggleFavorite: () -> Unit,
     onLongPressFavorite: () -> Unit,
@@ -826,7 +833,6 @@ private fun ActionsRow(
     downloadState: DownloadState,
     onDownload: () -> Unit
 ) {
-    val ctx = androidx.compose.ui.platform.LocalContext.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -834,12 +840,12 @@ private fun ActionsRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.End
     ) {
-        // Selector de salida de audio — el picker nativo del sistema
-        // (Android 11+ muestra el panel con todos los dispositivos:
-        // móvil, auriculares, Bluetooth, altavoces Cast). En Android
-        // más antiguo cae a los ajustes de sonido.
+        // Selector in-app de dispositivo de salida — abre el AudioOutputSheet
+        // con la lista de outputs vía AudioManager (altavoz, auriculares,
+        // Bluetooth, Alexa pareada, etc.). Reemplaza al picker del sistema
+        // de la versión anterior — Carlos lo quería dentro de la app.
         GhostCircleButton(
-            onClick = { openAudioOutputPicker(ctx) },
+            onClick = onOpenOutput,
             contentDescription = "Elegir dispositivo de salida"
         ) {
             Icon(
@@ -1174,38 +1180,6 @@ internal fun QuarterNoteThumb() {
                 topLeft = Offset(w * 0.02f, h * 0.68f),
                 size = Size(w * 0.80f, h * 0.28f)
             )
-        }
-    }
-}
-
-/**
- * Abre el picker del sistema de "dispositivo de salida de audio"
- * (altavoz móvil, auriculares con cable, Bluetooth, Cast…). En Android
- * 11+ (API 30+) existe el panel nativo "MEDIA_OUTPUT" — es el mismo
- * que Spotify/YT Music usan. En versiones más antiguas caemos a los
- * ajustes de sonido de la app, que es lo más parecido disponible sin
- * MediaRouteButton visible.
- */
-internal fun openAudioOutputPicker(context: android.content.Context) {
-    runCatching {
-        if (android.os.Build.VERSION.SDK_INT >= 30) {
-            val intent = android.content.Intent("com.android.settings.panel.action.MEDIA_OUTPUT")
-                .apply {
-                    putExtra("android.provider.extra.PACKAGE_NAME", context.packageName)
-                    addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-            context.startActivity(intent)
-        } else {
-            val intent = android.content.Intent(android.provider.Settings.ACTION_SOUND_SETTINGS)
-                .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
-            context.startActivity(intent)
-        }
-    }.onFailure {
-        // Último recurso: ajustes de Bluetooth. Algún ROM capa el panel.
-        runCatching {
-            val intent = android.content.Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
-                .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
-            context.startActivity(intent)
         }
     }
 }

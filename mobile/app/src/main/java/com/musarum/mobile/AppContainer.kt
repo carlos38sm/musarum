@@ -44,6 +44,15 @@ class AppContainer(context: Context) {
     val audioSessionIdFlow: kotlinx.coroutines.flow.MutableStateFlow<Int> =
         kotlinx.coroutines.flow.MutableStateFlow(0)
 
+    /**
+     * Dispositivo de salida preferido (id del AudioDeviceInfo.getId()) o null
+     * para dejar que el sistema decida. El PlayerService observa este flow y
+     * llama ExoPlayer.setPreferredAudioDevice al dispositivo que lo tenga.
+     * El BottomSheet de salida en NowPlayingScreen lo escribe al seleccionar.
+     */
+    val preferredAudioDeviceId: kotlinx.coroutines.flow.MutableStateFlow<Int?> =
+        kotlinx.coroutines.flow.MutableStateFlow(null)
+
     val baseUrlStore: BaseUrlStore = BaseUrlStore(context)
     /** URL del backend resuelta UNA vez al construir AppContainer. Todos
      *  los callers (CoverImage, DownloadsManager, PlayerController, …) leen

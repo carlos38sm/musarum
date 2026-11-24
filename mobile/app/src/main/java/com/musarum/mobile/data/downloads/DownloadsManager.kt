@@ -125,7 +125,10 @@ class DownloadsManager(
                         expiresAt = if (temporary) now + TEMPORARY_DURATION_MS else null,
                         sizeBytes = finalFile.length(),
                         title = song.title,
-                        artistsLabel = song.artistsLabel
+                        artistsLabel = song.artistsLabel,
+                        // Snapshot del coverUrl para pintar portada real en
+                        // DownloadsScreen sin depender del backend al vuelo.
+                        coverUrl = song.coverUrl
                     )
                     repository.upsert(info)
                     Log.i(TAG, "Descargada ${song.id} (${info.sizeBytes} B, temp=$temporary)")

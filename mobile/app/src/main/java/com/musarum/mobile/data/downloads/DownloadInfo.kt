@@ -17,7 +17,11 @@ data class DownloadInfo(
     val expiresAt: Long?,       // epoch ms, null = permanente
     val sizeBytes: Long,
     val title: String,          // snapshot al descargar — para listado offline sin backend
-    val artistsLabel: String
+    val artistsLabel: String,
+    // Snapshot del coverUrl relativo o absoluto en el momento de la descarga.
+    // Las descargas anteriores a nov-24-pm 2026 no lo traen (null): esos
+    // ítems se pintan con placeholder determinista hasta que se re-descarguen.
+    val coverUrl: String? = null
 ) {
     val isTemporary: Boolean get() = expiresAt != null
 }
