@@ -289,6 +289,7 @@ public class SongService {
         return songRepository.sumDurationMsAll();
     }
 
+    @Transactional(readOnly = true)
     public Page<SongSummaryDto> findAll(Pageable pageable) {
         // Ignoramos el sort del Pageable: el orden "humano" (letras primero,
         // luego números/símbolos/no-latinos) lo fija la query nativa, y tiene
