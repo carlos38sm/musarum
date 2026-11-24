@@ -150,11 +150,12 @@ public class LibraryWatcher {
             boolean relocated = songService.relocateByHash(hash, normalizedPath);
             if (relocated) {
                 log.info("Archivo reubicado (mismo contenido, nueva ruta): {}", normalizedPath);
-                // Si llegó este CREATE porque el usuario está renombrando y
-                // el DELETE todavía está pendiente, cancelamos ese borrado:
-                // la fila sigue viva (ahora apuntando a la nueva ruta).
-                pendingDeletesByPath.values().removeIf(ts -> false); // no-op legible
-                pendingDeletesByPath.clear();
+                // No hace falta tocar pendingDeletesByPath aquí: relocateByHash
+                // actualizó audio_path al nuevo, así que cuando flushPendingDeletes
+                // intente borrar el oldPath, findEntityByAudioPath devolverá vacío
+                // y no borra nada. Antes se hacía un clear() global que cancelaba
+                // TODOS los pendientes aunque solo se hubiera reubicado uno — bug
+                // visible solo al renombrar varios ficheros en bloque.
                 return;
             }
 

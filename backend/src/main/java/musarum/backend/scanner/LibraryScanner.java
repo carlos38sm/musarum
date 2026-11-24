@@ -441,7 +441,10 @@ public class LibraryScanner {
                 songService.setLyricsPath(songId, path);
                 log.info("  📝 Letra embebida extraída para id={}", songId);
             } catch (Exception e) {
-                log.debug("No se pudo guardar letra embebida de id={}: {}", songId, e.getMessage());
+                // Antes era log.debug → invisible al OWNER; si el .mp3 tenía
+                // frame USLT pero fallaba el write (disco lleno, permisos),
+                // la canción se quedaba sin letra sin aviso. Sube a warn.
+                log.warn("No se pudo guardar letra embebida de id={}: {}", songId, e.getMessage());
             }
         });
     }

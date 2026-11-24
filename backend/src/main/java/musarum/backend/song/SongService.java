@@ -285,6 +285,7 @@ public class SongService {
     }
 
     /** Duración total del catálogo en ms (SUM sobre todas las canciones). */
+    @Transactional(readOnly = true)
     public long totalDurationMs() {
         return songRepository.sumDurationMsAll();
     }
