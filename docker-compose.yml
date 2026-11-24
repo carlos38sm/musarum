@@ -115,7 +115,11 @@ services:
       com.centurylinklabs.watchtower.enable: "true"
 
   watchtower:
-    image: containrrr/watchtower:1.7.1
+    # containrrr/watchtower quedó abandonado tras 1.7.1 (ene 2024) y su cliente
+    # Docker interno habla API v1.25 — demasiado viejo para Docker Desktop
+    # moderno (exige mínimo 1.40). Usamos el fork mantenido nickfedor/watchtower,
+    # que es drop-in compatible y actualiza el cliente Docker.
+    image: nickfedor/watchtower:latest
     container_name: musarum-watchtower
     restart: unless-stopped
     volumes:

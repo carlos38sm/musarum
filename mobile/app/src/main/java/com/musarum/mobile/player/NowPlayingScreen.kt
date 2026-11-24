@@ -699,26 +699,47 @@ fun PlayerShellScaffold(
                 .offset { IntOffset(0, dragOffset.toInt()) }
                 .padding(WindowInsets.systemBars.asPaddingValues())
         ) {
+            // Barrita de arrastre estilo bottom-sheet. Pista visual de
+            // "se puede bajar deslizando". Pedida por Carlos (nov 2026,
+            // bloque 1 de tanda 20-items). 40×4dp onSurface @25%.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(40.dp)
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(
+                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f)
+                        )
+                )
+            }
+
             // Cabecera unificada: chevron (bajar reproductor) · píldora de
             // modos (centrada) · slot derecha (menú "..." si lo usa el caller).
-            // Antes el HandleBar vivía centrado arriba y la píldora caía
-            // mucho más abajo tras TopActions + spacer; ahora todo va en una
-            // fila alta para dejar más aire a portada, título y letra.
+            // Chevron y overflow son IconButton planos (sin círculo gris) —
+            // Carlos pidió "dejar solo el símbolo". La píldora es discreta
+            // ahora (36dp), ver ModePill.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 8.dp, end = 8.dp, top = 6.dp, bottom = 4.dp),
+                    .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                GhostCircleButton(
+                IconButton(
                     onClick = { onSwipeDown?.invoke() },
-                    contentDescription = "Bajar reproductor"
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         Icons.Filled.KeyboardArrowDown,
-                        contentDescription = null,
-                        modifier = Modifier.size(26.dp)
+                        contentDescription = "Bajar reproductor",
+                        modifier = Modifier.size(28.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
                 Box(
@@ -822,16 +843,18 @@ internal fun OverflowMenu(
 ) {
     Box {
         var showMore by remember { mutableStateOf(false) }
-        GhostCircleButton(
+        // Icono plano (sin el círculo ghost) — coherente con el chevron de
+        // la izquierda. Pedido Carlos: solo el símbolo en las esquinas.
+        IconButton(
             onClick = { showMore = true },
-            contentDescription = "Más acciones"
+            modifier = Modifier.size(40.dp)
         ) {
             Icon(
                 Icons.Filled.MoreVert,
-                contentDescription = null,
+                contentDescription = "Más acciones",
                 tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
                        else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(24.dp)
             )
         }
         DropdownMenu(

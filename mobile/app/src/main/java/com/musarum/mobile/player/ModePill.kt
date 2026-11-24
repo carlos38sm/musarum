@@ -29,7 +29,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -48,10 +47,12 @@ import androidx.compose.ui.unit.dp
 enum class PlayerMode { TRACK, LYRICS, INFO, VIDEO }
 
 private const val PILL_ANIM_MS = 280
-private val PILL_HEIGHT = 44.dp
-private val PILL_TAB_WIDTH = 44.dp
-private val PILL_INNER_PADDING = 3.dp
-private val PILL_ICON_SIZE = 20.dp
+// Píldora compacta — estilo YT Music. Antes 44dp; ahora 36dp para dejar
+// más aire a la cabecera del NowPlaying. Icono 18dp dentro.
+private val PILL_HEIGHT = 36.dp
+private val PILL_TAB_WIDTH = 40.dp
+private val PILL_INNER_PADDING = 2.dp
+private val PILL_ICON_SIZE = 18.dp
 
 private data class PillTab(val mode: PlayerMode, val icon: ImageVector, val label: String)
 
@@ -78,13 +79,15 @@ fun ModePill(
     )
 
     val pillShape = RoundedCornerShape(50)
-    val borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+    val borderColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.06f)
 
+    // Sin shadow: la elevación es lo que la hace "cantar" sobre el gradient
+    // del shell. Carlos quiere algo más discreto tipo YT Music — solo un
+    // borde finito y el fondo semi-transparente.
     Surface(
         shape = pillShape,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.78f),
         modifier = modifier
-            .shadow(elevation = 4.dp, shape = pillShape, clip = false)
             .border(width = 1.dp, color = borderColor, shape = pillShape)
             .height(PILL_HEIGHT)
     ) {

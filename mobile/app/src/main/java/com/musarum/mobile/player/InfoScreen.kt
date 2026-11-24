@@ -83,6 +83,7 @@ fun InfoScreen(
         },
         showVideo = vmState.details?.hasVideo == true,
         onBack = onBack,
+        onSwipeDown = onBack, // chevron superior + drag hacia abajo cierran el player
         isFavorite = false,
         onToggleFavorite = {},
         onAddToPlaylist = {},
