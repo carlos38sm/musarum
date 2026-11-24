@@ -278,17 +278,18 @@ private fun AlbumHero(
 
             Spacer(Modifier.height(14.dp))
 
-            // Botones de acción tipo pill (foto 5)
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                PillAction(
+            // Botones de acción circulares, solo icono (más grandes que
+            // antes). Carlos pidió "solo símbolos, texto fuera" nov-24 2026.
+            Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                CircleAction(
                     icon = Icons.Filled.PlayArrow,
-                    label = "Reproducir",
+                    contentDescription = "Reproducir",
                     primary = true,
                     onClick = onPlay
                 )
-                PillAction(
+                CircleAction(
                     icon = Icons.Filled.Shuffle,
-                    label = "Aleatorio",
+                    contentDescription = "Aleatorio",
                     primary = false,
                     onClick = onShuffle
                 )
@@ -307,35 +308,32 @@ private fun formatAlbumMinutes(ms: Long): String {
 
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-private fun PillAction(
+private fun CircleAction(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
+    contentDescription: String,
     primary: Boolean,
     onClick: () -> Unit
 ) {
-    // Pill robusto: altura mínima explícita + RoundedCornerShape 50% (pastilla
-    // real, no CircleShape que a veces colapsa el contenido en BOM recientes).
     val bg = if (primary) MaterialTheme.colorScheme.primary
              else MaterialTheme.colorScheme.surfaceVariant
     val fg = if (primary) MaterialTheme.colorScheme.onPrimary
              else MaterialTheme.colorScheme.onSurface
-    // Altura de 48dp (antes 40dp): los botones Reproducir/Aleatorio salían
-    // enanos al lado del cover de 180dp. 48dp es la altura táctil mínima
-    // recomendada por Material, se agarra bien con el pulgar.
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(50),
+        shape = androidx.compose.foundation.shape.CircleShape,
         color = bg,
         contentColor = fg,
-        modifier = Modifier.height(48.dp)
+        modifier = Modifier.size(56.dp)
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 22.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Box(
+            modifier = Modifier.padding(0.dp),
+            contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge)
+            Icon(
+                icon,
+                contentDescription = contentDescription,
+                modifier = Modifier.size(28.dp)
+            )
         }
     }
 }

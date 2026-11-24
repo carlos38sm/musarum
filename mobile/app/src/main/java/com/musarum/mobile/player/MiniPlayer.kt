@@ -1,17 +1,10 @@
 package com.musarum.mobile.player
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,10 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,8 +45,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.musarum.mobile.music.CoverImage
 import kotlin.math.abs
-import kotlin.math.cos
-import kotlin.math.sin
 import kotlinx.coroutines.launch
 
 /**
@@ -87,92 +74,19 @@ fun MiniPlayer(
     val fadeDistancePx = with(androidx.compose.ui.platform.LocalDensity.current) { 180.dp.toPx() }
     val rowAlpha = (1f - (abs(dragX) / fadeDistancePx).coerceIn(0f, 0.6f))
 
-    // DOS colores distintos de la portada: el dominante (primary) y uno
-    // con buen contraste de hue (secondary). Antes usábamos 3 tonos del
-    // mismo color y Carlos no veía diferencia entre fondo, anillo y botón.
-    // Ahora: fondo = primary, anillo = secondary (contraste real), play
-    // bg = secondary oscurecido para que el anillo salte visualmente por
-    // encima del play.
-    val fallbackPrimary = MaterialTheme.colorScheme.tertiary
-    val fallbackSecondary = MaterialTheme.colorScheme.primary
-    val coverPair by rememberCoverColorPair(
-        coverUrl = state.currentCoverUrl,
-        fallbackPrimary = fallbackPrimary,
-        fallbackSecondary = fallbackSecondary
-    )
-    val dominant = coverPair.primary
-    val accent = coverPair.secondary
-    val isDark = dominant.luminance() < 0.35f
-    val lighter = if (isDark) dominant.lighten(0.20f) else dominant.lighten(0.08f)
-    val darker = if (isDark) dominant.darken(0.18f) else dominant.darken(0.32f)
-    // Degradado animado: dos focos que giran lentamente alrededor del
-    // centro del mini-player. 12 s por vuelta para que sea perceptible pero
-    // no distraiga.
-    val gradientTransition = rememberInfiniteTransition(label = "mpGrad")
-    val angle by gradientTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 12_000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "mpAngle"
-    )
-
+    // Fondo FIJO del mini-player: surface del tema (sin degradado animado
+    // ni color extraído del cover). Carlos pidió que SOLO el play/pause y
+    // el anillo de progreso cambien con la canción. Antes el fondo entero
+    // cambiaba con cada canción y era ruido visual innecesario.
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            // Padding vertical reducido (6→3) para que la pastilla quede
-            // pegada a la nav sin hueco grande. La forma sigue siendo
-            // 22dp — mantiene la curvatura de "cápsula flotante".
             .padding(horizontal = 10.dp, vertical = 3.dp),
         shape = RoundedCornerShape(22.dp),
-        // Dejamos el Surface transparente: el fondo coloreado dinámico se
-        // pinta dentro del Box de abajo. Así tenemos degradé suave que se
-        // mueve lentamente, con el color dominante de la canción.
-        color = Color.Transparent,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
         shadowElevation = 10.dp
     ) {
         Box(modifier = Modifier.clip(RoundedCornerShape(22.dp))) {
-            // Fondo dinámico: base plana con el color dominante + dos
-            // "manchas" radiales de color más claro/oscuro que orbitan. No
-            // es la imagen ni blur: es color extraído del cover, menos
-            // ruido visual y más definición. Sin cover, fallback a tertiary.
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(dominant.copy(alpha = 0.96f))
-            )
-            // Mancha 1: se mueve en círculo pequeño.
-            val radRad = Math.toRadians(angle.toDouble())
-            val cx1 = 0.5f + 0.25f * cos(radRad).toFloat()
-            val cy1 = 0.5f + 0.25f * sin(radRad).toFloat()
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(lighter.copy(alpha = 0.55f), Color.Transparent),
-                            center = Offset(cx1 * 1000f, cy1 * 200f),
-                            radius = 600f
-                        )
-                    )
-            )
-            // Mancha 2: contra-fase, otro color.
-            val radRad2 = Math.toRadians((angle + 180f).toDouble())
-            val cx2 = 0.5f + 0.25f * cos(radRad2).toFloat()
-            val cy2 = 0.5f + 0.25f * sin(radRad2).toFloat()
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(darker.copy(alpha = 0.45f), Color.Transparent),
-                            center = Offset(cx2 * 1000f, cy2 * 200f),
-                            radius = 600f
-                        )
-                    )
-            )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -234,7 +148,12 @@ fun MiniPlayer(
                     // Cover 40dp (antes 44). Pequeño ajuste de corner
                     // para que no se vea cuadrado al bajar de tamaño.
                     size = 40.dp,
-                    cornerRadius = 10.dp
+                    cornerRadius = 10.dp,
+                    // Placeholder determinista por canción (mismo criterio
+                    // que SongRow y NowPlaying). Sin esto el miniplayer
+                    // muestra un gris plano cuando la pista no tiene cover.
+                    placeholderKind = com.musarum.mobile.music.PlaceholderKind.SONGS,
+                    placeholderSeed = song.id
                 )
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
@@ -256,21 +175,17 @@ fun MiniPlayer(
                 }
             }
 
-            // Anillo = secondary (color DIFERENTE del dominante del fondo,
-            // con contraste de hue garantizado por rememberCoverColorPair).
-            // Botón play = secondary oscurecido, así el anillo salta
-            // visualmente sobre el fondo y sobre el botón a la vez.
+            // Anillo y fondo del play usan UN color extraído del cover
+            // (rememberDominantCoverColor, el mismo que el shell del
+            // NowPlaying). Es lo ÚNICO que cambia con la canción en el
+            // mini-player — el fondo de la pastilla queda fijo.
+            val accent by rememberDominantCoverColor(
+                coverUrl = state.currentCoverUrl,
+                fallback = MaterialTheme.colorScheme.primary
+            )
             val ringColor = accent
-            val playBgColor = accent.darken(if (accent.luminance() < 0.35f) 0.10f else 0.30f)
-            // Si el fondo del botón es MUY oscuro (portadas tipo metal o
-            // trap con negro/rojo oscuro), el símbolo play/pause en
-            // onPrimary (negro) se pierde. Forzamos blanco en ese caso;
-            // dejamos onPrimary (acorde al theme dinámico) para fondos
-            // claros.
-            val playIconTint = if (playBgColor.luminance() < 0.35f)
-                Color.White
-            else
-                MaterialTheme.colorScheme.onPrimary
+            val playBgColor = accent
+            val playIconTint = MaterialTheme.colorScheme.onPrimary
             Box(contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(
                     progress = { progress },
@@ -317,24 +232,3 @@ fun MiniPlayer(
     }
 }
 
-/** Aclara un Color mezclándolo con blanco por el factor [amount] (0..1). */
-private fun Color.lighten(amount: Float): Color {
-    val a = amount.coerceIn(0f, 1f)
-    return Color(
-        red = red + (1f - red) * a,
-        green = green + (1f - green) * a,
-        blue = blue + (1f - blue) * a,
-        alpha = alpha
-    )
-}
-
-/** Oscurece un Color mezclándolo con negro por el factor [amount] (0..1). */
-private fun Color.darken(amount: Float): Color {
-    val a = amount.coerceIn(0f, 1f)
-    return Color(
-        red = red * (1f - a),
-        green = green * (1f - a),
-        blue = blue * (1f - a),
-        alpha = alpha
-    )
-}

@@ -11,12 +11,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import com.musarum.mobile.data.network.dto.SongSummaryDto
 import com.musarum.mobile.music.CoverImage
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,6 +44,7 @@ import com.musarum.mobile.data.network.dto.SongDetailsDto
 import com.musarum.mobile.music.library.AddToPlaylistDialog
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 
@@ -216,21 +220,13 @@ private fun InfoSections(
                     left = details.bpm?.let { "BPM" to it.toString() },
                     right = details.musicalKey?.let { "Tonalidad" to it }
                 )
-                // Segunda fila: Camelot (código DJ) + ReplayGain
+                // Segunda fila: Camelot (código DJ) + ReplayGain. El texto
+                // explicativo del ReplayGain se quitó nov-24 2026 — ocupaba
+                // mucho y Carlos ya sabe lo que es.
                 PairRow(
                     left = camelot?.let { "Camelot" to it },
                     right = details.replayGain?.let { "ReplayGain" to "%.2f dB".format(it) }
                 )
-                // Pequeña aclaración de qué es ReplayGain, en la propia celda
-                details.replayGain?.let {
-                    Text(
-                        "ReplayGain es el ajuste de volumen aplicado al reproducir " +
-                                "para igualar el nivel con otras canciones (negativo = atenúa, positivo = amplifica).",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
-                        modifier = Modifier.padding(top = 2.dp)
-                    )
-                }
             }
         }
 
@@ -338,6 +334,46 @@ private fun InfoSections(
                             }
                         )
                     }
+                }
+            }
+        }
+
+        // ── Mantenimiento (solo OWNER) ──
+        // Re-enriquecimiento DIRIGIDO a esta canción. Útil cuando falta BPM,
+        // tonalidad o portada en UNA pista concreta — más preciso que lanzar
+        // el re-enrich global del Análisis del servidor. Fire-and-forget.
+        if (isOwner) {
+            val snackbar = LocalSnackbar.current
+            val scope = rememberCoroutineScope()
+            var requesting by remember { mutableStateOf(false) }
+            Section("Mantenimiento") {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = {
+                        if (!requesting) {
+                            requesting = true
+                            scope.launch {
+                                val ok = runCatching {
+                                    val resp = container.apiService.reEnrichSong(details.id)
+                                    resp.isSuccessful
+                                }.getOrDefault(false)
+                                snackbar(
+                                    if (ok) "Enriquecimiento en curso — datos nuevos llegarán en unos segundos"
+                                    else "No se pudo lanzar el enriquecimiento"
+                                )
+                                requesting = false
+                            }
+                        }
+                    },
+                    enabled = !requesting,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        Icons.Filled.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (requesting) "Lanzando…" else "Volver a enriquecer esta canción")
                 }
             }
         }

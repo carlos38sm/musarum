@@ -309,7 +309,7 @@ fun ProfileScreen(
             SettingRow(
                 icon = Icons.Filled.BatteryChargingFull,
                 title = "Permitir en segundo plano",
-                subtitle = "Evita cortes de Bluetooth con la pantalla bloqueada",
+                subtitle = "Evita cortes de Bluetooth",
                 onClick = {
                     runCatching {
                         val intent = android.content.Intent(
@@ -339,7 +339,7 @@ fun ProfileScreen(
             SettingRow(
                 icon = Icons.Filled.DirectionsCar,
                 title = "Modo coche",
-                subtitle = "Controles grandes para conducir con una mano",
+                subtitle = "Controles grandes para una mano",
                 onClick = onOpenCarMode
             )
             Spacer(Modifier.height(6.dp))
@@ -353,7 +353,7 @@ fun ProfileScreen(
             SettingRow(
                 icon = Icons.Filled.Celebration,
                 title = "Fiesta musical",
-                subtitle = "Cola compartida entre los móviles de la casa",
+                subtitle = "Cola compartida entre móviles",
                 onClick = onOpenParty
             )
 
@@ -455,7 +455,7 @@ fun ProfileScreen(
                 SettingRow(
                     icon = Icons.Filled.CloudUpload,
                     title = "Subir canciones",
-                    subtitle = "Enviar audios al servidor desde el móvil",
+                    subtitle = "Enviar audios al servidor",
                     onClick = onOpenUploadSongs
                 )
                 Spacer(Modifier.height(6.dp))
@@ -476,7 +476,7 @@ fun ProfileScreen(
                 SettingRow(
                     icon = Icons.Filled.SystemUpdate,
                     title = "Buscar actualizaciones",
-                    subtitle = "1 clic: anuncia APK nueva y recarga backend",
+                    subtitle = "Anuncia APK y recarga backend",
                     onClick = {
                         updateDialog = UpdateDialogState.Loading
                         viewModel.checkUpdates { report, err ->
@@ -704,24 +704,96 @@ private fun StatsCard(stats: com.musarum.mobile.data.network.dto.UserStatsDto) {
             )
         }
 
+        // Rediseño nov-24 2026: los tops (canción · artista · género) salían
+        // antes en una tarjeta gris con 3 rows internas, que desentonaba
+        // mucho sobre los bentos de color. Ahora son 3 mini-tarjetas apiladas,
+        // cada una con su color de acento, sin contenedor común gris.
+        data class Top(
+            val icon: androidx.compose.ui.graphics.vector.ImageVector,
+            val label: String,
+            val value: String,
+            val tint: androidx.compose.ui.graphics.Color
+        )
+        val primary = MaterialTheme.colorScheme.primary
+        val tertiary = MaterialTheme.colorScheme.tertiary
+        val secondary = MaterialTheme.colorScheme.secondary
         val tops = buildList {
-            stats.topSongTitle?.let { add(Icons.Filled.MusicNote to ("Más escuchada" to it)) }
-            stats.topArtistName?.let { add(Icons.Filled.Person to ("Artista favorito" to it)) }
-            stats.topGenreName?.let { add(Icons.Filled.Album to ("Género favorito" to it)) }
+            stats.topSongTitle?.let {
+                add(Top(Icons.Filled.MusicNote, "Más escuchada", it, primary))
+            }
+            stats.topArtistName?.let {
+                add(Top(Icons.Filled.Person, "Artista favorito", it, tertiary))
+            }
+            stats.topGenreName?.let {
+                add(Top(Icons.Filled.Album, "Género favorito", it, secondary))
+            }
         }
         if (tops.isNotEmpty()) {
             Spacer(Modifier.height(14.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-            ) {
-                Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp)) {
-                    tops.forEach { (icon, data) ->
-                        val (label, value) = data
-                        TopRow(icon = icon, label = label, value = value)
-                    }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                tops.forEach { t ->
+                    TopTileCard(
+                        icon = t.icon,
+                        label = t.label,
+                        value = t.value,
+                        tint = t.tint
+                    )
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Mini-tarjeta de "top" (canción/artista/género) con color de acento
+ * propio, tintada @14% en el fondo y un círculo sólido del tint con el
+ * icono dentro. Mismo lenguaje que los bento tiles grandes de arriba.
+ */
+@Composable
+private fun TopTileCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    value: String,
+    tint: androidx.compose.ui.graphics.Color
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = tint.copy(alpha = 0.12f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(38.dp),
+                shape = CircleShape,
+                color = tint
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        icon,
+                        contentDescription = null,
+                        tint = androidx.compose.ui.graphics.Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    value,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
             }
         }
     }
@@ -811,51 +883,6 @@ private fun BentoStatTile(
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1
-            )
-        }
-    }
-}
-
-@Composable
-private fun TopRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    label: String,
-    value: String
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Surface(
-            modifier = Modifier.size(32.dp),
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-        }
-        Spacer(Modifier.width(12.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                label,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
     }

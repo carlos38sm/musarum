@@ -394,24 +394,6 @@ fun VideoScreen(
             },
             sleepTimerActive = playerState.sleepTimerAt != null,
             onOpenSleepTimer = { showSleepSheet = true },
-            onSearchYouTube = {
-                // Igual que NowPlayingScreen: resolver videoId en backend →
-                // abrir embed; si no hay match, caer al navegador externo.
-                // El scraping puede tardar hasta 6s → snackbar de "buscando".
-                ytScope.launch {
-                    snackbar("Buscando vídeo en YouTube…")
-                    val result = runCatching {
-                        container.apiService.getYoutubeVideo(song.id)
-                    }
-                    val resp = result.getOrNull()
-                    if (resp != null && resp.isSuccessful && resp.body() != null) {
-                        onOpenYoutubeEmbed(song.id, resp.body()!!.videoId)
-                    } else {
-                        snackbar("Sin resultados en YouTube; abro el navegador")
-                        openYouTubeSearch(context, song)
-                    }
-                }
-            },
             downloadState = run {
                 val entries by container.downloadsRepository.entries.collectAsState()
                 val inProgress by container.downloadsManager.inProgress.collectAsState()
@@ -505,7 +487,6 @@ private fun VideoActionsRow(
     onStartRadio: () -> Unit,
     sleepTimerActive: Boolean,
     onOpenSleepTimer: () -> Unit,
-    onSearchYouTube: () -> Unit,
     downloadState: DownloadState,
     onDownload: () -> Unit
 ) {
@@ -560,11 +541,6 @@ private fun VideoActionsRow(
                     text = { Text("Radio basada en esta") },
                     leadingIcon = { Icon(Icons.Filled.Radio, null) },
                     onClick = { showMore = false; onStartRadio() }
-                )
-                DropdownMenuItem(
-                    text = { Text("Buscar en YouTube") },
-                    leadingIcon = { Icon(Icons.Filled.OpenInNew, null) },
-                    onClick = { showMore = false; onSearchYouTube() }
                 )
                 DropdownMenuItem(
                     text = {

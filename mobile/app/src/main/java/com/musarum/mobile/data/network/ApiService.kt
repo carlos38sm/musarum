@@ -63,6 +63,10 @@ interface ApiService {
     @retrofit2.http.POST("songs/{id}/lyrics/refresh")
     suspend fun refreshLyrics(@Path("id") id: Long): retrofit2.Response<String>
 
+    // Re-enriquecer SOLO esta canción desde Emendatium (OWNER). 202 Accepted.
+    @retrofit2.http.POST("songs/{id}/re-enrich")
+    suspend fun reEnrichSong(@Path("id") id: Long): retrofit2.Response<Unit>
+
     // Reordenar canciones dentro de una playlist (drag-and-drop del móvil).
     @retrofit2.http.PATCH("playlists/{id}/entries/{entryId}/position")
     suspend fun moveEntry(

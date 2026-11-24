@@ -189,11 +189,13 @@ fun resolveCoverUrl(url: String?, baseUrl: String): String? {
 }
 
 /**
- * Mosaico 2×2 de covers para playlists (estilo Spotify). Siempre dibuja
- * 4 celdas; los huecos (menos de 4 canciones o canciones sin cover) se
- * rellenan con placeholder de playlist. Si [urls] va vacío, las 4 celdas
- * son todas placeholder — queda una "cuadrícula" uniforme en vez de un
- * cuadro gris plano.
+ * Mosaico 2×2 de covers para playlists (estilo Spotify). Regla nov-24 2026:
+ *  - 0 canciones → placeholder uniforme (4 celdas placeholder).
+ *  - 1, 2 o 3 canciones → UNA sola foto, la de la primera canción con
+ *    cover (si no hay ninguna, placeholder único).
+ *  - 4 o más → mosaico 2×2 como antes.
+ * La idea es evitar el "cuarto hueco gris" cuando la playlist aún es
+ * pequeña — queda feo al lado de una Favoritas/Descargadas consolidadas.
  */
 @Composable
 fun PlaylistMosaicCover(
@@ -203,9 +205,22 @@ fun PlaylistMosaicCover(
     size: Dp = 72.dp,
     cornerRadius: Dp = 10.dp
 ) {
-    // `urls` puede llegar null si el backend aún es viejo y no manda el
-    // campo (Gson no respeta defaults). orEmpty + padding a 4 siempre.
-    val padded = (urls.orEmpty() + List(4) { null }).take(4)
+    val list = urls.orEmpty()
+    val nonNullCount = list.count { !it.isNullOrBlank() }
+    // Umbral: mosaico solo con 4+ covers reales. Las playlists pequeñas
+    // (1..3) usan la foto de la primera canción.
+    if (nonNullCount < 4) {
+        val firstCover = list.firstOrNull { !it.isNullOrBlank() }
+        CoverImage(
+            url = firstCover,
+            size = size,
+            cornerRadius = cornerRadius,
+            placeholderKind = PlaceholderKind.PLAYLISTS,
+            placeholderSeed = playlistId
+        )
+        return
+    }
+    val padded = (list + List(4) { null }).take(4)
     Surface(
         modifier = modifier.size(size),
         shape = RoundedCornerShape(cornerRadius),

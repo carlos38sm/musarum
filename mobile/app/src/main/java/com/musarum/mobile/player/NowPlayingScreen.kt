@@ -113,12 +113,12 @@ fun NowPlayingScreen(
     onOpenFavorites: () -> Unit = {},
     onOpenQueue: () -> Unit = {},
     onOpenArtist: (Long) -> Unit = {},
+    @Suppress("UNUSED_PARAMETER")
     onOpenYoutubeEmbed: (songId: Long, videoId: String) -> Unit = { _, _ -> }
 ) {
     val container = LocalAppContainer.current
     val controller = container.playerController
     val playerState by controller.state.collectAsState()
-    val context = androidx.compose.ui.platform.LocalContext.current
 
     val viewModel: NowPlayingViewModel = viewModel(
         factory = NowPlayingViewModel.factory(
@@ -146,8 +146,6 @@ fun NowPlayingScreen(
     // Toggle de mini-letra persistente mientras no se cambie de sesión. El
     // botón solo responde si hay lyrics sincronizadas en la pista actual.
     var showMiniLyric by rememberSaveable { mutableStateOf(false) }
-    var showVisualizer by rememberSaveable { mutableStateOf(false) }
-    val audioSessionId by container.audioSessionIdFlow.collectAsState()
 
     // Parseo LRC — vacío si no hay o si no está sincronizada.
     val syncedLines = remember(vmState.lyrics) { LrcParser.parse(vmState.lyrics) }
@@ -181,23 +179,6 @@ fun NowPlayingScreen(
                 onStartRadio = {
                     controller.playRadioFromCurrent { _, msg -> snackbar(msg) }
                 },
-                onSearchYouTube = {
-                    scope.launch {
-                        snackbar("Buscando vídeo en YouTube…")
-                        val result = runCatching {
-                            container.apiService.getYoutubeVideo(song.id)
-                        }
-                        val body = result.getOrNull()
-                        if (body != null && body.isSuccessful && body.body() != null) {
-                            onOpenYoutubeEmbed(song.id, body.body()!!.videoId)
-                        } else {
-                            snackbar("Sin resultados en YouTube; abro el navegador")
-                            openYouTubeSearch(context, song)
-                        }
-                    }
-                },
-                visualizerActive = showVisualizer,
-                onToggleVisualizer = { showVisualizer = !showVisualizer },
                 sleepTimerActive = playerState.sleepTimerAt != null,
                 onOpenSleepTimer = { showSleepSheet = true },
                 onSendSong = { showSendSheet = true },
@@ -227,17 +208,20 @@ fun NowPlayingScreen(
                 },
             contentAlignment = Alignment.Center
         ) {
-            val coverSize = maxWidth.coerceAtMost(320.dp)
+            // Cover ligeramente más grande (340dp) y menos redondeado
+            // (12dp en vez de 20dp) — más "foto" y menos píldora. Pedido
+            // Carlos nov-24 2026.
+            val coverSize = maxWidth.coerceAtMost(340.dp)
             Surface(
                 modifier = Modifier.size(coverSize).aspectRatio(1f),
-                shape = RoundedCornerShape(20.dp),
+                shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shadowElevation = 24.dp
             ) {
                 CoverImage(
                     url = playerState.currentCoverUrl,
                     size = coverSize,
-                    cornerRadius = 20.dp,
+                    cornerRadius = 12.dp,
                     // Cuando la canción no tiene portada, servir la
                     // imagen del pool _placeholders/songs/ (determinista
                     // por songId) en vez del icono gris plano. Mismo
@@ -299,10 +283,6 @@ fun NowPlayingScreen(
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentAlignment = Alignment.Center
         ) {
-            // Mini-letra Y visualizador pueden coexistir: la letra arriba,
-            // las barras debajo. Antes el else-if ocultaba el visualizador
-            // si había mini-letra activa, por eso "le daba y no aparecía
-            // nada". Ahora cada uno se pinta independiente.
             if (showMiniLyric && hasSyncedLyrics && !currentLine.isNullOrBlank()) {
                 Text(
                     text = currentLine,
@@ -316,93 +296,6 @@ fun NowPlayingScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 32.dp)
                 )
-            }
-            if (showVisualizer) {
-                // Si no hay sessionId aún (nunca se dio play en esta sesión
-                // del PlayerService) o el user no ha concedido RECORD_AUDIO,
-                // explicamos qué pasa en vez de quedarnos en blanco.
-                val ctx = androidx.compose.ui.platform.LocalContext.current
-                // Hook que re-evalúa el permiso cada vez que la Activity
-                // vuelve a primer plano. Antes se cacheaba con `remember`
-                // atado al sessionId → si el user abría Ajustes y concedía
-                // RECORD_AUDIO, al volver seguía viendo "Permiso denegado".
-                var hasRecordPerm by remember {
-                    mutableStateOf(
-                        androidx.core.content.ContextCompat.checkSelfPermission(
-                            ctx, android.Manifest.permission.RECORD_AUDIO
-                        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                    )
-                }
-                val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-                androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
-                    val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
-                        if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                            hasRecordPerm = androidx.core.content.ContextCompat.checkSelfPermission(
-                                ctx, android.Manifest.permission.RECORD_AUDIO
-                            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        }
-                    }
-                    lifecycleOwner.lifecycle.addObserver(observer)
-                    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-                }
-                // Launcher inline para pedir el permiso directamente desde
-                // el "Permiso denegado" sin tener que ir a Ajustes si el
-                // sistema aún permite el prompt.
-                val permLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-                    androidx.activity.result.contract.ActivityResultContracts.RequestPermission()
-                ) { granted -> hasRecordPerm = granted }
-                when {
-                    audioSessionId <= 0 -> Text(
-                        text = "Pulsa play para activar el visualizador",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 32.dp, vertical = 40.dp),
-                        textAlign = TextAlign.Center
-                    )
-                    !hasRecordPerm -> Column(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 24.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = "El visualizador necesita permiso de audio para leer el stream del sistema. No graba nada.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            androidx.compose.material3.TextButton(onClick = {
-                                // Primer intento: prompt del sistema. Si el
-                                // user ya pulsó "No volver a preguntar" Android
-                                // devolverá denied sin diálogo y el usuario
-                                // tendrá que ir a Ajustes (botón de al lado).
-                                permLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                            }) {
-                                Text("Permitir")
-                            }
-                            androidx.compose.material3.TextButton(onClick = {
-                                val intent = android.content.Intent(
-                                    android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                    android.net.Uri.fromParts("package", ctx.packageName, null)
-                                ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
-                                runCatching { ctx.startActivity(intent) }
-                            }) {
-                                Text("Abrir ajustes")
-                            }
-                        }
-                    }
-                    else -> AudioVisualizer(
-                        sessionId = audioSessionId,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(if (showMiniLyric && hasSyncedLyrics) 100.dp else 140.dp)
-                            .padding(horizontal = 32.dp),
-                        barColor = MaterialTheme.colorScheme.primary,
-                        capColor = MaterialTheme.colorScheme.tertiary
-                    )
-                }
             }
         }
 
@@ -832,9 +725,6 @@ internal enum class DownloadState { NOT_DOWNLOADED, IN_PROGRESS, TEMPORARY, PERM
 internal fun OverflowMenu(
     onOpenQueue: () -> Unit,
     onStartRadio: () -> Unit,
-    onSearchYouTube: () -> Unit,
-    visualizerActive: Boolean,
-    onToggleVisualizer: () -> Unit,
     sleepTimerActive: Boolean,
     onOpenSleepTimer: () -> Unit,
     onSendSong: () -> Unit,
@@ -878,25 +768,10 @@ internal fun OverflowMenu(
                 leadingIcon = { Icon(Icons.Filled.Radio, null) },
                 onClick = { showMore = false; onStartRadio() }
             )
-            DropdownMenuItem(
-                text = { Text("YouTube") },
-                leadingIcon = { Icon(Icons.Filled.OpenInNew, null) },
-                onClick = { showMore = false; onSearchYouTube() }
-            )
-            DropdownMenuItem(
-                text = {
-                    Text(if (visualizerActive) "Ocultar visualizador" else "Visualizador")
-                },
-                leadingIcon = {
-                    Icon(
-                        Icons.Filled.Equalizer,
-                        null,
-                        tint = if (visualizerActive) MaterialTheme.colorScheme.primary
-                               else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                onClick = { showMore = false; onToggleVisualizer() }
-            )
+            // Visualizador y YouTube eliminados por petición Carlos (nov-24 2026):
+            // el visualizador apenas se usaba y el buscar-en-YouTube llena el
+            // menú de cosas raras. El permiso RECORD_AUDIO del manifest queda
+            // por si vuelve en el futuro.
             DropdownMenuItem(
                 text = {
                     Text(if (sleepTimerActive) "Temporizador activo" else "Temporizador")

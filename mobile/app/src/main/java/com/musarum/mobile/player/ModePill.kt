@@ -18,8 +18,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Audiotrack
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Lyrics
+import androidx.compose.material.icons.filled.TipsAndUpdates
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -68,7 +68,9 @@ fun ModePill(
         add(PillTab(PlayerMode.LYRICS, Icons.Filled.Lyrics, "Letra"))
         if (showVideo) add(PillTab(PlayerMode.VIDEO, Icons.Filled.Videocam, "Vídeo"))
         add(PillTab(PlayerMode.TRACK, Icons.Filled.Audiotrack, "Audio"))
-        add(PillTab(PlayerMode.INFO, Icons.Filled.Info, "Info"))
+        // TipsAndUpdates (bombilla con destellos) — más estilizado que la "i"
+        // dentro de círculo clásica, representa "insights/detalles" mejor.
+        add(PillTab(PlayerMode.INFO, Icons.Filled.TipsAndUpdates, "Info"))
     }
     val selectedIndex = items.indexOfFirst { it.mode == selected }.coerceAtLeast(0)
 

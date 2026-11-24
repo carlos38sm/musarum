@@ -25,22 +25,38 @@ private data class NavItem(
 )
 
 // Orden fijo: Inicio · Buscar · Biblioteca · Perfil.
+// Para que el doble-tap "vuelve al root del tab" funcione bien, cada tab
+// declara TODAS las sub-rutas que considera suyas. Un olvido aquí hace
+// que al pulsar el icono del tab desde una sub-ruta Android crea una
+// nueva instancia del root en vez de hacer pop — eso era el bug que
+// reportó Carlos en Biblioteca (desde Descargadas no volvía).
 private val navItems = listOf(
     NavItem(Routes.HOME, "Inicio", Icons.Filled.Home) {
         it == Routes.HOME ||
             it == Routes.SONGS ||
             it == Routes.ALBUMS ||
             it == Routes.ARTISTS ||
+            it == Routes.DISCOVERIES ||
             it?.startsWith("album/") == true ||
-            it?.startsWith("artist/") == true
+            it?.startsWith("artist/") == true ||
+            it?.startsWith("genre/") == true
     },
     NavItem(Routes.SEARCH, "Buscar", Icons.Filled.Search) { it == Routes.SEARCH },
     NavItem(Routes.LIBRARY, "Biblioteca", Icons.Filled.Bookmarks) {
         it == Routes.LIBRARY ||
             it == Routes.FAVORITES ||
+            it == Routes.DOWNLOADS ||
             it?.startsWith("playlist/") == true
     },
-    NavItem(Routes.PROFILE, "Perfil", Icons.Filled.Person) { it == Routes.PROFILE }
+    NavItem(Routes.PROFILE, "Perfil", Icons.Filled.Person) {
+        it == Routes.PROFILE ||
+            it == Routes.LIBRARY_FOLDERS ||
+            it == Routes.USERS_ADMIN ||
+            it == Routes.SERVER_STATS ||
+            it == Routes.PUBLISH_UPDATE ||
+            it == Routes.EQUALIZER ||
+            it == Routes.UPLOAD_SONGS
+    }
 )
 
 @Composable

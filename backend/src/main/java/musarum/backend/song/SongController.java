@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import musarum.backend.enrichment.EmendatiumAutoEnricher;
 import musarum.backend.shared.VideoStorage;
 import musarum.backend.shared.security.CurrentUserResolver;
 import musarum.backend.song.dto.SongDetailsDto;
@@ -33,17 +34,20 @@ class SongController {
     private final TagEditService tagEditService;
     private final CurrentUserResolver currentUser;
     private final VideoStorage videoStorage;
+    private final EmendatiumAutoEnricher emendatiumEnricher;
 
     SongController(SongService songService,
                    SongDeletionService songDeletionService,
                    TagEditService tagEditService,
                    CurrentUserResolver currentUser,
-                   VideoStorage videoStorage) {
+                   VideoStorage videoStorage,
+                   EmendatiumAutoEnricher emendatiumEnricher) {
         this.songService = songService;
         this.songDeletionService = songDeletionService;
         this.tagEditService = tagEditService;
         this.currentUser = currentUser;
         this.videoStorage = videoStorage;
+        this.emendatiumEnricher = emendatiumEnricher;
     }
 
     @GetMapping
@@ -143,6 +147,22 @@ class SongController {
     ResponseEntity<Void> delete(@PathVariable Long id) {
         songDeletionService.deleteCompletely(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Encola un re-enriquecimiento Emendatium SOLO sobre esta canción.
+     * Fire-and-forget (devuelve 202): los datos (bio artista, BPM, tonalidad,
+     * replaygain, letras) aparecen poco a poco mientras Emendatium responde.
+     * Útil desde la propia InfoScreen cuando falta algún campo concreto.
+     * Solo OWNER puede dispararlo para no saturar Emendatium con peticiones
+     * de los MEMBER.
+     */
+    @org.springframework.web.bind.annotation.PostMapping("/{id}/re-enrich")
+    @PreAuthorize("hasRole('OWNER')")
+    ResponseEntity<Void> reEnrich(@PathVariable Long id) {
+        SongDetailsDto details = songService.findById(id, currentUser.currentUserId());
+        emendatiumEnricher.enrichAsync(id, details.audioPath());
+        return ResponseEntity.accepted().build();
     }
 
     /**

@@ -137,7 +137,7 @@ fun FavoritesContent(
                     }
 
                     items(s.favorites, key = { it.songId }) { fav ->
-                        FavoriteRow(
+                        SwipeableFavoriteRow(
                             favorite = fav,
                             onClick = {
                                 val songs = s.favorites.map { it.toSongSummary() }
@@ -146,7 +146,7 @@ fun FavoritesContent(
                                     startIndex = s.favorites.indexOf(fav)
                                 )
                             },
-                            onToggle = { viewModel.toggle(fav.songId) }
+                            onRemove = { viewModel.toggle(fav.songId) }
                         )
                         HorizontalDivider()
                     }
@@ -286,20 +286,78 @@ private fun favoritesStatsLine(count: Int, totalMs: Long): String {
     return pieces.toString()
 }
 
+/**
+ * FavoriteRow envuelto en SwipeToDismissBox: un swipe a cualquier lado
+ * ejecuta onRemove. Pedido Carlos nov-24 2026 — así el ♥ de cada canción
+ * ya no es necesario, y la lista queda más limpia.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FavoriteRow(
+private fun SwipeableFavoriteRow(
     favorite: FavoriteDto,
     onClick: () -> Unit,
-    onToggle: () -> Unit
+    onRemove: () -> Unit
+) {
+    val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            if (value == androidx.compose.material3.SwipeToDismissBoxValue.StartToEnd ||
+                value == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart
+            ) {
+                onRemove()
+                true
+            } else false
+        },
+        positionalThreshold = { totalDistance -> totalDistance * 0.5f }
+    )
+    androidx.compose.material3.SwipeToDismissBox(
+        state = dismissState,
+        backgroundContent = {
+            val alignment = when (dismissState.dismissDirection) {
+                androidx.compose.material3.SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
+                androidx.compose.material3.SwipeToDismissBoxValue.EndToStart -> Alignment.CenterEnd
+                else -> Alignment.Center
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.errorContainer)
+                    .padding(horizontal = 24.dp),
+                contentAlignment = alignment
+            ) {
+                Icon(
+                    Icons.Filled.Favorite,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+        },
+        enableDismissFromStartToEnd = true,
+        enableDismissFromEndToStart = true
+    ) {
+        FavoriteRowContent(favorite = favorite, onClick = onClick)
+    }
+}
+
+@Composable
+private fun FavoriteRowContent(
+    favorite: FavoriteDto,
+    onClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CoverImage(url = favorite.coverUrl, size = 48.dp, cornerRadius = 6.dp)
+        CoverImage(
+            url = favorite.coverUrl,
+            size = 48.dp,
+            cornerRadius = 6.dp,
+            placeholderKind = com.musarum.mobile.music.PlaceholderKind.SONGS,
+            placeholderSeed = favorite.songId
+        )
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -326,12 +384,6 @@ private fun FavoriteRow(
                 )
             }
         }
-        IconButton(onClick = onToggle) {
-            Icon(
-                Icons.Filled.Favorite,
-                contentDescription = "Quitar de favoritas",
-                tint = com.musarum.mobile.ui.FavoriteRed
-            )
-        }
+        // ♥ eliminado — el swipe lateral lo sustituye.
     }
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -280,9 +281,10 @@ private fun FavoritesEntry(count: Int, onClick: () -> Unit) {
 }
 
 /**
- * Tarjeta cuadrada "Descargadas" en la fila de Fijadas (dos columnas).
- * Layout vertical: icono grande arriba, título + subtexto abajo. Color
- * tertiary para diferenciarse de Favoritas (primary).
+ * Tarjeta cuadrada "Descargadas" en la fila de Fijadas. Un solo nivel
+ * visual: fondo tintado + icono grande arriba izq SIN su propia caja
+ * (antes había icono dentro de cuadrado dentro de cuadrado — Carlos lo
+ * encontraba feo). Texto abajo.
  */
 @Composable
 private fun DownloadsTile(
@@ -291,101 +293,91 @@ private fun DownloadsTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.14f)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Surface(
-                modifier = Modifier.size(44.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.tertiary
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Filled.CloudDone,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onTertiary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-            Text(
-                "Descargadas",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
+    PinnedTile(
+        onClick = onClick,
+        tint = MaterialTheme.colorScheme.tertiary,
+        icon = Icons.Filled.CloudDone,
+        title = "Descargadas",
+        subtitle = run {
             val mb = totalBytes / (1024.0 * 1024.0)
-            Text(
-                when (count) {
-                    0 -> "Nada aún"
-                    1 -> "1 pista · ${"%.1f".format(mb)} MB"
-                    else -> "$count pistas · ${"%.1f".format(mb)} MB"
-                },
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
-        }
-    }
+            when (count) {
+                0 -> "Nada aún"
+                1 -> "1 pista · ${"%.1f".format(mb)} MB"
+                else -> "$count pistas · ${"%.1f".format(mb)} MB"
+            }
+        },
+        modifier = modifier
+    )
 }
 
-/**
- * Tarjeta cuadrada "Favoritas" en la fila de Fijadas (dos columnas). Color
- * primary. Mismo layout que DownloadsTile.
- */
+/** Tarjeta "Favoritas" (primary). Mismo patrón que Descargadas. */
 @Composable
 private fun FavoritesTile(
     count: Int,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    PinnedTile(
+        onClick = onClick,
+        tint = MaterialTheme.colorScheme.primary,
+        icon = Icons.Filled.Favorite,
+        title = "Favoritas",
+        subtitle = when (count) {
+            0 -> "Nada aún"
+            1 -> "1 pista"
+            else -> "$count pistas"
+        },
+        modifier = modifier
+    )
+}
+
+/**
+ * Tile base compartido por Descargadas y Favoritas. Diseño minimalista
+ * de un único nivel (sin cajitas anidadas): fondo semitransparente del
+ * color-tint, icono grande arriba izq del propio color (tint sólido, no
+ * sobre caja), texto abajo izq. Carlos lo prefirió así nov-24 2026.
+ */
+@Composable
+private fun PinnedTile(
+    onClick: () -> Unit,
+    tint: androidx.compose.ui.graphics.Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    modifier: Modifier = Modifier
+) {
     Surface(
-        modifier = modifier.clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+        modifier = modifier
+            .aspectRatio(1.5f)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(20.dp),
+        color = tint.copy(alpha = 0.18f)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Surface(
-                modifier = Modifier.size(44.dp),
-                shape = RoundedCornerShape(12.dp),
-                color = MaterialTheme.colorScheme.primary
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Filled.Favorite,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(34.dp)
+            )
+            Column {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    subtitle,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
             }
-            Text(
-                "Favoritas",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                when (count) {
-                    0 -> "Nada aún"
-                    1 -> "1 pista"
-                    else -> "$count pistas"
-                },
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
         }
     }
 }

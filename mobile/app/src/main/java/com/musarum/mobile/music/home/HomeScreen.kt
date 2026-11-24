@@ -143,15 +143,22 @@ fun HomeScreen(
                     )
                 }
 
-                if (state.activity.isNotEmpty()) {
-                    item { SectionBar(title = "Comunidad") }
-                    item {
+                // Comunidad: sección SIEMPRE visible aunque esté vacía (pedido
+                // Carlos nov-24 2026, "ver cómo se vería aunque no haya aún").
+                // Cuando no hay eventos, pinta un placeholder explicativo —
+                // mejor que un hueco en blanco o una sección que aparece/
+                // desaparece según el momento del día.
+                item { SectionBar(title = "Comunidad") }
+                item {
+                    if (state.activity.isNotEmpty()) {
                         CommunityCard(
                             events = state.activity,
                             onOpenSong = { song ->
                                 container.playerController.playQueue(listOf(song), 0)
                             }
                         )
+                    } else {
+                        CommunityEmpty()
                     }
                 }
 
@@ -862,6 +869,58 @@ private fun smartVisualFor(iconHint: String, scheme: androidx.compose.material3.
 }
 
 // ────────────────────────────── Comunidad (feed social) ──────────────────────────────
+
+/**
+ * Placeholder de la sección Comunidad cuando NO hay eventos. Lo pedido
+ * por Carlos: que la caja se vea siempre y no aparezca/desaparezca.
+ * Explica a los users nuevos de la red para qué sirve.
+ */
+@Composable
+private fun CommunityEmpty() {
+    val scheme = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp),
+        shape = RoundedCornerShape(20.dp),
+        color = scheme.surfaceVariant.copy(alpha = 0.55f)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = CircleShape,
+                color = scheme.tertiary.copy(alpha = 0.22f),
+                modifier = Modifier.size(44.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = androidx.compose.material.icons.Icons.Filled.Person,
+                        contentDescription = null,
+                        tint = scheme.tertiary,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Todo tranquilo por aquí",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = scheme.onBackground
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    "Cuando otros oyentes descubran o marquen favoritas, lo verás aquí.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
 
 // Bloque "Comunidad" del Home v2 (Fase 2). Muestra los eventos
 // recientes de los otros users respetando sus toggles de privacidad.
