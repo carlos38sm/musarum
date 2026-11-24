@@ -86,6 +86,22 @@ class AppContainer(context: Context) {
         // y clasifica cada .lrc. Con biblioteca grande + scanner corriendo en
         // paralelo puede superar los 60 s. Subimos para no cortar en seco.
         .readTimeout(120, TimeUnit.SECONDS)
+        // Connection pool más agresivo: el Home dispara 7 llamadas paralelas,
+        // y el default (5 conexiones, keep-alive 5 min) hacía que las dos
+        // extras esperaran a que las primeras liberaran. 16 conexiones +
+        // 10 min de keep-alive da margen sin saturar el backend (Tomcat
+        // acepta 200 por defecto, y Tailscale son solo 4 users).
+        .connectionPool(okhttp3.ConnectionPool(16, 10, TimeUnit.MINUTES))
+        // Cache HTTP de 100 MB en disco para respuestas con Cache-Control.
+        // Covers de álbum/artista/avatar/placeholders llegan con
+        // "Cache-Control: public, max-age=604800" desde el backend → la
+        // segunda vez que Coil o cualquier API GET pide la misma URL, OkHttp
+        // responde desde disco sin ir a la red. Esto hace que volver al
+        // Home, Albums, Artists, etc. sean instantáneos la segunda carga.
+        .cache(okhttp3.Cache(
+            directory = java.io.File(context.cacheDir, "okhttp_cache"),
+            maxSize = 100L * 1024 * 1024
+        ))
         .build()
 
     private val retrofit: Retrofit = Retrofit.Builder()
