@@ -47,10 +47,20 @@ public class SongMapper {
      * Portada efectiva de la canción: si el OWNER le puso una propia
      * (has_custom_cover = true) priorizamos ese endpoint específico;
      * si no, caemos al cover del álbum (criterio histórico).
+     *
+     * Cache-busting: con Cache-Control 7 días en el backend, Coil / el
+     * navegador cachean por URL. Si Carlos reemplaza la portada propia,
+     * la URL debe cambiar o seguiría viendo la vieja. Añadimos
+     * ?v=updatedAtMs — song.updatedAt cambia cuando editamos tags o
+     * cambiamos la portada; es aceptable que invalide un poco más de lo
+     * estricto, 7 días de cache en covers que no cambian siguen valiendo.
      */
     private String effectiveCoverUrl(Song song) {
         if (song.hasCustomCover()) {
-            return "/songs/" + song.getId() + "/cover";
+            long v = song.getUpdatedAt() != null
+                    ? song.getUpdatedAt().toEpochMilli()
+                    : song.getId();
+            return "/songs/" + song.getId() + "/cover?v=" + v;
         }
         Album album = song.getAlbum();
         return album != null ? album.getCoverUrl() : null;

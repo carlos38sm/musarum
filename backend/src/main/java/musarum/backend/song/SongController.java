@@ -179,10 +179,27 @@ class SongController {
     @GetMapping("/{id}/cover")
     ResponseEntity<Resource> getCover(@PathVariable Long id) {
         return coverStorage.findSongCover(id)
-                .map(path -> ResponseEntity.ok()
-                        .contentType(MediaType.parseMediaType(coverStorage.contentTypeFor(path)))
-                        .body((Resource) new FileSystemResource(path)))
+                .map(this::buildCoverResponse)
                 .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Respuesta con Cache-Control público de 7 días para la portada propia.
+     * El cache-busting del cliente lo hace SongMapper.effectiveCoverUrl
+     * añadiendo ?v={updatedAtMs}.
+     */
+    private ResponseEntity<Resource> buildCoverResponse(Path path) {
+        try {
+            long length = java.nio.file.Files.size(path);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(coverStorage.contentTypeFor(path)))
+                    .contentLength(length)
+                    .cacheControl(org.springframework.http.CacheControl
+                            .maxAge(java.time.Duration.ofDays(7)).cachePublic())
+                    .body(new FileSystemResource(path));
+        } catch (IOException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     /**
