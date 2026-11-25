@@ -1,0 +1,37 @@
+# Caddy — TLS auto-firmado para cuando se abandone Tailscale.
+#
+# Por defecto Caddy genera su propio certificado self-signed. Para producción
+# "pública" (dominio real), sustituir "tls internal" por "tls email@dominio".
+# El dominio del lado izquierdo (musarum.local) debe apuntar al host; para
+# LAN basta añadir una entrada en /etc/hosts de cada cliente.
+#
+# Expone 443 → backend:8080 (con context-path /api/v1 preservado por reverse
+# proxy transparente). Rate limit básico sobre /auth/login para proteger de
+# bruteforce si algún día el host queda expuesto a internet.
+
+{
+    # Puerto de administración de Caddy accesible solo desde la red Docker.
+    admin :2019
+}
+
+musarum.local {
+    # Self-signed. Caddy lo renueva solo; el móvil tendrá que confiar en el
+    # cert la primera vez (import en el truststore del dispositivo).
+    tls internal
+
+    # Logs mínimos — solo errores, para no inundar.
+    log {
+        output file /var/log/caddy/access.log
+        level ERROR
+    }
+
+    # Proxy transparente al backend. Caddy maneja el handshake TLS; backend
+    # ve HTTP cleartext dentro de la red Docker (sigue blindado).
+    reverse_proxy backend:8080 {
+        # Timeouts holgados: el scan completo o el /admin/server/stats
+        # pueden pasar de 60 s. Si bajamos, Caddy corta en medio.
+        transport http {
+            response_header_timeout 180s
+        }
+    }
+}

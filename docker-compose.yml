@@ -114,6 +114,69 @@ services:
     labels:
       com.centurylinklabs.watchtower.enable: "true"
 
+  # Caddy TLS — SOLO para el día que se abandone Tailscale y haya que exponer
+  # el backend a una red menos privada. Levanta con:
+  #   docker compose --profile tls up -d
+  # Mientras tanto queda apagado (profiles) y no consume recursos.
+  caddy:
+    image: caddy:2-alpine
+    container_name: musarum-caddy
+    restart: unless-stopped
+    profiles: [tls]
+    depends_on:
+      - backend
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  # ── Observabilidad (Prometheus + Grafana) ──────────────────────────────
+  # Perfil 'obs' para arrancarlos solo cuando interese:
+  #   docker compose --profile obs up -d
+  # El backend expone /actuator/prometheus en limpio dentro de la red Docker;
+  # Prometheus lo scrapea cada 30 s y Grafana lo pinta. La UI de Grafana vive
+  # en http://<host>:3000 (admin / admin la primera vez, te pide cambiarla).
+  # Desde el móvil, el OWNER tiene un botón "Abrir Grafana" en Análisis del
+  # servidor (bloque 51) que apunta a este URL vía Tailscale.
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: musarum-prometheus
+    restart: unless-stopped
+    profiles: [obs]
+    depends_on:
+      - backend
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: musarum-grafana
+    restart: unless-stopped
+    profiles: [obs]
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./deploy/grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    ports:
+      - "3000:3000"
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
   watchtower:
     # containrrr/watchtower quedó abandonado tras 1.7.1 (ene 2024) y su cliente
     # Docker interno habla API v1.25 — demasiado viejo para Docker Desktop
@@ -138,3 +201,7 @@ services:
 
 volumes:
   musarum_postgres_data:
+  caddy_data:
+  caddy_config:
+  prometheus_data:
+  grafana_data:

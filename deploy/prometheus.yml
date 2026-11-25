@@ -1,0 +1,16 @@
+# Prometheus — scrapea el backend de Musarum cada 30 s.
+# Dentro de la red Docker, el path es /api/v1/actuator/prometheus
+# (porque el context-path del backend es /api/v1).
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+
+scrape_configs:
+  - job_name: musarum-backend
+    metrics_path: /api/v1/actuator/prometheus
+    static_configs:
+      - targets:
+          - backend:8080
+        labels:
+          app: musarum
+          component: backend
