@@ -222,13 +222,41 @@ fun NowPlayingScreen(
                 bpm = vmState.details?.bpm,
                 isPlaying = playerState.isPlaying
             )
+            // Hero-enter reveal: cuando entras a NowPlaying desde el mini-player
+            // (o desde cualquier otra parte), el cover arranca a 0.55× + alfa 0
+            // y springea a tamaÃ±o completo. Visualmente da la sensaciÃ³n de
+            // "cover vuela hasta aquÃ­" sin la gimnasia de un shared element
+            // real entre destinos de navegaciÃ³n. Dura ~400 ms gracias al
+            // spring con bajo damping.
+            var heroEntered by androidx.compose.runtime.remember {
+                androidx.compose.runtime.mutableStateOf(false)
+            }
+            androidx.compose.runtime.LaunchedEffect(Unit) { heroEntered = true }
+            val heroScale by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (heroEntered) 1f else 0.55f,
+                animationSpec = androidx.compose.animation.core.spring(
+                    dampingRatio = androidx.compose.animation.core.Spring.DampingRatioMediumBouncy,
+                    stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow
+                ),
+                label = "heroScale"
+            )
+            val heroAlpha by androidx.compose.animation.core.animateFloatAsState(
+                targetValue = if (heroEntered) 1f else 0f,
+                animationSpec = androidx.compose.animation.core.tween(durationMillis = 280),
+                label = "heroAlpha"
+            )
             Surface(
                 modifier = Modifier
                     .size(coverSize)
                     .aspectRatio(1f)
                     .graphicsLayer {
-                        scaleX = beatScale
-                        scaleY = beatScale
+                        // Multiplicamos los dos scales para que el latido del
+                        // BPM siga vivo DESPUÃ‰S del reveal y, durante el reveal,
+                        // el pulso quede escondido bajo la animaciÃ³n de entrada
+                        // (0.55 Ã— 1.025 â‰ˆ 0.56 â€” imperceptible).
+                        scaleX = beatScale * heroScale
+                        scaleY = beatScale * heroScale
+                        alpha = heroAlpha
                     },
                 shape = RoundedCornerShape(12.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,

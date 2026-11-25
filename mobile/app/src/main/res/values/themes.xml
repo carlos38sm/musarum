@@ -2,4 +2,24 @@
 <resources>
 
     <style name="Theme.Musarum" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!--
+        Splash theme oficial Android 12+. core-splashscreen añade compat
+        hasta API 23. Mantiene el launcher icon centrado sobre un fondo
+        sólido mientras el proceso arranca; nuestro MainActivity usa
+        installSplashScreen() para controlar la salida (fade + zoom).
+    -->
+    <style name="Theme.Musarum.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_background</item>
+        <!-- Vector reutilizado del launcher. SplashScreen API recorta
+             el icon dentro de un círculo de 240dp; el foreground del
+             launcher ya viene con márgenes safe-area. -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>
+        <item name="windowSplashScreenIconBackgroundColor">@color/splash_icon_background</item>
+        <!-- Tiempo máximo visible del splash (ms). Al terminar el init real
+             de Compose + conexión al PlayerService, nuestro keep-on-screen
+             callback deja que se vaya antes. -->
+        <item name="windowSplashScreenAnimationDuration">450</item>
+        <item name="postSplashScreenTheme">@style/Theme.Musarum</item>
+    </style>
 </resources>

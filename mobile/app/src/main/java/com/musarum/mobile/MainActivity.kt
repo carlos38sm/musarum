@@ -10,6 +10,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.core.splashscreen.SplashScreenViewProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -40,8 +42,50 @@ class MainActivity : ComponentActivity() {
     // el service, y solo desconectamos del todo en onDestroy. El service
     // sigue siendo foreground y no se para, así que el canal queda OK.
     override fun onCreate(savedInstanceState: Bundle?) {
+        // installSplashScreen() TIENE que llamarse ANTES de super.onCreate.
+        // Carga el Theme.Musarum.Splash, mantiene el logo visible mientras
+        // Compose se infla, y luego aplica una salida animada (zoom-out
+        // + fade) cuando terminamos de cargar.
+        val splashScreen = installSplashScreen()
+        // El splash se queda hasta que `keepOnScreenCondition` devuelva false.
+        // Lo liberamos cuando Compose ya ha dado la primera medida — en la
+        // práctica equivale a: "cuando MainActivity.onResume termine".
+        var ready = false
+        splashScreen.setKeepOnScreenCondition { !ready }
+        // Animación de salida personalizada: el icono se agranda ligeramente
+        // y se desvanece; el fondo también fade para que el Home aparezca
+        // sin corte seco.
+        splashScreen.setOnExitAnimationListener { provider: SplashScreenViewProvider ->
+            val icon = provider.iconView
+            val animIcon = android.animation.AnimatorSet().apply {
+                playTogether(
+                    android.animation.ObjectAnimator.ofFloat(icon, "scaleX", 1f, 1.25f),
+                    android.animation.ObjectAnimator.ofFloat(icon, "scaleY", 1f, 1.25f),
+                    android.animation.ObjectAnimator.ofFloat(icon, "alpha", 1f, 0f)
+                )
+                interpolator = android.view.animation.AccelerateInterpolator()
+                duration = 380
+                addListener(object : android.animation.AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: android.animation.Animator) {
+                        provider.remove()
+                    }
+                })
+            }
+            val animBg = android.animation.ObjectAnimator.ofFloat(
+                provider.view, "alpha", 1f, 0f
+            ).apply {
+                interpolator = android.view.animation.AccelerateInterpolator()
+                duration = 380
+            }
+            animIcon.start()
+            animBg.start()
+        }
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // Post al main looper para que la condición se desactive tras la
+        // primera recomposición de Compose — el splash se queda unos pocos
+        // frames (~50-100 ms) y desaparece con la animación de salida.
+        window.decorView.post { ready = true }
         requestNotificationPermissionIfNeeded()
         pendingShortcut = intent?.getStringExtra(EXTRA_SHORTCUT)
         val container = (application as MusarumApplication).container

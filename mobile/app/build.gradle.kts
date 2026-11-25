@@ -113,6 +113,9 @@ android {
 
 dependencies {
     implementation(libs.androidx.core.ktx)
+    // Splash screen API 12+ con backport. Se usa desde MainActivity con
+    // installSplashScreen() + exit animation (zoom-out + fade) manual.
+    implementation("androidx.core:core-splashscreen:1.0.1")
     implementation(libs.androidx.lifecycle.runtime.ktx)
     // collectAsStateWithLifecycle: variante de collectAsState consciente del
     // lifecycle que para el collect cuando la UI no está visible. Evita que

@@ -1,5 +1,7 @@
 package com.musarum.mobile.navigation
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
@@ -14,6 +16,10 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
@@ -85,6 +91,24 @@ fun MusarumBottomNav(
             //     (p. ej. PlaylistDetail bajo Biblioteca) → vuelves al root
             //     del tab (doble-tap "tab to root" estándar de iOS/Android).
             //   - Tap sobre el root del tab actual → no-op.
+            // Micro-pulse del icono al pasar a seleccionado — un "respiro"
+            // 1.0 → 1.18 → 1.0 de 260 ms. No suma al tap del tab actual
+            // porque solo dispara cuando `selected` flipea de false a true.
+            val pulse = remember { Animatable(1f) }
+            LaunchedEffect(selected) {
+                if (selected) {
+                    pulse.snapTo(1f)
+                    pulse.animateTo(
+                        1f,
+                        keyframes {
+                            durationMillis = 260
+                            1f at 0
+                            1.18f at 130
+                            1f at 260
+                        }
+                    )
+                }
+            }
             NavigationBarItem(
                 selected = selected,
                 onClick = {
@@ -96,7 +120,16 @@ fun MusarumBottomNav(
                         else -> onNavigate(item.route)
                     }
                 },
-                icon = { Icon(item.icon, contentDescription = item.label) },
+                icon = {
+                    Icon(
+                        item.icon,
+                        contentDescription = item.label,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = pulse.value
+                            scaleY = pulse.value
+                        }
+                    )
+                },
                 label = { Text(item.label, style = MaterialTheme.typography.labelSmall) },
                 colors = NavigationBarItemDefaults.colors(
                     selectedIconColor = MaterialTheme.colorScheme.primary,
