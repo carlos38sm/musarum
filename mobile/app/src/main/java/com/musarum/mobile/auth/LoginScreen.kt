@@ -1,4 +1,4 @@
-package com.musarum.mobile.auth
+﻿package com.musarum.mobile.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -42,7 +42,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -76,12 +76,12 @@ fun LoginScreen(
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var showServerDialog by remember { mutableStateOf(false) }
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val passwordFocus = remember { FocusRequester() }
 
     // Lista de usuarios (picker estilo Netflix). Se pide una sola vez al
-    // abrir la pantalla; si falla (backend caído, URL mal, red), simplemente
-    // no se muestra la fila — el form clásico sigue siendo funcional.
+    // abrir la pantalla; si falla (backend caÃ­do, URL mal, red), simplemente
+    // no se muestra la fila â€” el form clÃ¡sico sigue siendo funcional.
     var loginUsers by remember { mutableStateOf<List<LoginUserDto>>(emptyList()) }
     LaunchedEffect(container.baseUrl) {
         runCatching { container.apiService.getLoginUsers() }
@@ -109,8 +109,8 @@ fun LoginScreen(
                 )
             )
     ) {
-        // verticalScroll para que en pantallas pequeñas / con el teclado
-        // abierto el usuario pueda llegar al botón "Entrar" aunque el
+        // verticalScroll para que en pantallas pequeÃ±as / con el teclado
+        // abierto el usuario pueda llegar al botÃ³n "Entrar" aunque el
         // contenido no quepa de golpe.
         Column(
             modifier = Modifier
@@ -121,7 +121,7 @@ fun LoginScreen(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Logo con círculo oro ámbar como foto 5
+            // Logo con cÃ­rculo oro Ã¡mbar como foto 5
             Surface(
                 modifier = Modifier.size(88.dp),
                 shape = CircleShape,
@@ -150,7 +150,7 @@ fun LoginScreen(
             )
 
             Text(
-                text = "Tu música, en tu propio servidor",
+                text = "Tu mÃºsica, en tu propio servidor",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -161,8 +161,8 @@ fun LoginScreen(
 
             // Picker estilo Netflix: si el backend devuelve usuarios, los
             // pintamos como bolitas. Tapear uno rellena el nick y mueve el
-            // foco al campo de contraseña. Si la red falla, loginUsers
-            // queda vacío y simplemente no mostramos esta fila.
+            // foco al campo de contraseÃ±a. Si la red falla, loginUsers
+            // queda vacÃ­o y simplemente no mostramos esta fila.
             if (loginUsers.isNotEmpty()) {
                 UserPickerRow(
                     users = loginUsers,
@@ -193,7 +193,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = password,
                 onValueChange = { password = it },
-                label = { Text("Contraseña") },
+                label = { Text("ContraseÃ±a") },
                 singleLine = true,
                 visualTransformation = if (passwordVisible) VisualTransformation.None
                 else PasswordVisualTransformation(),
@@ -208,8 +208,8 @@ fun LoginScreen(
                         Icon(
                             imageVector = if (passwordVisible) Icons.Filled.VisibilityOff
                             else Icons.Filled.Visibility,
-                            contentDescription = if (passwordVisible) "Ocultar contraseña"
-                            else "Mostrar contraseña"
+                            contentDescription = if (passwordVisible) "Ocultar contraseÃ±a"
+                            else "Mostrar contraseÃ±a"
                         )
                     }
                 },
@@ -258,10 +258,10 @@ fun LoginScreen(
             }
         }
 
-        // IMPORTANTE: el IconButton del servidor va DESPUÉS del Column en el
-        // Box (= encima en Z-order) para que los taps lleguen a él. Antes
+        // IMPORTANTE: el IconButton del servidor va DESPUÃ‰S del Column en el
+        // Box (= encima en Z-order) para que los taps lleguen a Ã©l. Antes
         // estaba antes del Column, y el .verticalScroll del Column consume
-        // TODOS los eventos pointer de su área → el botón no respondía a
+        // TODOS los eventos pointer de su Ã¡rea â†’ el botÃ³n no respondÃ­a a
         // los taps aunque se viera pintado.
         IconButton(
             onClick = { showServerDialog = true },
@@ -322,7 +322,7 @@ private fun ServerUrlDialog(
             Column {
                 Text(
                     "URL del backend al que conectar. Cambiarla cierra la " +
-                        "app para aplicar; vuélvela a abrir para entrar con la nueva.",
+                        "app para aplicar; vuÃ©lvela a abrir para entrar con la nueva.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -381,7 +381,7 @@ private fun killAppForRestart() {
  * Fila horizontal scrollable de usuarios con avatar + nick, estilo Netflix.
  * Al tapear uno, el caller rellena el nick y mueve el foco al password.
  * El usuario "seleccionado" (el que coincide con el nick tecleado) se
- * destaca con un borde primary más grueso y una leve escala; los demás
+ * destaca con un borde primary mÃ¡s grueso y una leve escala; los demÃ¡s
  * quedan con un halo onSurfaceVariant tenue.
  */
 @Composable
@@ -426,7 +426,7 @@ private fun UserPickerBubble(
     ) {
         // UserAvatar hace: imagen si hay url; inicial del nick en un color
         // derivado del propio nick si no hay. Dentro de un Surface con el
-        // borde de selección.
+        // borde de selecciÃ³n.
         Surface(
             shape = CircleShape,
             color = androidx.compose.ui.graphics.Color.Transparent,

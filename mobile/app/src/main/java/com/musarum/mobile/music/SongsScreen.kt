@@ -1,4 +1,4 @@
-package com.musarum.mobile.music
+﻿package com.musarum.mobile.music
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -39,7 +39,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,13 +65,13 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 /**
- * Pantalla "Canciones" con paginación real:
+ * Pantalla "Canciones" con paginaciÃ³n real:
  *   - El ViewModel mantiene una lista sparse (algunas posiciones son null
- *     hasta que la página correspondiente se carga).
- *   - La UI renderiza placeholders en los null y pide la página en cuanto
+ *     hasta que la pÃ¡gina correspondiente se carga).
+ *   - La UI renderiza placeholders en los null y pide la pÃ¡gina en cuanto
  *     el usuario los acerca al viewport.
- *   - El AlphabetJumpBar salta a cualquier índice absoluto; mientras la
- *     página aterriza, se ven placeholders.
+ *   - El AlphabetJumpBar salta a cualquier Ã­ndice absoluto; mientras la
+ *     pÃ¡gina aterriza, se ven placeholders.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -80,21 +80,21 @@ fun SongsScreen(
         factory = SongListViewModel.factory(LocalAppContainer.current.songRepository)
     )
 ) {
-    val state by viewModel.state.collectAsState()
-    val refreshing by viewModel.refreshing.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val container = LocalAppContainer.current
-    val me by container.userRepository.me.collectAsState()
+    val me by container.userRepository.me.collectAsStateWithLifecycle()
     val isOwner = me?.userRole == "OWNER"
     val snackbar = LocalSnackbar.current
 
-    // Para "ir a la canción que suena": necesitamos observar el player y
-    // además compartir listState/scope con SongsList (donde vive el LazyColumn).
-    val playerState by container.playerController.state.collectAsState()
+    // Para "ir a la canciÃ³n que suena": necesitamos observar el player y
+    // ademÃ¡s compartir listState/scope con SongsList (donde vive el LazyColumn).
+    val playerState by container.playerController.state.collectAsStateWithLifecycle()
     val currentSongId = playerState.currentSong?.id
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
-    // Modal + confirmación. Mantenemos la referencia a la canción
+    // Modal + confirmaciÃ³n. Mantenemos la referencia a la canciÃ³n
     // seleccionada para evitar recomponer la UI con un id suelto.
     var sheetSong by remember { mutableStateOf<SongSummaryDto?>(null) }
     var addSongId by remember { mutableStateOf<Long?>(null) }
@@ -124,18 +124,18 @@ fun SongsScreen(
                     onRetry = { viewModel.refresh() }
                 )
                 is SongsUiState.Ready -> if (s.totalCount == 0) {
-                    EmptyView("No hay canciones todavía")
+                    EmptyView("No hay canciones todavÃ­a")
                 } else {
                     SongsList(
                         state = s,
                         listState = listState,
                         currentSongId = currentSongId,
                         onPlay = { _, song ->
-                            // La cola del player = TODO el catálogo ordenado.
-                            // Así el botón shuffle de NowPlaying barajea de
+                            // La cola del player = TODO el catÃ¡logo ordenado.
+                            // AsÃ­ el botÃ³n shuffle de NowPlaying barajea de
                             // verdad las ~7000 canciones y no solo la ventana
-                            // paginada. loadAllOrdered cachea, así que el
-                            // segundo tap es instantáneo.
+                            // paginada. loadAllOrdered cachea, asÃ­ que el
+                            // segundo tap es instantÃ¡neo.
                             viewModel.loadAllOrdered { all ->
                                 val idx = all
                                     .indexOfFirst { it.id == song.id }
@@ -153,10 +153,10 @@ fun SongsScreen(
                         onEnsureLoaded = { viewModel.ensurePageLoadedFor(it) },
                         onJumpToCurrent = {
                             val sid = currentSongId ?: return@SongsList
-                            // Guardamos el título antes por si entre tanto
-                            // cambia la canción (el mensaje debe citar la que
-                            // estábamos buscando, no la que suena ahora).
-                            val title = playerState.currentSong?.title ?: "la canción"
+                            // Guardamos el tÃ­tulo antes por si entre tanto
+                            // cambia la canciÃ³n (el mensaje debe citar la que
+                            // estÃ¡bamos buscando, no la que suena ahora).
+                            val title = playerState.currentSong?.title ?: "la canciÃ³n"
                             viewModel.locateSong(
                                 songId = sid,
                                 onFound = { absolute ->
@@ -174,7 +174,7 @@ fun SongsScreen(
                                 if (all.isNotEmpty()) {
                                     container.playerController.playQueue(all, 0)
                                 } else {
-                                    snackbar("No hay canciones en el catálogo")
+                                    snackbar("No hay canciones en el catÃ¡logo")
                                 }
                             }
                         },
@@ -183,7 +183,7 @@ fun SongsScreen(
                                 if (all.isNotEmpty()) {
                                     container.playerController.playQueue(all.shuffled(), 0)
                                 } else {
-                                    snackbar("No hay canciones en el catálogo")
+                                    snackbar("No hay canciones en el catÃ¡logo")
                                 }
                             }
                         }
@@ -243,8 +243,8 @@ private fun SongsList(
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    // El FAB solo se muestra si hay canción sonando y NO está visible ya en
-    // el viewport — así no molesta cuando el usuario ya la tiene delante.
+    // El FAB solo se muestra si hay canciÃ³n sonando y NO estÃ¡ visible ya en
+    // el viewport â€” asÃ­ no molesta cuando el usuario ya la tiene delante.
     val currentVisible by remember(currentSongId, state.songs) {
         derivedStateOf {
             if (currentSongId == null) return@derivedStateOf false
@@ -258,7 +258,7 @@ private fun SongsList(
     }
     val showJumpFab = currentSongId != null && !currentVisible
 
-    // Prefetch: cuando el viewport se mueve, pedimos las páginas vecinas.
+    // Prefetch: cuando el viewport se mueve, pedimos las pÃ¡ginas vecinas.
     // Usamos derivedStateOf para no recomponer en cada frame.
     val visibleRange by remember(state.totalCount) {
         derivedStateOf {
@@ -266,7 +266,7 @@ private fun SongsList(
             if (visible.isEmpty()) IntRange.EMPTY
             else {
                 // La primera entrada es el header de stats; las canciones
-                // empiezan después.
+                // empiezan despuÃ©s.
                 val first = (visible.first().index - HEADER_ITEMS).coerceAtLeast(0)
                 val last = (visible.last().index - HEADER_ITEMS).coerceAtLeast(0)
                 first..last
@@ -279,7 +279,7 @@ private fun SongsList(
             .distinctUntilChanged()
             .collect { range ->
                 if (range.isEmpty()) return@collect
-                // Página actual + una por delante como buffer: 60 FPS de scroll
+                // PÃ¡gina actual + una por delante como buffer: 60 FPS de scroll
                 // sin esperar al backend.
                 onEnsureLoaded(range.first)
                 onEnsureLoaded(range.last)
@@ -300,7 +300,7 @@ private fun SongsList(
                     onShuffleAll = onShuffleAll
                 )
             }
-            // Un item por posición absoluta. key = índice (no song.id) porque
+            // Un item por posiciÃ³n absoluta. key = Ã­ndice (no song.id) porque
             // los nulls no tienen id.
             items(
                 count = state.totalCount,
@@ -326,7 +326,7 @@ private fun SongsList(
                 onJumpToIndex(absolute)
                 coroutineScope.launch {
                     // +HEADER_ITEMS porque la LazyColumn arranca con el
-                    // header de stats antes de la primera canción.
+                    // header de stats antes de la primera canciÃ³n.
                     listState.animateScrollToItem(absolute + HEADER_ITEMS)
                 }
             },
@@ -344,7 +344,7 @@ private fun SongsList(
             ) {
                 Icon(
                     Icons.Filled.MyLocation,
-                    contentDescription = "Ir a la canción que suena"
+                    contentDescription = "Ir a la canciÃ³n que suena"
                 )
             }
         }
@@ -397,11 +397,18 @@ fun SongRow(
     onLongPress: (() -> Unit)? = null,
     coverUrl: String? = null
 ) {
+    val haptics = com.musarum.mobile.ui.rememberMusarumHaptics()
     val base = Modifier
         .fillMaxWidth()
         .let { m ->
             if (onLongPress != null) {
-                m.combinedClickable(onClick = onClick, onLongClick = onLongPress)
+                m.combinedClickable(
+                    onClick = onClick,
+                    // longPress() vibra un pelÃ­n antes de abrir el sheet â€”
+                    // "feedback fÃ­sico" clÃ¡sico de iOS/Material 3. Si el mÃ³vil
+                    // no tiene motor hÃ¡ptico (emulador), es no-op.
+                    onLongClick = { haptics.longPress(); onLongPress() }
+                )
             } else {
                 m.clickable(onClick = onClick)
             }
@@ -412,10 +419,10 @@ fun SongRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Portada con un badge opcional en la esquina inferior derecha que
-        // indica si la canción está descargada (reloj=temporal, check=permanente).
+        // indica si la canciÃ³n estÃ¡ descargada (reloj=temporal, check=permanente).
         // Lee el estado del DownloadsRepository para que se actualice solo.
         val container = LocalAppContainer.current
-        val downloads by container.downloadsRepository.entries.collectAsState()
+        val downloads by container.downloadsRepository.entries.collectAsStateWithLifecycle()
         val downloadEntry = downloads[song.id]
         Box(modifier = Modifier.size(48.dp)) {
             CoverImage(
@@ -486,9 +493,9 @@ internal fun formatDuration(ms: Long): String {
 }
 
 /**
- * Hero de la pantalla de Canciones — mismo lenguaje visual que
+ * Hero de la pantalla de Canciones â€” mismo lenguaje visual que
  * FavoritesHero / DownloadsHero: gradient radial del primary al fondo,
- * icono MusicNote grande, título + stats (total + horas) y una fila
+ * icono MusicNote grande, tÃ­tulo + stats (total + horas) y una fila
  * de acciones Play / Aleatorio solo con iconos.
  *
  * El total de canciones llega como argumento (lo tiene el ViewModel);
@@ -550,7 +557,7 @@ private fun SongsLibraryHero(
                         }
                     )
                     durationMs?.let {
-                        append(" · ")
+                        append(" Â· ")
                         append(humanizeHours(it))
                     }
                 },
@@ -593,7 +600,7 @@ private fun SongsLibraryHero(
 }
 
 /**
- * "Y h" ó "Y h M min" según convenga. Útil para el hero de Canciones.
+ * "Y h" Ã³ "Y h M min" segÃºn convenga. Ãštil para el hero de Canciones.
  */
 private fun humanizeHours(ms: Long): String {
     val totalMinutes = ms / 60_000L

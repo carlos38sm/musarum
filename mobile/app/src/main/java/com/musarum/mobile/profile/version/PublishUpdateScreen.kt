@@ -1,4 +1,4 @@
-package com.musarum.mobile.profile.version
+﻿package com.musarum.mobile.profile.version
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,7 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,12 +52,12 @@ import com.musarum.mobile.LocalAppContainer
 import kotlinx.coroutines.launch
 
 /**
- * Pantalla OWNER para publicar un anuncio de actualización del APK.
+ * Pantalla OWNER para publicar un anuncio de actualizaciÃ³n del APK.
  *
  * Flujo pensado: pushear un tag "android-vX.Y.Z" desde el PC, esperar a que
- * el workflow verde haga la Release, y aquí pegar la versión → botón
- * "Rellenar URL" → "Publicar". A partir de ese segundo, todos los móviles
- * verán el diálogo al abrir la app.
+ * el workflow verde haga la Release, y aquÃ­ pegar la versiÃ³n â†’ botÃ³n
+ * "Rellenar URL" â†’ "Publicar". A partir de ese segundo, todos los mÃ³viles
+ * verÃ¡n el diÃ¡logo al abrir la app.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,17 +66,17 @@ fun PublishUpdateScreen(onBack: () -> Unit) {
     val viewModel: PublishUpdateViewModel = viewModel(
         factory = PublishUpdateViewModel.factory(container.apiService)
     )
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Publicar actualización") },
+                title = { Text("Publicar actualizaciÃ³n") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
                     }
                 },
                 actions = {
@@ -139,7 +139,7 @@ private fun FormContent(
         CurrentCard(state = state)
 
         Text(
-            text = "Nueva publicación",
+            text = "Nueva publicaciÃ³n",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 8.dp)
@@ -148,7 +148,7 @@ private fun FormContent(
         OutlinedTextField(
             value = version,
             onValueChange = { version = it },
-            label = { Text("Versión (ej. 1.0.4)") },
+            label = { Text("VersiÃ³n (ej. 1.0.4)") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
@@ -174,7 +174,7 @@ private fun FormContent(
             enabled = version.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Rellenar URL desde versión")
+            Text("Rellenar URL desde versiÃ³n")
         }
 
         Row(
@@ -182,9 +182,9 @@ private fun FormContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Actualización obligatoria", style = MaterialTheme.typography.bodyLarge)
+                Text("ActualizaciÃ³n obligatoria", style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    "Si se activa, el diálogo no se podrá cerrar sin actualizar.",
+                    "Si se activa, el diÃ¡logo no se podrÃ¡ cerrar sin actualizar.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -243,11 +243,11 @@ private fun CurrentCard(state: PublishUpdateUiState.Ready) {
             val v = state.currentLatestApk
             if (v.isNullOrBlank()) {
                 Text(
-                    "Sin anuncio activo — los móviles no verán ningún diálogo.",
+                    "Sin anuncio activo â€” los mÃ³viles no verÃ¡n ningÃºn diÃ¡logo.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             } else {
-                Text("Versión: $v", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text("VersiÃ³n: $v", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 state.currentApkUrl?.takeIf { it.isNotBlank() }?.let {
                     Text("URL: $it", style = MaterialTheme.typography.bodySmall)
                 }
@@ -259,7 +259,7 @@ private fun CurrentCard(state: PublishUpdateUiState.Ready) {
             }
             HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
             Text(
-                "Los móviles la detectan al abrir la app (GET /version).",
+                "Los mÃ³viles la detectan al abrir la app (GET /version).",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

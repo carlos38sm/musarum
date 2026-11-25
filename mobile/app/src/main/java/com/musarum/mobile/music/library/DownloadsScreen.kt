@@ -1,4 +1,4 @@
-package com.musarum.mobile.music.library
+﻿package com.musarum.mobile.music.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,7 +46,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,14 +69,14 @@ import com.musarum.mobile.music.CoverImage
 /**
  * Lista de canciones descargadas localmente. Pinta directamente desde el
  * {@link com.musarum.mobile.data.downloads.DownloadsRepository} sin tocar
- * al backend — por eso funciona offline. Rediseño nov-24 2026:
+ * al backend â€” por eso funciona offline. RediseÃ±o nov-24 2026:
  *  - Hero estilo YT Music (igual que Favoritas) con icono CloudDone grande
  *    sobre gradient tertiary + stats.
  *  - Botones Play/Shuffle en la fila de acciones, solo iconos.
  *  - Papelera global a la derecha de la cabecera (borra todas con confirm).
- *  - Cada canción pinta su propia portada (como SongRow) con badge esquina
- *    señalando si es temporal (reloj) o permanente (check).
- *  - Swipe lateral sobre una canción la elimina de descargas (se mantiene
+ *  - Cada canciÃ³n pinta su propia portada (como SongRow) con badge esquina
+ *    seÃ±alando si es temporal (reloj) o permanente (check).
+ *  - Swipe lateral sobre una canciÃ³n la elimina de descargas (se mantiene
  *    en la biblioteca online).
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -84,16 +84,16 @@ import com.musarum.mobile.music.CoverImage
 fun DownloadsScreen(onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val snackbar = LocalSnackbar.current
-    val entries by container.downloadsRepository.entries.collectAsState()
+    val entries by container.downloadsRepository.entries.collectAsStateWithLifecycle()
     val list = entries.values.sortedByDescending { it.downloadedAt }
 
     var confirmClearAll by remember { mutableStateOf(false) }
 
     // Backfill transparente: las descargas anteriores a nov-24-pm 2026 no
-    // tenían snapshot de coverUrl, así que todas pintaban placeholder.
+    // tenÃ­an snapshot de coverUrl, asÃ­ que todas pintaban placeholder.
     // Al entrar en esta pantalla, por cada info.coverUrl=null preguntamos
     // al backend /songs/{id} y actualizamos el index.json. Una sola pasada
-    // por apertura; si falla la red, se reintenta la próxima vez.
+    // por apertura; si falla la red, se reintenta la prÃ³xima vez.
     LaunchedEffect(Unit) {
         val missing = container.downloadsRepository.entries.value.values
             .filter { it.coverUrl.isNullOrBlank() }
@@ -113,7 +113,7 @@ fun DownloadsScreen(onBack: () -> Unit) {
                 title = { Text("Descargadas") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
                     }
                 }
             )
@@ -202,7 +202,7 @@ fun DownloadsScreen(onBack: () -> Unit) {
             title = { Text("Borrar todas las descargas") },
             text = {
                 Text(
-                    "Se eliminarán ${list.size} descargas de este dispositivo. " +
+                    "Se eliminarÃ¡n ${list.size} descargas de este dispositivo. " +
                     "Las canciones siguen en la biblioteca online, solo dejan " +
                     "de estar offline."
                 )
@@ -275,8 +275,8 @@ private fun DownloadsHero(
             val mb = totalBytes / (1024.0 * 1024.0)
             Text(
                 when (count) {
-                    1 -> "1 pista · ${"%.1f".format(mb)} MB"
-                    else -> "$count pistas · ${"%.1f".format(mb)} MB"
+                    1 -> "1 pista Â· ${"%.1f".format(mb)} MB"
+                    else -> "$count pistas Â· ${"%.1f".format(mb)} MB"
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -320,8 +320,8 @@ private fun DownloadsHero(
                 }
             }
             Spacer(Modifier.weight(1f))
-            // Papelera en el extremo derecho — borra TODAS las descargas
-            // (con AlertDialog de confirmación).
+            // Papelera en el extremo derecho â€” borra TODAS las descargas
+            // (con AlertDialog de confirmaciÃ³n).
             Surface(
                 modifier = Modifier.size(48.dp).clickable(onClick = onClearAll),
                 shape = CircleShape,
@@ -341,7 +341,7 @@ private fun DownloadsHero(
 
 /**
  * Fila con swipe-to-dismiss sobre DownloadRow. Un swipe en cualquier
- * dirección elimina la descarga. Al ejecutar onRemove el item sale de la
+ * direcciÃ³n elimina la descarga. Al ejecutar onRemove el item sale de la
  * lista (DownloadsRepository emite un entries nuevo sin esa key) y por
  * tanto desaparece sin necesidad de animar el collapse a mano.
  */
@@ -373,7 +373,7 @@ private fun SwipeableDownloadRow(
     SwipeToDismissBox(
         state = dismissState,
         backgroundContent = {
-            // Fondo rojo con icono papelera a los dos lados — al deslizar
+            // Fondo rojo con icono papelera a los dos lados â€” al deslizar
             // el usuario ve claro "esto se va a borrar".
             val alignment = when (dismissState.dismissDirection) {
                 SwipeToDismissBoxValue.StartToEnd -> Alignment.CenterStart
@@ -414,10 +414,10 @@ private fun DownloadRow(
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Portada real de la canción + badge esquina sup derecha señalando
+        // Portada real de la canciÃ³n + badge esquina sup derecha seÃ±alando
         // modo (reloj = temporal, check = permanente). Idea pedida por
-        // Carlos nov-24: "como una notificación, un puntito arriba".
-        // Desde nov-24-pm DownloadInfo guarda coverUrl, así se pinta la
+        // Carlos nov-24: "como una notificaciÃ³n, un puntito arriba".
+        // Desde nov-24-pm DownloadInfo guarda coverUrl, asÃ­ se pinta la
         // portada real; las descargas viejas (coverUrl=null) caen al
         // placeholder determinista por songId.
         Box(modifier = Modifier.size(48.dp)) {
@@ -460,9 +460,9 @@ private fun DownloadRow(
             Text(
                 buildString {
                     append(info.artistsLabel)
-                    append(" · ")
+                    append(" Â· ")
                     append("%.1f MB".format(mb))
-                    if (info.isTemporary) append(" · temporal")
+                    if (info.isTemporary) append(" Â· temporal")
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -481,7 +481,7 @@ private fun DownloadInfo.toSongSummary(): SongSummaryDto = SongSummaryDto(
     durationMs = null,
     trackNumber = null,
     artists = listOf(ArtistRefDto(id = 0, name = artistsLabel)),
-    // Reutilizamos el coverUrl que se guardó al descargar, así al reproducir
+    // Reutilizamos el coverUrl que se guardÃ³ al descargar, asÃ­ al reproducir
     // desde Descargas el NowPlaying muestra portada correcta sin ir al backend.
     coverUrl = coverUrl
 )

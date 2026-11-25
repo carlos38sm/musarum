@@ -1,4 +1,4 @@
-package com.musarum.mobile.profile.server
+﻿package com.musarum.mobile.profile.server
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.Refresh
@@ -50,7 +51,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -79,11 +80,11 @@ fun ServerStatsScreen(onBack: () -> Unit) {
     val viewModel: ServerStatsViewModel = viewModel(
         factory = ServerStatsViewModel.factory(container.apiService)
     )
-    val state by viewModel.state.collectAsState()
-    val host by viewModel.host.collectAsState()
-    val hostLive by viewModel.hostLive.collectAsState()
-    val hostHistory by viewModel.hostHistory.collectAsState()
-    val enrichProgress by viewModel.enrichProgress.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val host by viewModel.host.collectAsStateWithLifecycle()
+    val hostLive by viewModel.hostLive.collectAsStateWithLifecycle()
+    val hostHistory by viewModel.hostHistory.collectAsStateWithLifecycle()
+    val enrichProgress by viewModel.enrichProgress.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showWipeDialog by remember { mutableStateOf(false) }
@@ -91,10 +92,10 @@ fun ServerStatsScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Análisis del servidor") },
+                title = { Text("AnÃ¡lisis del servidor") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
                     }
                 },
                 actions = {
@@ -173,6 +174,7 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                         scope.launch { snackbarHostState.showSnackbar(msg) }
                     }
                 )
+                ObservabilityCard(baseUrl = container.baseUrl)
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -183,13 +185,13 @@ fun ServerStatsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { showWipeDialog = false },
             icon = { Icon(Icons.Filled.DeleteSweep, contentDescription = null) },
-            title = { Text("¿Vaciar la biblioteca?") },
+            title = { Text("Â¿Vaciar la biblioteca?") },
             text = {
                 Text(
-                    "Se borrarán las $songCount canciones, todos los artistas, " +
-                        "álbumes y géneros. También favoritos y entradas de " +
-                        "playlists. Las playlists (vacías), usuarios y carpetas " +
-                        "configuradas se mantienen. Esta acción no se puede deshacer."
+                    "Se borrarÃ¡n las $songCount canciones, todos los artistas, " +
+                        "Ã¡lbumes y gÃ©neros. TambiÃ©n favoritos y entradas de " +
+                        "playlists. Las playlists (vacÃ­as), usuarios y carpetas " +
+                        "configuradas se mantienen. Esta acciÃ³n no se puede deshacer."
                 )
             },
             confirmButton = {
@@ -213,6 +215,62 @@ fun ServerStatsScreen(onBack: () -> Unit) {
     }
 }
 
+/**
+ * Botón directo a Grafana. La URL se deriva de la baseUrl del backend
+ * reemplazando el puerto 8080 por 3000 y quitando el context-path; si el
+ * OWNER no ha levantado el profile 'obs' del compose, Android abrirá la
+ * página de error del navegador — es mejor que un botón que no explique.
+ */
+@Composable
+private fun ObservabilityCard(baseUrl: String) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val grafanaUrl = remember(baseUrl) { deriveGrafanaUrl(baseUrl) }
+    StatCard(title = "Observabilidad") {
+        Text(
+            "Prometheus scrapea /actuator/prometheus del backend cada 30 s " +
+                "y Grafana lo pinta. Levanta ambos con `docker compose " +
+                "--profile obs up -d` en el servidor.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(12.dp))
+        Button(
+            onClick = {
+                val intent = android.content.Intent(
+                    android.content.Intent.ACTION_VIEW,
+                    android.net.Uri.parse(grafanaUrl)
+                ).apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+                runCatching { ctx.startActivity(intent) }
+            },
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.Insights, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Abrir Grafana")
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            grafanaUrl,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+private fun deriveGrafanaUrl(baseUrl: String): String {
+    // baseUrl típico: http://100.88.167.4:8080/api/v1/ → http://100.88.167.4:3000/
+    return runCatching {
+        val u = java.net.URI(baseUrl)
+        val scheme = u.scheme ?: "http"
+        val host = u.host ?: "localhost"
+        "$scheme://$host:3000/"
+    }.getOrDefault("http://localhost:3000/")
+}
+
 @Composable
 private fun MaintenanceCard(
     songCount: Long,
@@ -225,14 +283,14 @@ private fun MaintenanceCard(
 ) {
     StatCard(title = "Mantenimiento") {
         Text(
-            "Vuelve a pasar Emendatium por TODA la biblioteca: biografías, " +
+            "Vuelve a pasar Emendatium por TODA la biblioteca: biografÃ­as, " +
                 "BPM, tonalidad, portadas, ReplayGain y renombrado. Los campos " +
-                "ya puestos no se pisan — solo se rellenan los que estén vacíos.",
+                "ya puestos no se pisan â€” solo se rellenan los que estÃ©n vacÃ­os.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // Barra de progreso del run activo (o del último si terminó).
+        // Barra de progreso del run activo (o del Ãºltimo si terminÃ³).
         EnrichProgressBlock(
             progress = progress,
             onDismiss = onDismissProgress,
@@ -255,7 +313,7 @@ private fun MaintenanceCard(
             Text(
                 when {
                     songCount <= 0 -> "Nada que enriquecer"
-                    running -> "Enriqueciendo…"
+                    running -> "Enriqueciendoâ€¦"
                     else -> "Re-enriquecer todo ($songCount canciones)"
                 }
             )
@@ -263,7 +321,7 @@ private fun MaintenanceCard(
 
         Spacer(Modifier.height(18.dp))
         Text(
-            "Borra artistas, álbumes y géneros que quedaron sin canciones " +
+            "Borra artistas, Ã¡lbumes y gÃ©neros que quedaron sin canciones " +
                 "tras un borrado (fantasmas en listas).",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -279,13 +337,13 @@ private fun MaintenanceCard(
         ) {
             Icon(Icons.Filled.CleaningServices, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Limpiar huérfanos de catálogo")
+            Text("Limpiar huÃ©rfanos de catÃ¡logo")
         }
 
         Spacer(Modifier.height(18.dp))
         Text(
-            "Vacía el catálogo musical del servidor cuando vayas a cargar " +
-                "una carpeta de música nueva. No toca usuarios, playlists ni " +
+            "VacÃ­a el catÃ¡logo musical del servidor cuando vayas a cargar " +
+                "una carpeta de mÃºsica nueva. No toca usuarios, playlists ni " +
                 "las carpetas configuradas.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -304,7 +362,7 @@ private fun MaintenanceCard(
             Spacer(Modifier.width(8.dp))
             Text(
                 if (songCount > 0) "Vaciar biblioteca ($songCount canciones)"
-                else "Biblioteca ya vacía"
+                else "Biblioteca ya vacÃ­a"
             )
         }
     }
@@ -324,10 +382,10 @@ private fun BackupsCard(onSnackbar: (String) -> Unit) {
         loading = false
     }
 
-    StatCard(title = "Backups automáticos") {
+    StatCard(title = "Backups automÃ¡ticos") {
         Text(
             "El servidor hace backup de playlists y favoritos cada 30 minutos " +
-                "en _backups/. Mantiene los últimos 10 y rota el resto.",
+                "en _backups/. Mantiene los Ãºltimos 10 y rota el resto.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -357,20 +415,20 @@ private fun BackupsCard(onSnackbar: (String) -> Unit) {
         ) {
             Icon(Icons.Filled.Save, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(if (creating) "Creando…" else "Hacer backup ahora")
+            Text(if (creating) "Creandoâ€¦" else "Hacer backup ahora")
         }
 
         Spacer(Modifier.height(12.dp))
 
         if (loading) {
             Text(
-                "Cargando lista…",
+                "Cargando listaâ€¦",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else if (items.isEmpty()) {
             Text(
-                "Aún no hay backups guardados.",
+                "AÃºn no hay backups guardados.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -398,21 +456,21 @@ private fun BackupsCard(onSnackbar: (String) -> Unit) {
     }
 }
 
-/* ─────────────────────────── Tarjetas por sección ──────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Tarjetas por secciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 @Composable
 private fun CatalogCard(c: ServerStatsDto.CatalogStats) {
-    StatCard(title = "Catálogo") {
+    StatCard(title = "CatÃ¡logo") {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             StatBig(label = "Canciones", value = c.songs.toString(), modifier = Modifier.weight(1f))
             StatBig(label = "Artistas", value = c.artists.toString(), modifier = Modifier.weight(1f))
-            StatBig(label = "Álbumes", value = c.albums.toString(), modifier = Modifier.weight(1f))
+            StatBig(label = "Ãlbumes", value = c.albums.toString(), modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(10.dp))
-        StatLine("Géneros", c.genres.toString())
+        StatLine("GÃ©neros", c.genres.toString())
         StatLine("Playlists", c.playlists.toString())
         StatLine("Favoritos totales", c.totalFavorites.toString())
-        val usersSuffix = if (c.blockedUsers > 0) " · ${c.blockedUsers} bloqueados" else ""
+        val usersSuffix = if (c.blockedUsers > 0) " Â· ${c.blockedUsers} bloqueados" else ""
         StatLine("Usuarios", "${c.users}$usersSuffix")
     }
 }
@@ -455,16 +513,16 @@ private fun DiskCard(d: ServerStatsDto.DiskStats) {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "${humanBytes(used)} usados · ${humanBytes(d.diskFreeBytes)} libres de ${humanBytes(d.diskTotalBytes)}",
+                "${humanBytes(used)} usados Â· ${humanBytes(d.diskFreeBytes)} libres de ${humanBytes(d.diskTotalBytes)}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(10.dp))
         }
-        StatLine("Música", humanBytes(d.musicBytes))
+        StatLine("MÃºsica", humanBytes(d.musicBytes))
         StatLine("Portadas", humanBytes(d.coversBytes))
         StatLine("Letras", humanBytes(d.lyricsBytes))
-        StatLine("Vídeos", humanBytes(d.videosBytes))
+        StatLine("VÃ­deos", humanBytes(d.videosBytes))
         StatLine("Avatares", humanBytes(d.avatarsBytes))
         StatLine("Base de datos", humanBytes(d.databaseBytes))
     }
@@ -474,7 +532,7 @@ private fun DiskCard(d: ServerStatsDto.DiskStats) {
 private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) {
     StatCard(title = "Pendiente de enriquecer") {
         Text(
-            "Canciones a las que Emendatium aún no ha dado un valor.",
+            "Canciones a las que Emendatium aÃºn no ha dado un valor.",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -486,8 +544,8 @@ private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) 
         StatLine("Sin MusicBrainz ID", "${e.missingMbid} / $totalSongs")
 
         // Desglose por status del intento Emendatium (si el backend lo trae).
-        // Útil para diagnosticar: si ok=0 aunque Emendatium esté verde →
-        // está respondiendo pero sin metadata (fpcalc no instalado, etc.).
+        // Ãštil para diagnosticar: si ok=0 aunque Emendatium estÃ© verde â†’
+        // estÃ¡ respondiendo pero sin metadata (fpcalc no instalado, etc.).
         val pending = e.enrichPending
         val ok = e.enrichOk
         val noMatch = e.enrichNoMatch
@@ -495,7 +553,7 @@ private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) 
         if (pending != null && ok != null) {
             Spacer(Modifier.height(14.dp))
             Text(
-                "Último intento Emendatium",
+                "Ãšltimo intento Emendatium",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -511,9 +569,9 @@ private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) 
 @Composable
 private fun EmendatiumCard(e: ServerStatsDto.EmendatiumStats) {
     val titleIcon = when {
-        !e.enabled -> "⚪"   // No configurado
-        e.reachable -> "🟢"   // Vivo
-        else -> "🔴"          // Caído
+        !e.enabled -> "âšª"   // No configurado
+        e.reachable -> "ðŸŸ¢"   // Vivo
+        else -> "ðŸ”´"          // CaÃ­do
     }
     StatCard(title = "Emendatium $titleIcon") {
         val lineColor = when {
@@ -522,9 +580,9 @@ private fun EmendatiumCard(e: ServerStatsDto.EmendatiumStats) {
             else -> MaterialTheme.colorScheme.error
         }
         val statusText = when {
-            !e.enabled -> "No configurado · sin él, el catálogo no recibe BPM, tonalidad, bio de artista ni replaygain."
-            e.reachable -> "Alcanzable · enriqueciendo canciones a medida que llegan."
-            else -> "Configurado pero NO responde. Mientras siga así, BPM/tonalidad/bio no van a aparecer aunque re-escanees."
+            !e.enabled -> "No configurado Â· sin Ã©l, el catÃ¡logo no recibe BPM, tonalidad, bio de artista ni replaygain."
+            e.reachable -> "Alcanzable Â· enriqueciendo canciones a medida que llegan."
+            else -> "Configurado pero NO responde. Mientras siga asÃ­, BPM/tonalidad/bio no van a aparecer aunque re-escanees."
         }
         Text(
             statusText,
@@ -536,7 +594,7 @@ private fun EmendatiumCard(e: ServerStatsDto.EmendatiumStats) {
         if (e.enabled && !e.reachable && !e.message.isNullOrBlank()) {
             StatLine("Motivo", e.message)
         }
-        e.lastCheckedAtMs?.let { StatLine("Última comprobación", humanInstant(it)) }
+        e.lastCheckedAtMs?.let { StatLine("Ãšltima comprobaciÃ³n", humanInstant(it)) }
     }
 }
 
@@ -545,13 +603,13 @@ private fun ActivityCard(a: ServerStatsDto.ActivityStats) {
     StatCard(title = "Actividad") {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             StatBig(label = "Total", value = a.totalPlays.toString(), modifier = Modifier.weight(1f))
-            StatBig(label = "7 días", value = a.playsLast7Days.toString(), modifier = Modifier.weight(1f))
-            StatBig(label = "30 días", value = a.playsLast30Days.toString(), modifier = Modifier.weight(1f))
+            StatBig(label = "7 dÃ­as", value = a.playsLast7Days.toString(), modifier = Modifier.weight(1f))
+            StatBig(label = "30 dÃ­as", value = a.playsLast30Days.toString(), modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(10.dp))
         StatLine("Usuarios activos (30d)", a.activeUsersLast30Days.toString())
-        StatLine("Última reproducción", humanInstant(a.lastPlayAt))
-        StatLine("Último escaneo", humanInstant(a.lastScanAt))
+        StatLine("Ãšltima reproducciÃ³n", humanInstant(a.lastPlayAt))
+        StatLine("Ãšltimo escaneo", humanInstant(a.lastScanAt))
         a.lastScanSummary?.let { StatLine("Resumen escaneo", it) }
     }
 }
@@ -561,16 +619,16 @@ private fun TechnicalCard(
     t: ServerStatsDto.TechnicalStats,
     onCleanOrphans: () -> Unit = {}
 ) {
-    StatCard(title = "Técnico") {
+    StatCard(title = "TÃ©cnico") {
         StatLine("Uptime", humanDuration(t.uptimeMs))
         StatLine("Memoria usada", humanBytes(t.memoryUsedBytes))
         StatLine("Memoria asignada", humanBytes(t.memoryTotalBytes))
-        StatLine("Memoria máxima", humanBytes(t.memoryMaxBytes))
+        StatLine("Memoria mÃ¡xima", humanBytes(t.memoryMaxBytes))
         if (t.orphanLyricFiles > 0) {
-            StatLine("Letras huérfanas", t.orphanLyricFiles.toString())
+            StatLine("Letras huÃ©rfanas", t.orphanLyricFiles.toString())
             Spacer(Modifier.height(6.dp))
             androidx.compose.material3.TextButton(onClick = onCleanOrphans) {
-                Text("Limpiar ${t.orphanLyricFiles} ficheros .lrc huérfanos")
+                Text("Limpiar ${t.orphanLyricFiles} ficheros .lrc huÃ©rfanos")
             }
         }
         val errors = t.recentScanErrors.orEmpty()
@@ -579,17 +637,17 @@ private fun TechnicalCard(
             androidx.compose.material3.HorizontalDivider()
             Spacer(Modifier.height(10.dp))
             Text(
-                "Errores del último scan (últimos ${errors.size})",
+                "Errores del Ãºltimo scan (Ãºltimos ${errors.size})",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(6.dp))
-            // Mostramos los 10 más recientes; el usuario cuenta con el total
+            // Mostramos los 10 mÃ¡s recientes; el usuario cuenta con el total
             // en la cabecera y puede abrir logs del contenedor para el resto.
             errors.takeLast(10).reversed().forEach { line ->
                 Text(
-                    "• $line",
+                    "â€¢ $line",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 1.dp)
@@ -599,7 +657,7 @@ private fun TechnicalCard(
     }
 }
 
-/* ─────────────────── Barra de progreso del re-enrich ──────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Barra de progreso del re-enrich â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 @Composable
 private fun EnrichProgressBlock(
@@ -623,8 +681,8 @@ private fun EnrichProgressBlock(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            if (progress.running) "Enriqueciendo canciones…"
-            else "Enriquecido · ${progress.succeeded} ok / ${progress.failed} fallidas",
+            if (progress.running) "Enriqueciendo cancionesâ€¦"
+            else "Enriquecido Â· ${progress.succeeded} ok / ${progress.failed} fallidas",
             style = MaterialTheme.typography.labelMedium,
             color = if (progress.running) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onBackground,
@@ -651,13 +709,13 @@ private fun EnrichProgressBlock(
     Spacer(Modifier.height(6.dp))
     val subLine = buildString {
         append("${progress.processed} / ${progress.total}")
-        append(" · %.0f%%".format(pct * 100))
+        append(" Â· %.0f%%".format(pct * 100))
         if (progress.running && etaMs > 0) {
-            append(" · quedan ~")
+            append(" Â· quedan ~")
             append(humanDuration(etaMs))
         }
         if (!progress.running && progress.startedAtMs != null && progress.finishedAtMs != null) {
-            append(" · tardó ")
+            append(" Â· tardÃ³ ")
             append(humanDuration(progress.finishedAtMs - progress.startedAtMs))
         }
     }
@@ -668,7 +726,7 @@ private fun EnrichProgressBlock(
     )
 }
 
-/* ─────────────────────────── Tarjeta Máquina ───────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Tarjeta MÃ¡quina â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 @Composable
 private fun MachineCard(
@@ -677,7 +735,7 @@ private fun MachineCard(
     live: Boolean,
     onLiveChange: (Boolean) -> Unit
 ) {
-    StatCard(title = "Máquina") {
+    StatCard(title = "MÃ¡quina") {
         // Cabecera con toggle live.
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -703,7 +761,7 @@ private fun MachineCard(
         if (host == null) {
             Spacer(Modifier.height(10.dp))
             Text(
-                "Cargando métricas del sistema… (o el backend no las expone todavía)",
+                "Cargando mÃ©tricas del sistemaâ€¦ (o el backend no las expone todavÃ­a)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -735,7 +793,7 @@ private fun MachineCard(
             )
             Spacer(Modifier.width(6.dp))
             Text(
-                "CPU · ${host.cpuThreads} hilos",
+                "CPU Â· ${host.cpuThreads} hilos",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -754,8 +812,8 @@ private fun MachineCard(
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
-        // Sparkline histórica (30 min). Sin backend viejo o buffer vacío
-        // no pinta nada — deja hueco controlado para que el salto no sea
+        // Sparkline histÃ³rica (30 min). Sin backend viejo o buffer vacÃ­o
+        // no pinta nada â€” deja hueco controlado para que el salto no sea
         // brusco cuando entre la primera muestra.
         history?.let {
             Spacer(Modifier.height(6.dp))
@@ -829,7 +887,7 @@ private fun MachineCard(
             )
         }
 
-        // Uptime de la máquina + hilos JVM
+        // Uptime de la mÃ¡quina + hilos JVM
         Spacer(Modifier.height(6.dp))
         StatLine("Uptime del PC", humanDuration(host.osUptimeSeconds * 1000L))
         StatLine("Hilos JVM", host.jvmThreadCount.toString())
@@ -851,9 +909,9 @@ private fun MachineCard(
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            // Sparkline agregada rx+tx. Se normaliza al máximo del propio
-            // buffer: así visualmente siempre hay contraste, sin importar
-            // que la red del portátil tope en 50 KB/s o en 50 MB/s.
+            // Sparkline agregada rx+tx. Se normaliza al mÃ¡ximo del propio
+            // buffer: asÃ­ visualmente siempre hay contraste, sin importar
+            // que la red del portÃ¡til tope en 50 KB/s o en 50 MB/s.
             history?.let {
                 val totals = it.samples.map { s -> (s.rxBytesPerSec + s.txBytesPerSec).toFloat() }
                 val max = (totals.maxOrNull() ?: 0f).coerceAtLeast(1f)
@@ -888,7 +946,7 @@ private fun MachineCard(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        "${humanBytes(d.sizeBytes)} · ↓ ${humanBytesPerSec(d.readBytesPerSec)} · ↑ ${humanBytesPerSec(d.writeBytesPerSec)}",
+                        "${humanBytes(d.sizeBytes)} Â· â†“ ${humanBytesPerSec(d.readBytesPerSec)} Â· â†‘ ${humanBytesPerSec(d.writeBytesPerSec)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -912,7 +970,7 @@ private fun NetworkInterfaceRow(nif: HostStatsDto.NetworkInterfaceDto) {
                 modifier = Modifier.weight(1f)
             )
             Text(
-                "↓ ${humanBytesPerSec(nif.rxBytesPerSec)}  ↑ ${humanBytesPerSec(nif.txBytesPerSec)}",
+                "â†“ ${humanBytesPerSec(nif.rxBytesPerSec)}  â†‘ ${humanBytesPerSec(nif.txBytesPerSec)}",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -920,8 +978,8 @@ private fun NetworkInterfaceRow(nif: HostStatsDto.NetworkInterfaceDto) {
         val sub = buildString {
             nif.ipv4?.let { append(it) }
             if (!nif.up) {
-                if (isNotEmpty()) append(" · ")
-                append("caído")
+                if (isNotEmpty()) append(" Â· ")
+                append("caÃ­do")
             }
         }
         if (sub.isNotBlank()) {
@@ -935,15 +993,15 @@ private fun NetworkInterfaceRow(nif: HostStatsDto.NetworkInterfaceDto) {
 }
 
 /**
- * Mini-gráfica de los últimos N valores normalizados 0..1. Se dibuja
- * una línea con el color dado + relleno semi-transparente debajo.
- * Si hay menos de 2 muestras no pinta nada (dejaría líneas/puntos
- * sueltos que confunden más que ayudan).
+ * Mini-grÃ¡fica de los Ãºltimos N valores normalizados 0..1. Se dibuja
+ * una lÃ­nea con el color dado + relleno semi-transparente debajo.
+ * Si hay menos de 2 muestras no pinta nada (dejarÃ­a lÃ­neas/puntos
+ * sueltos que confunden mÃ¡s que ayudan).
  *
  * Nota: la escala de X es "una muestra por paso", no por tiempo real.
  * Eso vale porque el backend muestrea a tick fijo (10s); si saltase
- * algún tick el hueco se vería como una muestra "repetida" del
- * último valor conocido — aceptable.
+ * algÃºn tick el hueco se verÃ­a como una muestra "repetida" del
+ * Ãºltimo valor conocido â€” aceptable.
  */
 @Composable
 private fun Sparkline(
@@ -952,7 +1010,7 @@ private fun Sparkline(
     modifier: Modifier = Modifier
 ) {
     if (values.size < 2) {
-        // Placeholder vacío con la misma altura, para que el layout no
+        // Placeholder vacÃ­o con la misma altura, para que el layout no
         // pegue saltos cuando entra la primera muestra.
         Spacer(modifier)
         return
@@ -961,13 +1019,13 @@ private fun Sparkline(
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        // Fondo sutil (sin esto, con valores cerca de 0 la línea se pierde
+        // Fondo sutil (sin esto, con valores cerca de 0 la lÃ­nea se pierde
         // al tener fondo del card casi del mismo color).
         drawRect(color = track.copy(alpha = 0.35f))
 
         val stepX = if (values.size > 1) w / (values.size - 1).toFloat() else 0f
-        // Invertimos Y: valor 0 abajo, valor 1 arriba. Pequeño margen (2px)
-        // para que una línea pegada al 100% no se coma el borde superior.
+        // Invertimos Y: valor 0 abajo, valor 1 arriba. PequeÃ±o margen (2px)
+        // para que una lÃ­nea pegada al 100% no se coma el borde superior.
         val margin = 2f
         fun yFor(v: Float): Float = margin + (1f - v.coerceIn(0f, 1f)) * (h - margin * 2)
 
@@ -978,7 +1036,7 @@ private fun Sparkline(
             }
         }
         // Relleno: cerramos el path hacia abajo a la derecha y a la izquierda
-        // para que quede un área semi-transparente degradada bajo la línea.
+        // para que quede un Ã¡rea semi-transparente degradada bajo la lÃ­nea.
         val fillPath = Path().apply {
             addPath(linePath)
             lineTo((values.size - 1) * stepX, h)
@@ -1004,7 +1062,7 @@ private fun Sparkline(
 /** Formatea bytes/segundo con la misma escala que [humanBytes] + "/s". */
 private fun humanBytesPerSec(bps: Long): String = humanBytes(bps) + "/s"
 
-/* ─────────────────────────── Componentes base ──────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Componentes base â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 @Composable
 private fun StatCard(title: String, content: @Composable () -> Unit) {
@@ -1067,7 +1125,7 @@ private fun StatLine(label: String, value: String) {
     }
 }
 
-/* ─────────────────────────── Formatos ──────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Formatos â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 internal fun humanBytes(bytes: Long): String {
     if (bytes < 1024) return "$bytes B"
@@ -1095,7 +1153,7 @@ internal fun humanDuration(ms: Long): String {
 }
 
 internal fun humanInstant(ms: Long?): String {
-    if (ms == null) return "—"
+    if (ms == null) return "â€”"
     val fmt = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm").withZone(ZoneId.systemDefault())
     return fmt.format(Instant.ofEpochMilli(ms))
 }

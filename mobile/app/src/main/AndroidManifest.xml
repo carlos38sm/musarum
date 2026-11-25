@@ -46,12 +46,20 @@
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.Musarum">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- Shortcuts estáticos del launcher (long-press icono). Las
+                 entradas se definen en @xml/shortcuts; cada una lanza esta
+                 Activity con un extra "musarum.shortcut" que MainActivity
+                 pasa al NavHost para navegar a la pantalla pedida. -->
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
         <service

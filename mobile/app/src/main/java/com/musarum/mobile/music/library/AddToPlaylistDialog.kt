@@ -1,4 +1,4 @@
-package com.musarum.mobile.music.library
+﻿package com.musarum.mobile.music.library
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,7 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,7 +53,7 @@ fun AddToPlaylistDialog(
     val vm: PlaylistsViewModel = viewModel(
         factory = PlaylistsViewModel.factory(container.playlistRepository)
     )
-    val state by vm.state.collectAsState()
+    val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { vm.refresh() }
 
@@ -61,8 +61,8 @@ fun AddToPlaylistDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        // Título en fila con cerrar X a la derecha (ahorra espacio al no
-        // repetir un botón "Cerrar" abajo) y un botón redondo con "+" a la
+        // TÃ­tulo en fila con cerrar X a la derecha (ahorra espacio al no
+        // repetir un botÃ³n "Cerrar" abajo) y un botÃ³n redondo con "+" a la
         // izquierda que sustituye a la fila "Nueva playlist".
         title = {
             Row(
@@ -82,7 +82,7 @@ fun AddToPlaylistDialog(
                         )
                     }
                     Spacer(Modifier.width(8.dp))
-                    Text("Añadir a playlist")
+                    Text("AÃ±adir a playlist")
                 }
                 IconButton(
                     onClick = onDismiss,
@@ -111,7 +111,7 @@ fun AddToPlaylistDialog(
                 is PlaylistsUiState.Ready -> Column(modifier = Modifier.fillMaxWidth()) {
                     if (s.playlists.isEmpty()) {
                         Text(
-                            "No tienes playlists aún. Pulsa el + de arriba para crear una.",
+                            "No tienes playlists aÃºn. Pulsa el + de arriba para crear una.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(vertical = 12.dp)
@@ -127,10 +127,10 @@ fun AddToPlaylistDialog(
                                                 val result = runCatching {
                                                     container.playlistRepository.addSong(pl.id, songId)
                                                 }
-                                                // Sin snackbar en éxito: el diálogo se cierra =
-                                                // feedback. En fallo sí, para avisar.
+                                                // Sin snackbar en Ã©xito: el diÃ¡logo se cierra =
+                                                // feedback. En fallo sÃ­, para avisar.
                                                 if (result.isFailure) {
-                                                    snackbar("No se pudo añadir")
+                                                    snackbar("No se pudo aÃ±adir")
                                                 }
                                                 onAdded(pl.name)
                                                 onDismiss()
@@ -155,7 +155,7 @@ fun AddToPlaylistDialog(
                 }
             }
         },
-        // El cierre vive en la X del título; no renderizamos nada aquí para
+        // El cierre vive en la X del tÃ­tulo; no renderizamos nada aquÃ­ para
         // no reservar la fila de botones del AlertDialog.
         confirmButton = {}
     )
@@ -174,7 +174,7 @@ fun AddToPlaylistDialog(
                         created.name
                     }
                     result.fold(
-                        // Sin snackbar: el diálogo se cierra = feedback.
+                        // Sin snackbar: el diÃ¡logo se cierra = feedback.
                         onSuccess = { createdName -> onAdded(createdName) },
                         onFailure = { snackbar("No se pudo crear la playlist") }
                     )

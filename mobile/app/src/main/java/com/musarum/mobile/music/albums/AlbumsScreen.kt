@@ -1,4 +1,4 @@
-package com.musarum.mobile.music.albums
+﻿package com.musarum.mobile.music.albums
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,7 +22,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -50,11 +50,11 @@ fun AlbumsScreen(
         factory = AlbumsViewModel.factory(LocalAppContainer.current.albumRepository)
     )
 ) {
-    val state by viewModel.state.collectAsState()
-    val refreshing by viewModel.refreshing.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Álbumes") }) }
+        topBar = { TopAppBar(title = { Text("Ãlbumes") }) }
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = refreshing,
@@ -68,7 +68,7 @@ fun AlbumsScreen(
                     onRetry = { viewModel.refresh() }
                 )
                 is AlbumsUiState.Ready -> if (s.totalCount == 0) {
-                    EmptyView("Sin álbumes")
+                    EmptyView("Sin Ã¡lbumes")
                 } else {
                     val gridState = rememberLazyGridState()
                     // Dispara loadMore cuando quedan <10 items por verse.
@@ -95,7 +95,7 @@ fun AlbumsScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            LibraryStatsHeader(primary = "${s.totalCount} álbumes")
+                            LibraryStatsHeader(primary = "${s.totalCount} Ã¡lbumes")
                         }
                         items(s.albums, key = { it.id }) { album ->
                             AlbumGridItem(album, onClick = { onOpenAlbum(album.id) })

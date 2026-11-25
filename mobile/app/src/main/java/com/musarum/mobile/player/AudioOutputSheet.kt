@@ -1,4 +1,4 @@
-package com.musarum.mobile.player
+﻿package com.musarum.mobile.player
 
 import android.content.Context
 import android.media.AudioDeviceInfo
@@ -31,7 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,11 +46,11 @@ import com.musarum.mobile.LocalAppContainer
 
 /**
  * BottomSheet in-app con la lista de dispositivos de salida de audio.
- * Reemplaza al picker del sistema que Carlos no quería (pedido nov-24-pm).
+ * Reemplaza al picker del sistema que Carlos no querÃ­a (pedido nov-24-pm).
  *
  *  - Lee AudioManager.getDevices(GET_DEVICES_OUTPUTS) y filtra los que
- *    no sirven como "destino" (telephony, tv-tuner, docks sin audio…).
- *  - La selección se escribe en {@code AppContainer.preferredAudioDeviceId}
+ *    no sirven como "destino" (telephony, tv-tuner, docks sin audioâ€¦).
+ *  - La selecciÃ³n se escribe en {@code AppContainer.preferredAudioDeviceId}
  *    y el PlayerService llama ExoPlayer.setPreferredAudioDevice al que
  *    coincida.
  *  - Se auto-refresca cuando conectas/desconectas un dispositivo gracias
@@ -58,8 +58,8 @@ import com.musarum.mobile.LocalAppContainer
  *
  * Nota: Android NO permite a apps no-system forzar la salida del sistema
  * entero; solo elegir el destino PREFERIDO de un AudioTrack concreto (el
- * del ExoPlayer de Musarum). Con este botón, la música de Musarum va al
- * dispositivo elegido; el resto de audios del móvil mantiene su routing.
+ * del ExoPlayer de Musarum). Con este botÃ³n, la mÃºsica de Musarum va al
+ * dispositivo elegido; el resto de audios del mÃ³vil mantiene su routing.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,7 +67,7 @@ fun AudioOutputSheet(onDismiss: () -> Unit) {
     val container = LocalAppContainer.current
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val selectedId by container.preferredAudioDeviceId.collectAsState()
+    val selectedId by container.preferredAudioDeviceId.collectAsStateWithLifecycle()
 
     var devices by remember { mutableStateOf(listDevices(ctx)) }
     DisposableEffect(ctx) {
@@ -97,10 +97,10 @@ fun AudioOutputSheet(onDismiss: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
             )
-            // Opción "Automático" — pasa null al Service → vuelve al routing
+            // OpciÃ³n "AutomÃ¡tico" â€” pasa null al Service â†’ vuelve al routing
             // por defecto de Android.
             DeviceRow(
-                label = "Automático",
+                label = "AutomÃ¡tico",
                 sublabel = "Deja decidir al sistema",
                 icon = Icons.Filled.PhoneAndroid,
                 selected = selectedId == null,
@@ -123,7 +123,7 @@ fun AudioOutputSheet(onDismiss: () -> Unit) {
             }
             if (devices.isEmpty()) {
                 Text(
-                    "Conecta unos auriculares o enciende Bluetooth para ver más dispositivos.",
+                    "Conecta unos auriculares o enciende Bluetooth para ver mÃ¡s dispositivos.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
@@ -205,7 +205,7 @@ private fun listDevices(context: Context): List<AudioDeviceInfo> {
         // Deduplicamos por nombre + tipo: algunos vendors muestran el
         // mismo altavoz interno dos veces (speaker + media speaker).
         .distinctBy { "${it.type}-${it.productName}" }
-        // Orden: altavoz móvil arriba, auriculares, luego BT/Cast.
+        // Orden: altavoz mÃ³vil arriba, auriculares, luego BT/Cast.
         .sortedBy { priorityOf(it) }
 }
 
@@ -244,14 +244,14 @@ private fun priorityOf(d: AudioDeviceInfo): Int = when (d.type) {
 
 private fun displayName(d: AudioDeviceInfo): String {
     // productName suele ser el nombre comercial del dispositivo (p. ej.
-    // "Alexa", "WH-1000XM4", "Galaxy Buds"). Si viene vacío, caemos al
-    // tipo humano. Convertimos CharSequence? → String seguro.
+    // "Alexa", "WH-1000XM4", "Galaxy Buds"). Si viene vacÃ­o, caemos al
+    // tipo humano. Convertimos CharSequence? â†’ String seguro.
     val product = d.productName?.toString()?.trim().orEmpty()
     if (product.isNotBlank() && !product.equals("android", ignoreCase = true)) {
         return product
     }
     return when (d.type) {
-        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "Altavoz del móvil"
+        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> "Altavoz del mÃ³vil"
         AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> "Auriculares con cable"
         AudioDeviceInfo.TYPE_WIRED_HEADSET -> "Auriculares con mic"
         AudioDeviceInfo.TYPE_USB_HEADSET -> "Auriculares USB"

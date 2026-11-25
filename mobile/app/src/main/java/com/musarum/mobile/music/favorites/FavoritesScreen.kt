@@ -1,4 +1,4 @@
-package com.musarum.mobile.music.favorites
+﻿package com.musarum.mobile.music.favorites
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -36,7 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,7 +62,7 @@ fun FavoritesScreen(onBack: () -> Unit) {
                 title = { Text("Favoritas") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
                     }
                 }
             )
@@ -81,8 +81,8 @@ fun FavoritesContent(
         factory = FavoritesViewModel.factory(LocalAppContainer.current.favoriteRepository)
     )
 ) {
-    val state by viewModel.state.collectAsState()
-    val refreshing by viewModel.refreshing.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
     val container = LocalAppContainer.current
 
     PullToRefreshBox(
@@ -98,18 +98,18 @@ fun FavoritesContent(
             )
             is FavoritesUiState.Ready -> if (s.favorites.isEmpty()) {
                 EmptyView(
-                    message = "Aún no has marcado ninguna canción",
+                    message = "AÃºn no has marcado ninguna canciÃ³n",
                     icon = Icons.Filled.Favorite
                 )
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     item {
-                        // Hero YT-Music style: tile grande con icono ♥
-                        // + stats (nº pistas, duración total) y debajo la
-                        // fila de acciones (Play · Shuffle · Descargar).
+                        // Hero YT-Music style: tile grande con icono â™¥
+                        // + stats (nÂº pistas, duraciÃ³n total) y debajo la
+                        // fila de acciones (Play Â· Shuffle Â· Descargar).
                         // Sustituye a la fila sosa "icono play + nube".
-                        val downloads by container.downloadsRepository.entries.collectAsState()
-                        val inProgress by container.downloadsManager.inProgress.collectAsState()
+                        val downloads by container.downloadsRepository.entries.collectAsStateWithLifecycle()
+                        val inProgress by container.downloadsManager.inProgress.collectAsStateWithLifecycle()
                         val pending = s.favorites.filter {
                             !downloads.containsKey(it.songId) && !inProgress.contains(it.songId)
                         }
@@ -159,10 +159,10 @@ fun FavoritesContent(
 
 /**
  * Cabecera estilo YouTube Music para la pantalla de Favoritas: un hero
- * con icono ♥ grande sobre gradient primary, título "Favoritas" y
- * subtexto "N pistas · X minutos". Debajo, fila de acciones con 3
- * botones redondos (Play · Shuffle · Descargar). Reemplaza al row sosa
- * que solo tenía play+nube.
+ * con icono â™¥ grande sobre gradient primary, tÃ­tulo "Favoritas" y
+ * subtexto "N pistas Â· X minutos". Debajo, fila de acciones con 3
+ * botones redondos (Play Â· Shuffle Â· Descargar). Reemplaza al row sosa
+ * que solo tenÃ­a play+nube.
  */
 @Composable
 private fun FavoritesHero(
@@ -176,7 +176,7 @@ private fun FavoritesHero(
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // Hero: cuadro grande con gradient radial del primary al fondo
-        // + el corazón centrado. Mismo lenguaje visual que los tiles de
+        // + el corazÃ³n centrado. Mismo lenguaje visual que los tiles de
         // Biblioteca (Favoritas usa primary).
         Box(
             modifier = Modifier
@@ -220,7 +220,7 @@ private fun FavoritesHero(
             )
         }
         // Fila de acciones: play grande (primary), shuffle y descargar
-        // como botones secundarios. Separación 12dp cómoda para el pulgar.
+        // como botones secundarios. SeparaciÃ³n 12dp cÃ³moda para el pulgar.
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -269,13 +269,13 @@ private fun FavoritesHero(
     }
 }
 
-/** "N pistas · X min" o "N pistas · 1 h 20 min" según duración total. */
+/** "N pistas Â· X min" o "N pistas Â· 1 h 20 min" segÃºn duraciÃ³n total. */
 private fun favoritesStatsLine(count: Int, totalMs: Long): String {
     val pieces = StringBuilder()
     pieces.append(if (count == 1) "1 pista" else "$count pistas")
     if (totalMs > 0) {
         val totalMin = (totalMs / 60_000L).toInt()
-        pieces.append(" · ")
+        pieces.append(" Â· ")
         if (totalMin < 60) {
             pieces.append("$totalMin min")
         } else {
@@ -289,8 +289,8 @@ private fun favoritesStatsLine(count: Int, totalMs: Long): String {
 
 /**
  * FavoriteRow envuelto en SwipeToDismissBox: un swipe a cualquier lado
- * ejecuta onRemove. Pedido Carlos nov-24 2026 — así el ♥ de cada canción
- * ya no es necesario, y la lista queda más limpia.
+ * ejecuta onRemove. Pedido Carlos nov-24 2026 â€” asÃ­ el â™¥ de cada canciÃ³n
+ * ya no es necesario, y la lista queda mÃ¡s limpia.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -319,8 +319,8 @@ private fun SwipeableFavoriteRow(
                 else -> Alignment.Center
             }
             // Fondo rellena toda la fila (alto+ancho) y pinta papelera en
-            // ambos lados — cualquier swipe elimina la favorita. El icono
-            // corazón de antes confundía (parecía "añadir" en vez de
+            // ambos lados â€” cualquier swipe elimina la favorita. El icono
+            // corazÃ³n de antes confundÃ­a (parecÃ­a "aÃ±adir" en vez de
             // "quitar"). Pedido Carlos nov-24-pm.
             Box(
                 modifier = Modifier
@@ -336,8 +336,8 @@ private fun SwipeableFavoriteRow(
                 )
             }
         },
-        // Ambos lados: eliminar. En Favoritas no hay otra acción válida
-        // (no se "añade" lo que ya es favorito); dos direcciones quitando
+        // Ambos lados: eliminar. En Favoritas no hay otra acciÃ³n vÃ¡lida
+        // (no se "aÃ±ade" lo que ya es favorito); dos direcciones quitando
         // es menos cargado que meter algo arbitrario en uno de ellos.
         enableDismissFromStartToEnd = true,
         enableDismissFromEndToStart = true
@@ -378,7 +378,7 @@ private fun FavoriteRowContent(
             val subtitle = buildString {
                 append(favorite.artists.joinToString(", ") { it.name })
                 if (!favorite.albumTitle.isNullOrBlank()) {
-                    if (isNotEmpty()) append(" • ")
+                    if (isNotEmpty()) append(" â€¢ ")
                     append(favorite.albumTitle)
                 }
             }
@@ -392,6 +392,6 @@ private fun FavoriteRowContent(
                 )
             }
         }
-        // ♥ eliminado — el swipe lateral lo sustituye.
+        // â™¥ eliminado â€” el swipe lateral lo sustituye.
     }
 }

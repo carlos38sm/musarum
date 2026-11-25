@@ -1,3 +1,14 @@
 <resources>
     <string name="app_name">Musarum</string>
+
+    <!-- Shortcuts del launcher (long-press del icono). Short = texto que se
+         ve en el menú; Long = texto expandido para pantallas grandes. -->
+    <string name="shortcut_favorites_short">Favoritas</string>
+    <string name="shortcut_favorites_long">Abrir favoritas</string>
+    <string name="shortcut_downloads_short">Descargadas</string>
+    <string name="shortcut_downloads_long">Abrir descargadas</string>
+    <string name="shortcut_search_short">Buscar</string>
+    <string name="shortcut_search_long">Buscar canción</string>
+    <string name="shortcut_songs_short">Canciones</string>
+    <string name="shortcut_songs_long">Explorar canciones</string>
 </resources>

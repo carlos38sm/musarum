@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Shortcuts del launcher (long-press icono Musarum). Accesos rápidos a las
+    4 pantallas más visitadas. Cada shortcut lanza MainActivity con un extra
+    "musarum.shortcut" que lee MainActivity y pasa al NavHost para navegar.
+
+    targetPackage debe coincidir con el applicationId del build.gradle.kts.
+    targetClass es la ruta completa a MainActivity (con el package namespace).
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <shortcut
+        android:shortcutId="favorites"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_favorites"
+        android:shortcutShortLabel="@string/shortcut_favorites_short"
+        android:shortcutLongLabel="@string/shortcut_favorites_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.musarum.mobile"
+            android:targetClass="com.musarum.mobile.MainActivity">
+            <extra
+                android:name="musarum.shortcut"
+                android:value="favorites" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="downloads"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_downloads"
+        android:shortcutShortLabel="@string/shortcut_downloads_short"
+        android:shortcutLongLabel="@string/shortcut_downloads_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.musarum.mobile"
+            android:targetClass="com.musarum.mobile.MainActivity">
+            <extra
+                android:name="musarum.shortcut"
+                android:value="downloads" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="search"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_search"
+        android:shortcutShortLabel="@string/shortcut_search_short"
+        android:shortcutLongLabel="@string/shortcut_search_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.musarum.mobile"
+            android:targetClass="com.musarum.mobile.MainActivity">
+            <extra
+                android:name="musarum.shortcut"
+                android:value="search" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+    <shortcut
+        android:shortcutId="songs"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_songs"
+        android:shortcutShortLabel="@string/shortcut_songs_short"
+        android:shortcutLongLabel="@string/shortcut_songs_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.musarum.mobile"
+            android:targetClass="com.musarum.mobile.MainActivity">
+            <extra
+                android:name="musarum.shortcut"
+                android:value="songs" />
+        </intent>
+        <categories android:name="android.shortcut.conversation" />
+    </shortcut>
+
+</shortcuts>

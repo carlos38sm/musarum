@@ -1,4 +1,4 @@
-package com.musarum.mobile.player
+﻿package com.musarum.mobile.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,7 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -39,21 +39,21 @@ import com.musarum.mobile.LocalAppContainer
 
 /**
  * Modo coche: prioridad total a los controles. Sin portada, sin mini-player.
- * Carlos: "yo priorizaría los botones, no la portada como tal, y el
- * miniplayer quizás hasta lo quitaba de la vista de modo coche, así hay
- * más espacio para botones". Layout vertical: título + artista ARRIBA
+ * Carlos: "yo priorizarÃ­a los botones, no la portada como tal, y el
+ * miniplayer quizÃ¡s hasta lo quitaba de la vista de modo coche, asÃ­ hay
+ * mÃ¡s espacio para botones". Layout vertical: tÃ­tulo + artista ARRIBA
  * (fuera del alcance del pulgar), y los 3 botones APILADOS ocupando casi
- * toda la pantalla — máxima área táctil para conducir sin mirar.
+ * toda la pantalla â€” mÃ¡xima Ã¡rea tÃ¡ctil para conducir sin mirar.
  *
  * El fondo toma el color dominante de la portada para no hacer salto
- * visual con el NowPlaying, pero la portada en sí no se pinta.
+ * visual con el NowPlaying, pero la portada en sÃ­ no se pinta.
  */
 @Composable
 fun CarModeScreen(
     onExit: () -> Unit
 ) {
     val container = LocalAppContainer.current
-    val state by container.playerController.state.collectAsState()
+    val state by container.playerController.state.collectAsStateWithLifecycle()
     val song = state.currentSong
     val fallback = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
     val dominant by rememberDominantCoverColor(
@@ -71,7 +71,7 @@ fun CarModeScreen(
                 )
             )
     ) {
-        // Botón de salida — arriba izquierda, tamaño generoso.
+        // BotÃ³n de salida â€” arriba izquierda, tamaÃ±o generoso.
         IconButton(
             onClick = onExit,
             modifier = Modifier
@@ -93,10 +93,10 @@ fun CarModeScreen(
                 .padding(start = 28.dp, end = 28.dp, top = 100.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Título y artista arriba del todo. Compactos — todo el espacio
+            // TÃ­tulo y artista arriba del todo. Compactos â€” todo el espacio
             // vertical disponible se lo quedan los botones.
             Text(
-                text = song?.title ?: "—",
+                text = song?.title ?: "â€”",
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontSize = 32.sp,
                     fontWeight = FontWeight.ExtraBold
@@ -120,8 +120,8 @@ fun CarModeScreen(
 
             Spacer(Modifier.height(32.dp))
 
-            // Botones apilados en vertical — cada uno enorme. Ratio: play
-            // central más grande (es el más usado), prev/next iguales. Al
+            // Botones apilados en vertical â€” cada uno enorme. Ratio: play
+            // central mÃ¡s grande (es el mÃ¡s usado), prev/next iguales. Al
             // ser verticales, el pulgar del volante los encuentra solos sin
             // tener que mirar a lados distintos de la pantalla.
             Column(
@@ -146,7 +146,7 @@ fun CarModeScreen(
                     label = if (state.isPlaying) "Pausa" else "Reproducir",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(1.3f),  // un pelín más alto por ser el principal
+                        .weight(1.3f),  // un pelÃ­n mÃ¡s alto por ser el principal
                     primary = true,
                     onClick = { container.playerController.togglePlayPause() }
                 )
@@ -165,9 +165,9 @@ fun CarModeScreen(
 }
 
 /**
- * Botón "tipo banda" ancho que ocupa toda la fila. Icono grande centrado
- * + etiqueta grande debajo. Más fácil de dar con el pulgar al volante
- * que un círculo pequeño — el toque queda en cualquier punto de la banda.
+ * BotÃ³n "tipo banda" ancho que ocupa toda la fila. Icono grande centrado
+ * + etiqueta grande debajo. MÃ¡s fÃ¡cil de dar con el pulgar al volante
+ * que un cÃ­rculo pequeÃ±o â€” el toque queda en cualquier punto de la banda.
  */
 @Composable
 private fun CarVerticalButton(

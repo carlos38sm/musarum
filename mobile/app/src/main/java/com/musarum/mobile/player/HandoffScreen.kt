@@ -1,4 +1,4 @@
-package com.musarum.mobile.player
+﻿package com.musarum.mobile.player
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,14 +47,14 @@ import com.musarum.mobile.music.UserAvatar
 import kotlinx.coroutines.launch
 
 /**
- * Transferir reproducción entre dispositivos. Cada móvil puede:
- *   - "Publicar mi estado" (POST /handoff/publish): envía al backend
- *     qué canción está sonando ahora + en qué segundo + un label del
+ * Transferir reproducciÃ³n entre dispositivos. Cada mÃ³vil puede:
+ *   - "Publicar mi estado" (POST /handoff/publish): envÃ­a al backend
+ *     quÃ© canciÃ³n estÃ¡ sonando ahora + en quÃ© segundo + un label del
  *     dispositivo (p.ej. "Pixel 7 de Carlos").
  *   - Ver una lista de handoffs activos (GET /handoff) con los estados
- *     publicados en las últimas 48 h.
- *   - Tocar una entrada → arranca esa canción localmente desde esa
- *     posición. El handoff queda consumido en el servidor para que no
+ *     publicados en las Ãºltimas 48 h.
+ *   - Tocar una entrada â†’ arranca esa canciÃ³n localmente desde esa
+ *     posiciÃ³n. El handoff queda consumido en el servidor para que no
  *     parezca que sigue sonando en el otro dispositivo.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,7 +63,7 @@ fun HandoffScreen(onBack: () -> Unit) {
     val container = LocalAppContainer.current
     val snackbar = LocalSnackbar.current
     val scope = rememberCoroutineScope()
-    val playerState by container.playerController.state.collectAsState()
+    val playerState by container.playerController.state.collectAsStateWithLifecycle()
     var items by remember { mutableStateOf<List<HandoffDto>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
 
@@ -98,7 +98,7 @@ fun HandoffScreen(onBack: () -> Unit) {
                 Button(
                     onClick = {
                         if (currentSong == null) {
-                            snackbar("No hay canción sonando ahora")
+                            snackbar("No hay canciÃ³n sonando ahora")
                             return@Button
                         }
                         scope.launch {
@@ -113,7 +113,7 @@ fun HandoffScreen(onBack: () -> Unit) {
                                 )
                             }
                             res.onSuccess {
-                                snackbar("Estado publicado · puedes continuar en otro móvil")
+                                snackbar("Estado publicado Â· puedes continuar en otro mÃ³vil")
                                 runCatching { container.apiService.listHandoffs() }
                                     .onSuccess { items = it }
                             }.onFailure {
@@ -131,7 +131,7 @@ fun HandoffScreen(onBack: () -> Unit) {
 
             if (loading) {
                 Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    Text("Cargando…", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Cargandoâ€¦", color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 return@Column
             }
@@ -142,7 +142,7 @@ fun HandoffScreen(onBack: () -> Unit) {
                     Alignment.Center
                 ) {
                     Text(
-                        "Nadie ha publicado estado todavía.\nToca el botón de arriba para empezar.",
+                        "Nadie ha publicado estado todavÃ­a.\nToca el botÃ³n de arriba para empezar.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -161,7 +161,7 @@ fun HandoffScreen(onBack: () -> Unit) {
                         onTake = {
                             val song = h.song ?: return@HandoffRow
                             container.playerController.playQueue(listOf(song), 0)
-                            // Saltamos a la posición publicada tras un tick
+                            // Saltamos a la posiciÃ³n publicada tras un tick
                             // para que playQueue haya preparado el media item.
                             scope.launch {
                                 kotlinx.coroutines.delay(300)
@@ -200,7 +200,7 @@ private fun HandoffRow(h: HandoffDto, onTake: () -> Unit) {
                 )
                 if (h.mine) {
                     Text(
-                        text = "  · este user",
+                        text = "  Â· este user",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -226,7 +226,7 @@ private fun HandoffRow(h: HandoffDto, onTake: () -> Unit) {
                 CoverImage(url = h.song?.coverUrl, size = 32.dp, cornerRadius = 4.dp)
                 Column(modifier = Modifier.padding(start = 8.dp).weight(1f)) {
                     Text(
-                        text = h.song?.title ?: "(canción desaparecida)",
+                        text = h.song?.title ?: "(canciÃ³n desaparecida)",
                         style = MaterialTheme.typography.bodyMedium,
                         maxLines = 1,
                         fontWeight = FontWeight.SemiBold
@@ -236,7 +236,7 @@ private fun HandoffRow(h: HandoffDto, onTake: () -> Unit) {
                         (h.positionMs / 1000) % 60
                     )
                     Text(
-                        text = "${h.song?.artistsLabel.orEmpty()}  ·  min $mmss",
+                        text = "${h.song?.artistsLabel.orEmpty()}  Â·  min $mmss",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1

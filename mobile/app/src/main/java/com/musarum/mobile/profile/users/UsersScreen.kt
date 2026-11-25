@@ -1,4 +1,4 @@
-package com.musarum.mobile.profile.users
+﻿package com.musarum.mobile.profile.users
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,10 +45,10 @@ import com.musarum.mobile.data.network.dto.UserResponseDto
 import com.musarum.mobile.music.ArtistAvatar
 
 /**
- * Pantalla de administración de usuarios. Solo visible para OWNER (el acceso
- * desde Perfil es condicional, el backend también 403 si lo intenta un
+ * Pantalla de administraciÃ³n de usuarios. Solo visible para OWNER (el acceso
+ * desde Perfil es condicional, el backend tambiÃ©n 403 si lo intenta un
  * MEMBER). Lista: avatar + nick + rol + fila de acciones (switch bloquear,
- * papelera eliminar con confirmación).
+ * papelera eliminar con confirmaciÃ³n).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -58,7 +58,7 @@ fun UsersScreen(
         factory = UsersViewModel.factory(LocalAppContainer.current.userRepository)
     )
 ) {
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val snackbar = LocalSnackbar.current
     var confirmDelete by remember { mutableStateOf<UserResponseDto?>(null) }
 
@@ -112,12 +112,12 @@ fun UsersScreen(
     confirmDelete?.let { user ->
         AlertDialog(
             onDismissRequest = { confirmDelete = null },
-            title = { Text("¿Eliminar \"${user.nick}\"?") },
+            title = { Text("Â¿Eliminar \"${user.nick}\"?") },
             text = {
                 Text(
-                    "Se borrarán sus favoritos, entradas en playlists y " +
-                        "reproducciones. Sus playlists propias quedarán " +
-                        "huérfanas. No se puede deshacer."
+                    "Se borrarÃ¡n sus favoritos, entradas en playlists y " +
+                        "reproducciones. Sus playlists propias quedarÃ¡n " +
+                        "huÃ©rfanas. No se puede deshacer."
                 )
             },
             confirmButton = {
@@ -176,11 +176,11 @@ private fun UserRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            // Última conexión: solo la pintamos para MEMBERS (el OWNER se
-            // ve a sí mismo cada vez que abre la app, no tiene sentido).
+            // Ãšltima conexiÃ³n: solo la pintamos para MEMBERS (el OWNER se
+            // ve a sÃ­ mismo cada vez que abre la app, no tiene sentido).
             if (user.userRole != "OWNER") {
                 Text(
-                    "Conexión: ${com.musarum.mobile.ui.humanizeLastSeen(user.lastLoginAt)}",
+                    "ConexiÃ³n: ${com.musarum.mobile.ui.humanizeLastSeen(user.lastLoginAt)}",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

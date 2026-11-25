@@ -1,4 +1,4 @@
-package com.musarum.mobile.music
+﻿package com.musarum.mobile.music
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -33,7 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,11 +48,11 @@ import com.musarum.mobile.LocalSnackbar
 import com.musarum.mobile.data.network.dto.SongSummaryDto
 
 /**
- * BottomSheet que aparece al mantener pulsada una canción. Siempre ofrece
- * "Añadir a playlist"; si el usuario actual es OWNER, además añade la
- * opción "Borrar canción" (fila en rojo). La acción de borrar la lanza el
- * caller tras confirmación en un diálogo aparte — este sheet solo recoge
- * la intención.
+ * BottomSheet que aparece al mantener pulsada una canciÃ³n. Siempre ofrece
+ * "AÃ±adir a playlist"; si el usuario actual es OWNER, ademÃ¡s aÃ±ade la
+ * opciÃ³n "Borrar canciÃ³n" (fila en rojo). La acciÃ³n de borrar la lanza el
+ * caller tras confirmaciÃ³n en un diÃ¡logo aparte â€” este sheet solo recoge
+ * la intenciÃ³n.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,11 +66,11 @@ fun SongActionsSheet(
     val container = LocalAppContainer.current
     val snackbar = LocalSnackbar.current
     val scope = rememberCoroutineScope()
-    val entries by container.downloadsRepository.entries.collectAsState()
-    val inProgress by container.downloadsManager.inProgress.collectAsState()
+    val entries by container.downloadsRepository.entries.collectAsStateWithLifecycle()
+    val inProgress by container.downloadsManager.inProgress.collectAsStateWithLifecycle()
     val entry = entries[song.id]
     val isDownloading = inProgress.contains(song.id)
-    val favoriteIds by container.favoriteRepository.favoriteIds.collectAsState()
+    val favoriteIds by container.favoriteRepository.favoriteIds.collectAsStateWithLifecycle()
     val isFavorite = song.id in favoriteIds
 
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -79,7 +79,7 @@ fun SongActionsSheet(
         sheetState = sheetState
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            // Cabecera: título + artista (compacta).
+            // Cabecera: tÃ­tulo + artista (compacta).
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                 Text(
                     song.title,
@@ -98,9 +98,9 @@ fun SongActionsSheet(
             }
             Spacer(Modifier.height(8.dp))
 
-            // Me gusta: primera acción porque es lo que el usuario pide más.
-            // Antes para marcar favorito había que entrar a NowPlaying e
-            // interrumpir lo que estuviera sonando. Ahora long-press →
+            // Me gusta: primera acciÃ³n porque es lo que el usuario pide mÃ¡s.
+            // Antes para marcar favorito habÃ­a que entrar a NowPlaying e
+            // interrumpir lo que estuviera sonando. Ahora long-press â†’
             // toggle directo sin salir del contexto.
             SheetAction(
                 icon = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -116,17 +116,17 @@ fun SongActionsSheet(
 
             SheetAction(
                 icon = Icons.Filled.PlaylistAdd,
-                label = "Añadir a playlist",
+                label = "AÃ±adir a playlist",
                 onClick = onAddToPlaylist
             )
 
-            // "Enviar a..." — abre un sub-sheet con los otros users de la red
-            // para que el OWNER (o cualquier user) comparta esta canción con
-            // alguien. Cada envío se guarda en la bandeja del destinatario.
+            // "Enviar a..." â€” abre un sub-sheet con los otros users de la red
+            // para que el OWNER (o cualquier user) comparta esta canciÃ³n con
+            // alguien. Cada envÃ­o se guarda en la bandeja del destinatario.
             var showSendTo by remember { mutableStateOf(false) }
             SheetAction(
                 icon = Icons.AutoMirrored.Filled.Send,
-                label = "Enviar a…",
+                label = "Enviar aâ€¦",
                 onClick = { showSendTo = true }
             )
             if (showSendTo) {
@@ -136,7 +136,7 @@ fun SongActionsSheet(
                 )
             }
 
-            // Si hay una fiesta activa, permite añadir esta canción a la
+            // Si hay una fiesta activa, permite aÃ±adir esta canciÃ³n a la
             // cola compartida. La detectamos en caliente: un LaunchedEffect
             // ligero consulta /party/active al abrir el sheet y guarda el id.
             var activePartyId by remember { mutableStateOf<Long?>(null) }
@@ -147,7 +147,7 @@ fun SongActionsSheet(
             activePartyId?.let { pid ->
                 SheetAction(
                     icon = androidx.compose.material.icons.Icons.Filled.Celebration,
-                    label = "Añadir a la fiesta",
+                    label = "AÃ±adir a la fiesta",
                     onClick = {
                         scope.launch {
                             runCatching {
@@ -155,20 +155,20 @@ fun SongActionsSheet(
                                     pid,
                                     com.musarum.mobile.data.network.dto.AddPartySongRequest(song.id)
                                 )
-                            }.onSuccess { snackbar("Añadida a la fiesta") }
-                                .onFailure { snackbar("No se pudo añadir a la fiesta") }
+                            }.onSuccess { snackbar("AÃ±adida a la fiesta") }
+                                .onFailure { snackbar("No se pudo aÃ±adir a la fiesta") }
                         }
                         onDismiss()
                     }
                 )
             }
 
-            // ── Acciones de descarga offline ───────────────────────────────
+            // â”€â”€ Acciones de descarga offline â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             when {
                 isDownloading -> SheetAction(
                     icon = Icons.Filled.Downloading,
-                    label = "Descargando…",
-                    onClick = {} // sin acción mientras va
+                    label = "Descargandoâ€¦",
+                    onClick = {} // sin acciÃ³n mientras va
                 )
                 entry == null -> SheetAction(
                     icon = Icons.Filled.CloudDownload,
@@ -176,7 +176,7 @@ fun SongActionsSheet(
                     onClick = {
                         container.downloadsManager.download(song)
                         // Sin snackbar: el badge de descarga en la portada
-                        // aparece al instante (spinner → reloj/check).
+                        // aparece al instante (spinner â†’ reloj/check).
                         onDismiss()
                     }
                 )
@@ -211,7 +211,7 @@ fun SongActionsSheet(
             if (isOwner) {
                 SheetAction(
                     icon = Icons.Filled.Delete,
-                    label = "Borrar canción",
+                    label = "Borrar canciÃ³n",
                     destructive = true,
                     onClick = onRequestDelete
                 )
@@ -249,10 +249,10 @@ private fun SheetAction(
 }
 
 /**
- * Sub-sheet "Enviar a..." — lista los otros users de la red (usa el mismo
- * endpoint /auth/users que el picker Netflix del Login) y envía la canción
- * al tocar uno. Sin confirmación extra: un tap, un envío. El destinatario
- * la verá en su Bandeja al abrir Musarum.
+ * Sub-sheet "Enviar a..." â€” lista los otros users de la red (usa el mismo
+ * endpoint /auth/users que el picker Netflix del Login) y envÃ­a la canciÃ³n
+ * al tocar uno. Sin confirmaciÃ³n extra: un tap, un envÃ­o. El destinatario
+ * la verÃ¡ en su Bandeja al abrir Musarum.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -263,7 +263,7 @@ internal fun SendToUserSheet(
     val container = LocalAppContainer.current
     val snackbar = LocalSnackbar.current
     val scope = rememberCoroutineScope()
-    val me by container.userRepository.me.collectAsState()
+    val me by container.userRepository.me.collectAsStateWithLifecycle()
     var users by remember {
         mutableStateOf<List<com.musarum.mobile.data.network.dto.LoginUserDto>>(emptyList())
     }
@@ -278,7 +278,7 @@ internal fun SendToUserSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
-                "Enviar \"${song.title}\" a…",
+                "Enviar \"${song.title}\" aâ€¦",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
@@ -329,12 +329,12 @@ internal fun SendToUserSheet(
 
 /**
  * Helper reutilizable: gestiona el estado del sheet de acciones + los
- * diálogos derivados (añadir a playlist, confirmar borrado) en un solo
+ * diÃ¡logos derivados (aÃ±adir a playlist, confirmar borrado) en un solo
  * sitio. Las pantallas de lista solo tienen que llamar a `open(song)` en
- * el long-press y poner `SongActionsHost(...)` en el árbol UI.
+ * el long-press y poner `SongActionsHost(...)` en el Ã¡rbol UI.
  *
- * - isOwner se consulta del container (me) para pintar la opción de
- *   "Borrar canción" solo si procede.
+ * - isOwner se consulta del container (me) para pintar la opciÃ³n de
+ *   "Borrar canciÃ³n" solo si procede.
  * - onDelete por defecto llama a songRepository.delete(id) con snackbar.
  *   Las pantallas que necesiten un reset local (p. ej. SongsScreen
  *   quitando la fila al instante) pueden sobrescribirlo.
@@ -346,7 +346,7 @@ fun SongActionsHost(
     val container = LocalAppContainer.current
     val snackbar = LocalSnackbar.current
     val scope = rememberCoroutineScope()
-    val me by container.userRepository.me.collectAsState()
+    val me by container.userRepository.me.collectAsStateWithLifecycle()
     val isOwner = me?.userRole == "OWNER"
 
     var sheetSong by remember { mutableStateOf<SongSummaryDto?>(null) }
@@ -387,7 +387,7 @@ fun SongActionsHost(
                 confirmDeleteSong = null
                 scope.launch {
                     runCatching { container.songRepository.delete(sid) }
-                        // Sin snackbar en éxito: la fila desaparece de la
+                        // Sin snackbar en Ã©xito: la fila desaparece de la
                         // lista al instante y eso basta como feedback.
                         .onFailure { snackbar("No se pudo borrar: ${it.message ?: "error"}") }
                 }
@@ -397,8 +397,8 @@ fun SongActionsHost(
 }
 
 /**
- * Confirmación destructiva. "Borrar" en rojo; "Cancelar" por defecto.
- * El caller resuelve la acción tras el yes.
+ * ConfirmaciÃ³n destructiva. "Borrar" en rojo; "Cancelar" por defecto.
+ * El caller resuelve la acciÃ³n tras el yes.
  */
 @Composable
 fun ConfirmDeleteSongDialog(
@@ -408,12 +408,12 @@ fun ConfirmDeleteSongDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("¿Borrar \"${song.title}\"?") },
+        title = { Text("Â¿Borrar \"${song.title}\"?") },
         text = {
             Text(
-                "Se eliminará la canción del servidor Y su archivo del disco. " +
+                "Se eliminarÃ¡ la canciÃ³n del servidor Y su archivo del disco. " +
                     "Los favoritos y entradas en playlists de todos los usuarios " +
-                    "también se perderán. No se puede deshacer.",
+                    "tambiÃ©n se perderÃ¡n. No se puede deshacer.",
                 style = MaterialTheme.typography.bodyMedium
             )
         },

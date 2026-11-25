@@ -1,4 +1,4 @@
-package com.musarum.mobile.player
+﻿package com.musarum.mobile.player
 
 import android.view.SurfaceView
 import android.view.ViewGroup
@@ -50,7 +50,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -85,18 +85,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * Modo Vídeo del player. Visualmente clonamos NowPlayingScreen (mismo shell,
- * mismo título, mismo ActionsRow, mismos TrackControls) pero donde iría el
- * cover va el SurfaceView del vídeo, servido por /songs/{id}/video.
+ * Modo VÃ­deo del player. Visualmente clonamos NowPlayingScreen (mismo shell,
+ * mismo tÃ­tulo, mismo ActionsRow, mismos TrackControls) pero donde irÃ­a el
+ * cover va el SurfaceView del vÃ­deo, servido por /songs/{id}/video.
  *
- * Reproducción:
+ * ReproducciÃ³n:
  *   - Al entrar: pausamos el audio del controller principal y recordamos si
  *     sonaba, para restaurarlo al salir.
- *   - Un ExoPlayer local reproduce el vídeo. Play/pause/seek del TrackControls
+ *   - Un ExoPlayer local reproduce el vÃ­deo. Play/pause/seek del TrackControls
  *     operan sobre ESE player, no sobre el audio-only.
- *   - Prev/Next llaman al controller global; cuando la canción activa cambia,
- *     reconstruimos el media source. Si la nueva canción no tiene vídeo
- *     (details.hasVideo == false), volvemos automáticamente a la vista Audio.
+ *   - Prev/Next llaman al controller global; cuando la canciÃ³n activa cambia,
+ *     reconstruimos el media source. Si la nueva canciÃ³n no tiene vÃ­deo
+ *     (details.hasVideo == false), volvemos automÃ¡ticamente a la vista Audio.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,7 +110,7 @@ fun VideoScreen(
 ) {
     val container = LocalAppContainer.current
     val controller = container.playerController
-    val playerState by controller.state.collectAsState()
+    val playerState by controller.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val snackbar = LocalSnackbar.current
     val ytScope = rememberCoroutineScope()
@@ -122,7 +122,7 @@ fun VideoScreen(
             controller
         )
     )
-    val vmState by viewModel.state.collectAsState()
+    val vmState by viewModel.state.collectAsStateWithLifecycle()
 
     val song = playerState.currentSong
     if (song == null) {
@@ -131,7 +131,7 @@ fun VideoScreen(
     }
 
     // Guardamos si el audio sonaba para restaurarlo al salir. remember{} sin
-    // key: solo se evalúa en la primera composición de esta pantalla.
+    // key: solo se evalÃºa en la primera composiciÃ³n de esta pantalla.
     val wasPlaying = remember { playerState.isPlaying }
     LaunchedEffect(Unit) {
         if (wasPlaying) controller.togglePlayPause()
@@ -161,8 +161,8 @@ fun VideoScreen(
         }
     }
 
-    // Al cambiar de canción (prev/next desde esta pantalla), recargamos el
-    // vídeo. Si la nueva canción no tiene vídeo, salimos a Audio: lo detecta
+    // Al cambiar de canciÃ³n (prev/next desde esta pantalla), recargamos el
+    // vÃ­deo. Si la nueva canciÃ³n no tiene vÃ­deo, salimos a Audio: lo detecta
     // vmState.details.hasVideo en cuanto llega la ficha.
     LaunchedEffect(song.id) {
         isBuffering = true
@@ -178,12 +178,12 @@ fun VideoScreen(
         exoPlayer.playWhenReady = true
     }
 
-    // Fallback a Audio cuando la nueva canción activa no tiene vídeo. Solo
+    // Fallback a Audio cuando la nueva canciÃ³n activa no tiene vÃ­deo. Solo
     // actuamos si los detalles ya se cargaron para la pista actual.
     LaunchedEffect(vmState.details?.id, vmState.details?.hasVideo) {
         val d = vmState.details ?: return@LaunchedEffect
         if (d.id == song.id && !d.hasVideo) {
-            snackbar("Esta canción no tiene vídeo")
+            snackbar("Esta canciÃ³n no tiene vÃ­deo")
             onOpenTrack()
         }
     }
@@ -200,7 +200,7 @@ fun VideoScreen(
                 isVideoPlaying = playing
             }
             override fun onPlayerError(error: PlaybackException) {
-                errorMessage = "No se pudo cargar el vídeo: ${error.errorCodeName}"
+                errorMessage = "No se pudo cargar el vÃ­deo: ${error.errorCodeName}"
                 isBuffering = false
             }
             override fun onVideoSizeChanged(size: VideoSize) {
@@ -219,8 +219,8 @@ fun VideoScreen(
         }
     }
 
-    // Ticker local para la posición mientras el vídeo suena. Dejamos de
-    // escribir si el usuario está arrastrando el pulgar del slider.
+    // Ticker local para la posiciÃ³n mientras el vÃ­deo suena. Dejamos de
+    // escribir si el usuario estÃ¡ arrastrando el pulgar del slider.
     LaunchedEffect(exoPlayer) {
         while (true) {
             if (!isSeeking) positionMs = exoPlayer.currentPosition.coerceAtLeast(0L)
@@ -228,7 +228,7 @@ fun VideoScreen(
         }
     }
 
-    // Parseo LRC — para el toggle de mini-letra, igual que NowPlaying.
+    // Parseo LRC â€” para el toggle de mini-letra, igual que NowPlaying.
     val syncedLines = remember(vmState.lyrics) { LrcParser.parse(vmState.lyrics) }
     val hasSyncedLyrics = syncedLines.isNotEmpty()
     val currentLineIndex = remember(syncedLines, positionMs) {
@@ -254,11 +254,11 @@ fun VideoScreen(
         onAddToPlaylist = {},
         topActionsVisible = false
     ) {
-        // ── Hero: ventana del vídeo con el mismo tamaño/forma que el cover ──
+        // â”€â”€ Hero: ventana del vÃ­deo con el mismo tamaÃ±o/forma que el cover â”€â”€
         // Mantenemos el cuadrado del cover (320dp max, aspectRatio 1f) y
-        // encajamos el vídeo con su aspect-ratio real dentro, con bandas
-        // negras cuando no sea cuadrado. Así la transición audio↔vídeo no
-        // cambia la geometría de la pantalla.
+        // encajamos el vÃ­deo con su aspect-ratio real dentro, con bandas
+        // negras cuando no sea cuadrado. AsÃ­ la transiciÃ³n audioâ†”vÃ­deo no
+        // cambia la geometrÃ­a de la pantalla.
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -320,7 +320,7 @@ fun VideoScreen(
 
         Spacer(Modifier.height(28.dp))
 
-        // ── Título + artista — swipe horizontal = prev/next ──
+        // â”€â”€ TÃ­tulo + artista â€” swipe horizontal = prev/next â”€â”€
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -356,7 +356,7 @@ fun VideoScreen(
             )
         }
 
-        // Hueco flexible — opcional mini-letra sincronizada en el centro.
+        // Hueco flexible â€” opcional mini-letra sincronizada en el centro.
         Box(
             modifier = Modifier.fillMaxWidth().weight(1f),
             contentAlignment = Alignment.Center
@@ -380,7 +380,7 @@ fun VideoScreen(
         VideoActionsRow(
             isFavorite = vmState.isFavorite,
             onToggleFavorite = {
-                // Sin snackbar: el cambio de color del ♥ ya es feedback claro.
+                // Sin snackbar: el cambio de color del â™¥ ya es feedback claro.
                 viewModel.toggleFavorite()
             },
             onAddToPlaylist = { showAddToPlaylist = true },
@@ -395,8 +395,8 @@ fun VideoScreen(
             sleepTimerActive = playerState.sleepTimerAt != null,
             onOpenSleepTimer = { showSleepSheet = true },
             downloadState = run {
-                val entries by container.downloadsRepository.entries.collectAsState()
-                val inProgress by container.downloadsManager.inProgress.collectAsState()
+                val entries by container.downloadsRepository.entries.collectAsStateWithLifecycle()
+                val inProgress by container.downloadsManager.inProgress.collectAsStateWithLifecycle()
                 when {
                     inProgress.contains(song.id) -> DownloadState.IN_PROGRESS
                     entries[song.id]?.isTemporary == true -> DownloadState.TEMPORARY
@@ -446,7 +446,7 @@ fun VideoScreen(
             SleepTimerSheet(
                 activeAt = playerState.sleepTimerAt,
                 onDismiss = { showSleepSheet = false },
-                // El pill del timer en la vista ya muestra la cuenta atrás;
+                // El pill del timer en la vista ya muestra la cuenta atrÃ¡s;
                 // sin snackbars que tapen los controles.
                 onPickMinutes = { mins ->
                     controller.setSleepTimerMinutes(mins)
@@ -473,7 +473,7 @@ fun VideoScreen(
 }
 
 /**
- * Idéntico a ActionsRow de NowPlaying — se duplica aquí porque aquélla es
+ * IdÃ©ntico a ActionsRow de NowPlaying â€” se duplica aquÃ­ porque aquÃ©lla es
  * privada al archivo. Lo mantenemos sincronizado si cambia el orden/iconos.
  */
 @Composable
@@ -513,13 +513,13 @@ private fun VideoActionsRow(
             )
         }
         Spacer(Modifier.size(6.dp))
-        // Overflow idéntico al de NowPlaying — radio + sleep aquí dentro
-        // para no saturar la fila sobre el vídeo.
+        // Overflow idÃ©ntico al de NowPlaying â€” radio + sleep aquÃ­ dentro
+        // para no saturar la fila sobre el vÃ­deo.
         androidx.compose.foundation.layout.Box {
             var showMore by remember { mutableStateOf(false) }
             VideoGhostCircleButton(
                 onClick = { showMore = true },
-                contentDescription = "Más acciones"
+                contentDescription = "MÃ¡s acciones"
             ) {
                 Icon(
                     Icons.Filled.MoreHoriz,
@@ -569,7 +569,7 @@ private fun VideoActionsRow(
             )
         }
         Spacer(Modifier.size(6.dp))
-        VideoGhostCircleButton(onClick = onAddToPlaylist, contentDescription = "Añadir a playlist") {
+        VideoGhostCircleButton(onClick = onAddToPlaylist, contentDescription = "AÃ±adir a playlist") {
             Icon(Icons.Filled.PlaylistAdd, null, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.size(6.dp))
@@ -604,10 +604,10 @@ private fun VideoGhostCircleButton(
 
 /**
  * Clon visual de TrackControls de NowPlaying, pero con callbacks parametri-
- * zados: aquí el play/pause y el seek operan sobre el ExoPlayer local del
- * vídeo, no sobre el audio-only del PlayerController. Los iconos restantes
- * (shuffle/prev/next/repeat) sí van al controller global, porque la cola
- * de canciones vive allí.
+ * zados: aquÃ­ el play/pause y el seek operan sobre el ExoPlayer local del
+ * vÃ­deo, no sobre el audio-only del PlayerController. Los iconos restantes
+ * (shuffle/prev/next/repeat) sÃ­ van al controller global, porque la cola
+ * de canciones vive allÃ­.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

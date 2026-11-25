@@ -91,6 +91,14 @@ class PlayerController(
     private var loggedPlaySongId: Long? = null
     private val playThresholdMs = 30_000L
 
+    // Pre-fetch del siguiente track: a los -10s de la pista actual, hacemos
+    // un HEAD best-effort contra su endpoint de streaming para que OkHttp
+    // abra la conexión TLS y la deje en el pool. Así cuando Media3 pide el
+    // byte 0 del siguiente MediaItem, no hay handshake de 200-400 ms. Útil
+    // SOBRETODO cuando crossfade=0: con crossfade ya hay un ExoPlayer aux
+    // bufferreando, pero sin él la transición tenía micro-gap en WiFi lenta.
+    private var prefetchedForSongId: Long? = null
+
     // Fade de crossfade: una sola corrutina activa, bandera para evitar
     // relanzarlo durante los últimos segundos de cada track.
     private var fadeJob: Job? = null
@@ -128,6 +136,8 @@ class PlayerController(
             // Reset del flag de "ya logueada" — cada nueva canción puede
             // volver a cruzar el umbral de 30s.
             loggedPlaySongId = null
+            // Nueva canción → reset del guard anti-doble-prefetch.
+            prefetchedForSongId = null
             if (crossfadeInProgress) {
                 // Entrada en B provocada por nuestro seekToNextMediaItem del
                 // crossfade (ver startRealCrossfade). El principal arranca
@@ -708,6 +718,7 @@ class PlayerController(
                 _state.update { it.copy(positionMs = position, durationMs = duration) }
                 maybeLogPlay(position)
                 maybeStartFadeOut(controller, position, duration)
+                maybePrefetchNext(controller, position, duration)
                 delay(300)
             }
         }
@@ -964,6 +975,52 @@ class PlayerController(
      * Un seek manual por encima de 30s también cuenta — es raro en móvil y
      * no merece la complicación de llevar un contador separado por tick.
      */
+    /**
+     * A los -10s del final de la pista actual, hacemos un HEAD al endpoint
+     * del siguiente track y cacheamos su details — el primero abre la
+     * conexión TLS/HTTP2, el segundo se queda en la cache HTTP de Retrofit
+     * (ETag-cacheable del backend). Idempotente por pista: nunca pre-fetches
+     * dos veces el mismo id dentro de la misma reproducción.
+     *
+     * Si el siguiente track ya está descargado en disco (file://), nos
+     * saltamos el HEAD porque no hay red implicada.
+     */
+    private fun maybePrefetchNext(
+        controller: MediaController,
+        positionMs: Long,
+        durationMs: Long
+    ) {
+        if (durationMs <= 0L) return
+        val remaining = durationMs - positionMs
+        if (remaining !in 1..10_000L) return
+        val state = _state.value
+        val nextIndex = state.currentIndex + 1
+        val next = state.queue.getOrNull(nextIndex)
+            ?: if (controller.repeatMode == Player.REPEAT_MODE_ALL && state.queue.isNotEmpty())
+                state.queue[0]
+               else null
+            ?: return
+        if (prefetchedForSongId == next.id) return
+        // Si ya está en disco, saltamos: no hay conexión que calentar.
+        if (downloadsRepository.fileFor(next.id) != null) {
+            prefetchedForSongId = next.id
+            return
+        }
+        prefetchedForSongId = next.id
+        scope.launch {
+            // HEAD al stream para calentar conexión + details en paralelo.
+            runCatching {
+                val streamUrl = baseUrl.trimEnd('/') + "/stream/" + next.id
+                val req = okhttp3.Request.Builder()
+                    .url(streamUrl)
+                    .head()
+                    .build()
+                okHttpClient.newCall(req).execute().use { /* solo para calentar */ }
+            }
+            runCatching { songRepository.details(next.id) }
+        }
+    }
+
     private fun maybeLogPlay(positionMs: Long) {
         val songId = _state.value.currentSong?.id ?: return
         if (loggedPlaySongId == songId) return

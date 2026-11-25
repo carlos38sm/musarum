@@ -1,4 +1,4 @@
-package com.musarum.mobile.music.library
+﻿package com.musarum.mobile.music.library
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,7 +58,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -95,12 +95,12 @@ fun PlaylistDetailScreen(
         key = "playlist_$playlistId",
         factory = PlaylistDetailViewModel.factory(container.playlistRepository, playlistId)
     )
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
-    // Mientras la pantalla esté viva, polling suave cada 10s para ver en
-    // vivo lo que otros colaboradores añadan/quiten/muevan. El backend
-    // responde 304 cuando no cambió nada (ETag), así que el coste real
-    // en los ticks tranquilos es mínimo.
+    // Mientras la pantalla estÃ© viva, polling suave cada 10s para ver en
+    // vivo lo que otros colaboradores aÃ±adan/quiten/muevan. El backend
+    // responde 304 cuando no cambiÃ³ nada (ETag), asÃ­ que el coste real
+    // en los ticks tranquilos es mÃ­nimo.
     androidx.compose.runtime.DisposableEffect(playlistId) {
         viewModel.startLivePolling()
         onDispose { viewModel.stopLivePolling() }
@@ -112,7 +112,7 @@ fun PlaylistDetailScreen(
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     // Modo "ordenar": al activarlo aparecen las asas de drag en cada fila
-    // (hasta entonces están ocultas, estilo Spotify). Antes el drag estaba
+    // (hasta entonces estÃ¡n ocultas, estilo Spotify). Antes el drag estaba
     // siempre visible y manchaba la lista.
     var reorderMode by remember { mutableStateOf(false) }
     var showEditInfo by remember { mutableStateOf(false) }
@@ -124,7 +124,7 @@ fun PlaylistDetailScreen(
                     title = { Text("Playlist") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
                         }
                     },
                     actions = {
@@ -155,12 +155,12 @@ fun PlaylistDetailScreen(
 
                 is PlaylistDetailUiState.Ready -> {
                     val allEntries = s.playlist.entries.content
-                    // Filtro case-insensitive sobre título + artistas. La lupa
+                    // Filtro case-insensitive sobre tÃ­tulo + artistas. La lupa
                     // siempre busca sobre el conjunto completo, aunque el
-                    // backend haya paginado — para las 7k canciones una
+                    // backend haya paginado â€” para las 7k canciones una
                     // playlist rara vez pasa de unos cientos, es viable en
-                    // memoria. Si el usuario cerró la lupa (searching=false),
-                    // la query ya se limpió → filter no cambia nada.
+                    // memoria. Si el usuario cerrÃ³ la lupa (searching=false),
+                    // la query ya se limpiÃ³ â†’ filter no cambia nada.
                     val entries = if (query.isBlank()) allEntries else {
                         val q = query.trim().lowercase()
                         remember(query, allEntries) {
@@ -173,15 +173,15 @@ fun PlaylistDetailScreen(
                     val lazyListState = androidx.compose.foundation.lazy.rememberLazyListState()
                     // Reorderable: capturamos los movimientos durante el drag
                     // y los aplicamos optimistamente al VM. El VM re-emite el
-                    // estado y la lista refleja la nueva posición. Al soltar
+                    // estado y la lista refleja la nueva posiciÃ³n. Al soltar
                     // (onDragStopped) hacemos el POST al backend.
                     val reorderableState = rememberReorderableLazyListState(
                         lazyListState = lazyListState
                     ) { from, to ->
                         // Si hay query activa la lista mostrada es un subset.
-                        // No reordenamos en ese estado porque los índices
-                        // filtrados no coinciden con los reales en DB — el
-                        // handle también se oculta, así que este bloqueo es
+                        // No reordenamos en ese estado porque los Ã­ndices
+                        // filtrados no coinciden con los reales en DB â€” el
+                        // handle tambiÃ©n se oculta, asÃ­ que este bloqueo es
                         // una red de seguridad extra.
                         if (query.isNotBlank()) return@rememberReorderableLazyListState
                         val fromKey = from.key as? Long ?: return@rememberReorderableLazyListState
@@ -197,7 +197,7 @@ fun PlaylistDetailScreen(
                     // porque collectAsState / rememberCoroutineScope son
                     // @Composable y el bloque del LazyColumn body no lo es.
                     val favoriteIds = container.favoriteRepository.favorites
-                        .collectAsState().value.map { it.songId }.toSet()
+                        .collectAsStateWithLifecycle().value.map { it.songId }.toSet()
                     val favoriteScope = androidx.compose.runtime.rememberCoroutineScope()
 
                     LazyColumn(state = lazyListState, modifier = Modifier.fillMaxSize()) {
@@ -207,7 +207,7 @@ fun PlaylistDetailScreen(
                                     .fillMaxWidth()
                                     .padding(16.dp)
                             ) {
-                                // Mosaico 2×2 + título como header (B20).
+                                // Mosaico 2Ã—2 + tÃ­tulo como header (B20).
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     com.musarum.mobile.music.PlaylistMosaicCover(
                                         urls = s.playlist.coverUrls,
@@ -237,9 +237,9 @@ fun PlaylistDetailScreen(
                                     }
                                 }
                                 Spacer(Modifier.height(14.dp))
-                                // Info extra (B21) en bento 2×2: canciones,
-                                // duración total, artista top, género top.
-                                // La fecha va aparte como pie pequeño.
+                                // Info extra (B21) en bento 2Ã—2: canciones,
+                                // duraciÃ³n total, artista top, gÃ©nero top.
+                                // La fecha va aparte como pie pequeÃ±o.
                                 val totalMs = s.playlist.durationMs
                                     ?: entries.sumOf { (it.durationMs ?: 0).toLong() }
                                 val songCount = s.playlist.songCount.coerceAtLeast(entries.size)
@@ -254,7 +254,7 @@ fun PlaylistDetailScreen(
                                     )
                                     PlaylistStatTile(
                                         value = humanizeDurationMs(totalMs),
-                                        label = "duración",
+                                        label = "duraciÃ³n",
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
@@ -265,13 +265,13 @@ fun PlaylistDetailScreen(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
                                         PlaylistStatTile(
-                                            value = s.playlist.topArtistName ?: "—",
+                                            value = s.playlist.topArtistName ?: "â€”",
                                             label = "artista top",
                                             modifier = Modifier.weight(1f)
                                         )
                                         PlaylistStatTile(
-                                            value = s.playlist.topGenreName ?: "—",
-                                            label = "género top",
+                                            value = s.playlist.topGenreName ?: "â€”",
+                                            label = "gÃ©nero top",
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
@@ -286,15 +286,15 @@ fun PlaylistDetailScreen(
                                 }
                                 Spacer(Modifier.height(12.dp))
                                 val downloaded by container.downloadsRepository
-                                    .entries.collectAsState()
+                                    .entries.collectAsStateWithLifecycle()
                                 val pending = entries.count { downloaded[it.songId] == null }
                                 val allDownloaded = entries.isNotEmpty() && pending == 0
-                                val me by container.userRepository.me.collectAsState()
+                                val me by container.userRepository.me.collectAsStateWithLifecycle()
                                 val isOwner = me?.id != null && me?.id == s.playlist.ownerId
                                 // Fila de acciones icon-only pedida por Carlos:
                                 // reproducir, descargar, editar, ordenar, invitar.
-                                // Sin texto, más compacta. Los últimos 3 solo
-                                // aparecen si eres owner (el backend rechazaría
+                                // Sin texto, mÃ¡s compacta. Los Ãºltimos 3 solo
+                                // aparecen si eres owner (el backend rechazarÃ­a
                                 // las acciones de otros con 404).
                                 Row(
                                     horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -338,7 +338,7 @@ fun PlaylistDetailScreen(
                                             else MaterialTheme.colorScheme.onSurface
                                         )
                                     }
-                                    // El "añadir canciones en lote" lo pueden
+                                    // El "aÃ±adir canciones en lote" lo pueden
                                     // usar tanto owner como colaboradores
                                     // (canEdit en el backend acepta a los dos).
                                     val canEdit = isOwner ||
@@ -348,7 +348,7 @@ fun PlaylistDetailScreen(
                                         IconButton(onClick = onAddSongs) {
                                             Icon(
                                                 Icons.Filled.Add,
-                                                contentDescription = "Añadir canciones"
+                                                contentDescription = "AÃ±adir canciones"
                                             )
                                         }
                                     }
@@ -381,9 +381,9 @@ fun PlaylistDetailScreen(
 
                                 // Bolitas de colaboradores (estilo Spotify): solo
                                 // si la playlist tiene alguno. Cuando no hay
-                                // nadie, ni se dibuja la sección — antes
-                                // aparecía una tarjeta pálida con "nadie puede
-                                // editarla todavía" que ensuciaba el header.
+                                // nadie, ni se dibuja la secciÃ³n â€” antes
+                                // aparecÃ­a una tarjeta pÃ¡lida con "nadie puede
+                                // editarla todavÃ­a" que ensuciaba el header.
                                 if (s.playlist.collaborators.isNotEmpty()) {
                                     Spacer(Modifier.height(10.dp))
                                     CollaboratorsBubbles(
@@ -409,7 +409,7 @@ fun PlaylistDetailScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        "Esta playlist está vacía",
+                                        "Esta playlist estÃ¡ vacÃ­a",
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -483,9 +483,9 @@ fun PlaylistDetailScreen(
 
 /**
  * Mini-tile tipo bento para los stats del header de playlist. Valor en
- * grande arriba (titleMedium bold), label pequeña debajo. Fondo con
- * surfaceVariant + esquinas redondeadas 14dp — queda como "pastilla"
- * discreta, no como botón.
+ * grande arriba (titleMedium bold), label pequeÃ±a debajo. Fondo con
+ * surfaceVariant + esquinas redondeadas 14dp â€” queda como "pastilla"
+ * discreta, no como botÃ³n.
  */
 @Composable
 private fun PlaylistStatTile(
@@ -528,10 +528,10 @@ private fun EditPlaylistInfoDialog(
 ) {
     var name by remember { mutableStateOf(initialName) }
     var description by remember { mutableStateOf(initialDescription) }
-    // isPublic deja de exponerse al usuario — el concepto "colaborativa" se
+    // isPublic deja de exponerse al usuario â€” el concepto "colaborativa" se
     // maneja desde los detalles invitando por nick. Conservamos el flag en
     // el callback (y el valor inicial) por compat con el backend y por si
-    // volvemos a añadir un modo "visible por cualquier user".
+    // volvemos a aÃ±adir un modo "visible por cualquier user".
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -549,7 +549,7 @@ private fun EditPlaylistInfoDialog(
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    label = { Text("Descripción") },
+                    label = { Text("DescripciÃ³n") },
                     minLines = 2,
                     maxLines = 4,
                     modifier = Modifier.fillMaxWidth()
@@ -570,7 +570,7 @@ private fun EditPlaylistInfoDialog(
 
 /**
  * Fila de bolitas de colaboradores estilo Spotify. Solo se usa cuando ya
- * hay colaboradores; si el owner quiere añadir uno, usa el icono
+ * hay colaboradores; si el owner quiere aÃ±adir uno, usa el icono
  * PersonAdd de la fila de acciones (abre InviteCollaboratorDialog).
  */
 @Composable
@@ -588,15 +588,15 @@ private fun CollaboratorsBubbles(
             Box {
                 com.musarum.mobile.music.UserAvatar(
                     nick = c.nick,
-                    // Si el user subió foto, se pinta; si no, cae a la
-                    // inicial coloreada (la lógica vive en UserAvatar).
+                    // Si el user subiÃ³ foto, se pinta; si no, cae a la
+                    // inicial coloreada (la lÃ³gica vive en UserAvatar).
                     avatarUrl = c.avatarUrl,
                     size = 32.dp,
                     modifier = Modifier.padding(end = 6.dp)
                 )
                 if (canManage) {
                     // X en la esquina superior derecha para quitar. Hitbox
-                    // pequeño pero accesible. No se muestra a los MEMBER.
+                    // pequeÃ±o pero accesible. No se muestra a los MEMBER.
                     IconButton(
                         onClick = { onRemove(c.id) },
                         modifier = Modifier
@@ -617,8 +617,8 @@ private fun CollaboratorsBubbles(
 }
 
 /**
- * Antigua tarjeta "Colaboradores" — queda sin uso pero la dejo por si se
- * reutiliza en el futuro para una vista más detallada.
+ * Antigua tarjeta "Colaboradores" â€” queda sin uso pero la dejo por si se
+ * reutiliza en el futuro para una vista mÃ¡s detallada.
  */
 @Suppress("unused")
 @Composable
@@ -628,7 +628,7 @@ private fun CollaboratorsSection(
     onInvite: () -> Unit,
     onRemove: (Long) -> Unit
 ) {
-    // Si no soy owner y no hay colaboradores → nada que mostrar en absoluto.
+    // Si no soy owner y no hay colaboradores â†’ nada que mostrar en absoluto.
     if (!canManage && collaborators.isEmpty()) return
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -649,7 +649,7 @@ private fun CollaboratorsSection(
         }
         if (collaborators.isEmpty()) {
             Text(
-                "Nadie más puede editarla todavía.",
+                "Nadie mÃ¡s puede editarla todavÃ­a.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -702,9 +702,9 @@ private fun InviteCollaboratorDialog(
     onSearch: suspend (String) -> List<UserResponseDto>,
     onPick: (UserResponseDto) -> Unit
 ) {
-    // Nuevo diseño pedido por Carlos (nov 2026): bolitas de los usuarios
+    // Nuevo diseÃ±o pedido por Carlos (nov 2026): bolitas de los usuarios
     // directamente visibles para pulsar una sin escribir nada. La lupa
-    // revela un campo de búsqueda solo cuando hace falta (hay muchos
+    // revela un campo de bÃºsqueda solo cuando hace falta (hay muchos
     // usuarios o el que buscas no se ve). Con 3 o 4 oyentes en la red,
     // normalmente con las bolitas sobra.
     var allUsers by remember { mutableStateOf<List<UserResponseDto>>(emptyList()) }
@@ -712,10 +712,10 @@ private fun InviteCollaboratorDialog(
     var query by remember { mutableStateOf("") }
     var searchResults by remember { mutableStateOf<List<UserResponseDto>>(emptyList()) }
     val container = LocalAppContainer.current
-    val me by container.userRepository.me.collectAsState()
+    val me by container.userRepository.me.collectAsStateWithLifecycle()
 
     // Carga inicial: /auth/users devuelve TODOS los usuarios registrados
-    // (público, sin auth) — perfecto para la rejilla de bolitas. Lo
+    // (pÃºblico, sin auth) â€” perfecto para la rejilla de bolitas. Lo
     // convertimos al DTO que usa el resto del flujo (nick + avatar).
     LaunchedEffect(Unit) {
         allUsers = runCatching { container.apiService.getLoginUsers() }
@@ -751,7 +751,7 @@ private fun InviteCollaboratorDialog(
                 IconButton(onClick = { showSearch = !showSearch; if (!showSearch) query = "" }) {
                     Icon(
                         Icons.Filled.Search,
-                        contentDescription = if (showSearch) "Ocultar búsqueda" else "Buscar por nick",
+                        contentDescription = if (showSearch) "Ocultar bÃºsqueda" else "Buscar por nick",
                         tint = if (showSearch) MaterialTheme.colorScheme.primary
                                else MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -773,14 +773,14 @@ private fun InviteCollaboratorDialog(
                 if (visible.isEmpty()) {
                     Text(
                         if (showSearch && query.isNotBlank()) "Sin resultados"
-                        else "No hay más usuarios disponibles.",
+                        else "No hay mÃ¡s usuarios disponibles.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
                     // FlowRow de bolitas: cada una con avatar + nick debajo.
                     // Tap = invitar. maxItemsInEachRow = 4 funciona bien con
-                    // 3 compañeros; si crece, hace scroll de columnas.
+                    // 3 compaÃ±eros; si crece, hace scroll de columnas.
                     androidx.compose.foundation.layout.FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
@@ -820,10 +820,10 @@ private fun InviteCollaboratorDialog(
 
 /**
  * Fila de la playlist. Dos gestos:
- *   - Swipe izquierda (EndToStart) → eliminar la canción de la playlist.
+ *   - Swipe izquierda (EndToStart) â†’ eliminar la canciÃ³n de la playlist.
  *     Fondo rojo con icono papelera; al soltar, la fila sale.
- *   - Swipe derecha (StartToEnd) → alternar favorito. Fondo primary
- *     con corazón; al soltar, la fila vuelve a su sitio y el icono
+ *   - Swipe derecha (StartToEnd) â†’ alternar favorito. Fondo primary
+ *     con corazÃ³n; al soltar, la fila vuelve a su sitio y el icono
  *     actualiza su estado.
  *   - Drag-and-drop con el icono DragHandle para reordenar (solo con
  *     reorderMode activo y sin lupa; el modifier draggableHandle lo
@@ -832,7 +832,7 @@ private fun InviteCollaboratorDialog(
  * El dismiss izquierda confirma su "going away" (confirmValueChange=true
  * para EndToStart) y llama onRemove; el derecha NO confirma (false) y
  * usa el callback como pulso: la fila regresa animada al centro y el
- * estado de favorito ya ha cambiado en memoria vía FavoriteRepository.
+ * estado de favorito ya ha cambiado en memoria vÃ­a FavoriteRepository.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -853,21 +853,21 @@ private fun EntryRow(
                 SwipeToDismissBoxValue.EndToStart -> {
                     // Swipe a la izquierda = quitar de la playlist.
                     // Confirmamos la dismiss: la fila desaparece con
-                    // animación, el backend se encargará de restar la
-                    // entry y el flow reemitirá la lista sin ella.
+                    // animaciÃ³n, el backend se encargarÃ¡ de restar la
+                    // entry y el flow reemitirÃ¡ la lista sin ella.
                     onRemove()
                     true
                 }
                 SwipeToDismissBoxValue.StartToEnd -> {
                     // Swipe a la derecha = toggle favorito. No queremos
-                    // que la fila desaparezca — es un pulso visual.
+                    // que la fila desaparezca â€” es un pulso visual.
                     onToggleFavorite()
                     false
                 }
                 else -> false
             }
         },
-        // Umbral del 35% del ancho para disparar — más bajo que el
+        // Umbral del 35% del ancho para disparar â€” mÃ¡s bajo que el
         // default (50%) para que el gesto se note confortable con el
         // pulgar sin requerir recorrido completo.
         positionalThreshold = { totalDistance: Float -> totalDistance * 0.35f }
@@ -882,7 +882,7 @@ private fun EntryRow(
             )
         },
         // El drag reordenable usa el handle lateral; el swipe horizontal
-        // no debe interferir mientras estás arrastrando con los dedos
+        // no debe interferir mientras estÃ¡s arrastrando con los dedos
         // para reordenar: desactivamos ambas direcciones si isDragging.
         enableDismissFromStartToEnd = !isDragging,
         enableDismissFromEndToStart = !isDragging,
@@ -927,8 +927,8 @@ private fun EntryRow(
                     Spacer(Modifier.width(6.dp))
                 }
                 // Mini-icono "favorito activo" como feedback visual: si
-                // la canción ya es favorita, se ve un corazón pequeño
-                // aquí. El botón "quitar" clásico se fue — ahora es el
+                // la canciÃ³n ya es favorita, se ve un corazÃ³n pequeÃ±o
+                // aquÃ­. El botÃ³n "quitar" clÃ¡sico se fue â€” ahora es el
                 // swipe izquierda.
                 if (isFavorite) {
                     Icon(
@@ -939,10 +939,10 @@ private fun EntryRow(
                     )
                     Spacer(Modifier.width(6.dp))
                 }
-                // Handle de arrastre — modifier.draggableHandle() lo inyecta
-                // ReorderableItem desde el call site, aquí solo lo aplicamos.
+                // Handle de arrastre â€” modifier.draggableHandle() lo inyecta
+                // ReorderableItem desde el call site, aquÃ­ solo lo aplicamos.
                 // Oculto cuando dragEnabled=false (p. ej. con lupa activa):
-                // reordenar sobre un subset filtrado produciría posiciones
+                // reordenar sobre un subset filtrado producirÃ­a posiciones
                 // inconsistentes con DB.
                 if (dragEnabled) {
                     Icon(
@@ -960,7 +960,7 @@ private fun EntryRow(
 /**
  * Fondo que asoma bajo la fila al deslizar. Sentido visual:
  *   - StartToEnd (swipe derecha): barra con primary a la izquierda +
- *     icono ♥ (relleno si ya es favorita, línea si no). "Añadir/quitar".
+ *     icono â™¥ (relleno si ya es favorita, lÃ­nea si no). "AÃ±adir/quitar".
  *   - EndToStart (swipe izquierda): barra con error a la derecha +
  *     icono papelera. "Eliminar de la playlist".
  */
@@ -970,7 +970,7 @@ private fun SwipeBackground(
     isFavorite: Boolean
 ) {
     // Fondo que RELLENA toda la fila (alto + ancho). Antes solo el Row
-    // con iconos ocupaba altura del contenido y quedaba un marco vacío
+    // con iconos ocupaba altura del contenido y quedaba un marco vacÃ­o
     // arriba y abajo mostrando el fondo de la lista. Nov-24 2026.
     val bg = when (direction) {
         SwipeToDismissBoxValue.StartToEnd -> MaterialTheme.colorScheme.primary
@@ -999,7 +999,7 @@ private fun SwipeBackground(
                 )
                 Spacer(Modifier.width(10.dp))
                 Text(
-                    if (isFavorite) "Quitar de favoritas" else "Añadir a favoritas",
+                    if (isFavorite) "Quitar de favoritas" else "AÃ±adir a favoritas",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.SemiBold

@@ -1,4 +1,4 @@
-package com.musarum.mobile.profile
+﻿package com.musarum.mobile.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -66,7 +66,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -105,19 +105,19 @@ fun ProfileScreen(
     )
 ) {
     val container = LocalAppContainer.current
-    val state by viewModel.state.collectAsState()
-    val crossfadeSeconds by container.playerPreferences.crossfadeSeconds.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val crossfadeSeconds by container.playerPreferences.crossfadeSeconds.collectAsStateWithLifecycle()
     val snackbar = LocalSnackbar.current
 
     var showEditNick by remember { mutableStateOf(false) }
     var showChangePassword by remember { mutableStateOf(false) }
     var showCrossfade by remember { mutableStateOf(false) }
     var showCreateUser by remember { mutableStateOf(false) }
-    // Estado del diálogo "Buscar actualizaciones":
-    //   null     → cerrado
-    //   Loading  → consulta en vuelo
-    //   Report   → reporte del backend
-    //   Error    → petición revienta (red, 401, etc.)
+    // Estado del diÃ¡logo "Buscar actualizaciones":
+    //   null     â†’ cerrado
+    //   Loading  â†’ consulta en vuelo
+    //   Report   â†’ reporte del backend
+    //   Error    â†’ peticiÃ³n revienta (red, 401, etc.)
     var updateDialog by remember { mutableStateOf<UpdateDialogState?>(null) }
     val isOwner = state.user?.userRole == "OWNER"
 
@@ -199,7 +199,7 @@ fun ProfileScreen(
             }
             Spacer(Modifier.height(12.dp))
             Text(
-                state.user?.nick ?: if (state.loading) "Cargando…" else "Tu cuenta",
+                state.user?.nick ?: if (state.loading) "Cargandoâ€¦" else "Tu cuenta",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
@@ -222,47 +222,47 @@ fun ProfileScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            // ── Resumen de reproducción ──
+            // â”€â”€ Resumen de reproducciÃ³n â”€â”€
             state.stats?.let { stats -> StatsCard(stats) }
             if (state.stats != null) Spacer(Modifier.height(10.dp))
 
-            // Hooks de preferencias (una sola suscripción por valor) —
+            // Hooks de preferencias (una sola suscripciÃ³n por valor) â€”
             // los dejamos arriba del todo del bloque de secciones para
             // que todas las SettingRow que los usan se re-componen
-            // juntas y Compose puede saltarse la invalidación cuando
+            // juntas y Compose puede saltarse la invalidaciÃ³n cuando
             // ninguno cambia.
             val replayGainEnabled by container.playerPreferences
-                .replayGainEnabled.collectAsState()
+                .replayGainEnabled.collectAsStateWithLifecycle()
             val gaplessEnabled by container.playerPreferences
-                .gaplessEnabled.collectAsState()
-            val eqEnabled by container.playerPreferences.equalizerEnabled.collectAsState()
-            val me by container.userRepository.me.collectAsState()
-            val downloads by container.downloadsRepository.entries.collectAsState()
+                .gaplessEnabled.collectAsStateWithLifecycle()
+            val eqEnabled by container.playerPreferences.equalizerEnabled.collectAsStateWithLifecycle()
+            val me by container.userRepository.me.collectAsStateWithLifecycle()
+            val downloads by container.downloadsRepository.entries.collectAsStateWithLifecycle()
             val tempByDefault by container.playerPreferences
-                .downloadsTemporaryByDefault.collectAsState()
+                .downloadsTemporaryByDefault.collectAsStateWithLifecycle()
             val totalMb = (downloads.values.sumOf { it.sizeBytes } / (1024.0 * 1024.0))
             val ctx = LocalContext.current
 
-            // ── CUENTA ────────────────────────────────────────────────
+            // â”€â”€ CUENTA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SectionTitle("Cuenta")
             SettingRow(
                 icon = Icons.Filled.Edit,
                 title = "Cambiar nick",
-                subtitle = state.user?.nick ?: "—",
+                subtitle = state.user?.nick ?: "â€”",
                 onClick = { showEditNick = true },
                 enabled = state.user != null
             )
             Spacer(Modifier.height(6.dp))
             SettingRow(
                 icon = Icons.Filled.Lock,
-                title = "Cambiar contraseña",
-                subtitle = "Requiere la contraseña actual",
+                title = "Cambiar contraseÃ±a",
+                subtitle = "Requiere la contraseÃ±a actual",
                 onClick = { showChangePassword = true },
                 enabled = state.user != null
             )
 
-            // ── REPRODUCCIÓN ──────────────────────────────────────────
-            SectionTitle("Reproducción")
+            // â”€â”€ REPRODUCCIÃ“N â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            SectionTitle("ReproducciÃ³n")
             SettingRow(
                 icon = Icons.Filled.Tune,
                 title = "Crossfade",
@@ -281,12 +281,12 @@ fun ProfileScreen(
                 }
             )
             Spacer(Modifier.height(6.dp))
-            // Gapless: solo se aplica cuando crossfade está a 0. Para pistas
-            // de álbum que enlazan (discos en directo, conceptuales como
+            // Gapless: solo se aplica cuando crossfade estÃ¡ a 0. Para pistas
+            // de Ã¡lbum que enlazan (discos en directo, conceptuales como
             // Dark Side of the Moon) elimina la micro-pausa entre canciones.
             SettingRowSwitch(
                 icon = Icons.Filled.MusicNote,
-                title = "Reproducción continua",
+                title = "ReproducciÃ³n continua",
                 subtitle = if (crossfadeSeconds > 0) "Ignorado con crossfade"
                            else "Sin pausa entre canciones",
                 checked = gaplessEnabled,
@@ -298,14 +298,14 @@ fun ProfileScreen(
             SettingRow(
                 icon = Icons.Filled.Tune,
                 title = "Ecualizador",
-                subtitle = if (eqEnabled) "Activado · 5 bandas" else "Desactivado",
+                subtitle = if (eqEnabled) "Activado Â· 5 bandas" else "Desactivado",
                 onClick = onOpenEqualizer
             )
             Spacer(Modifier.height(6.dp))
-            // Permite abrir los ajustes de batería para desactivar la
-            // optimización. Sin ella, Android/Doze corta la red con la
-            // pantalla apagada y los Bluetooth se quedan sin bytes →
-            // handshake → algunos modelos se apagan.
+            // Permite abrir los ajustes de baterÃ­a para desactivar la
+            // optimizaciÃ³n. Sin ella, Android/Doze corta la red con la
+            // pantalla apagada y los Bluetooth se quedan sin bytes â†’
+            // handshake â†’ algunos modelos se apagan.
             SettingRow(
                 icon = Icons.Filled.BatteryChargingFull,
                 title = "Permitir en segundo plano",
@@ -334,7 +334,7 @@ fun ProfileScreen(
                 }
             )
 
-            // ── MODOS ─────────────────────────────────────────────────
+            // â”€â”€ MODOS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SectionTitle("Modos")
             SettingRow(
                 icon = Icons.Filled.DirectionsCar,
@@ -346,18 +346,18 @@ fun ProfileScreen(
             SettingRow(
                 icon = Icons.Filled.DevicesOther,
                 title = "Continuar en otro dispositivo",
-                subtitle = "Pasa la reproducción entre móviles",
+                subtitle = "Pasa la reproducciÃ³n entre mÃ³viles",
                 onClick = onOpenHandoff
             )
             Spacer(Modifier.height(6.dp))
             SettingRow(
                 icon = Icons.Filled.Celebration,
                 title = "Fiesta musical",
-                subtitle = "Cola compartida entre móviles",
+                subtitle = "Cola compartida entre mÃ³viles",
                 onClick = onOpenParty
             )
 
-            // ── DESCARGAS ─────────────────────────────────────────────
+            // â”€â”€ DESCARGAS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SectionTitle("Descargas")
             SettingRowSwitch(
                 icon = Icons.Filled.CloudDownload,
@@ -373,7 +373,7 @@ fun ProfileScreen(
                 icon = Icons.Filled.DeleteSweep,
                 title = "Borrar todas las descargas",
                 subtitle = if (downloads.isEmpty()) "No hay canciones descargadas"
-                           else "${downloads.size} canciones · ${"%.1f".format(totalMb)} MB",
+                           else "${downloads.size} canciones Â· ${"%.1f".format(totalMb)} MB",
                 enabled = downloads.isNotEmpty(),
                 onClick = {
                     container.downloadsManager.clearAll()
@@ -381,16 +381,16 @@ fun ProfileScreen(
                 }
             )
 
-            // ── PRIVACIDAD ────────────────────────────────────────────
-            // Cada toggle controla una sección del Home de los demás.
-            // shareNowPlaying → "Comunidad · está escuchando";
-            // shareTaste → "Comunidad · le gusta". El backend ya los
-            // respeta; aquí solo mostramos el estado actual y disparamos
+            // â”€â”€ PRIVACIDAD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // Cada toggle controla una secciÃ³n del Home de los demÃ¡s.
+            // shareNowPlaying â†’ "Comunidad Â· estÃ¡ escuchando";
+            // shareTaste â†’ "Comunidad Â· le gusta". El backend ya los
+            // respeta; aquÃ­ solo mostramos el estado actual y disparamos
             // el PATCH.
             SectionTitle("Privacidad")
             SettingRowSwitch(
                 icon = Icons.Filled.Headphones,
-                title = "Compartir qué escucho",
+                title = "Compartir quÃ© escucho",
                 subtitle = "Aparezco en Comunidad",
                 checked = me?.shareNowPlaying != false,
                 onCheckedChange = { value -> viewModel.updatePrivacyNowPlaying(value) }
@@ -405,12 +405,12 @@ fun ProfileScreen(
             )
 
             if (isOwner) {
-                // ── SERVIDOR (solo OWNER) ─────────────────────────────
+                // â”€â”€ SERVIDOR (solo OWNER) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 SectionTitle("Servidor")
-                // Subtítulo dinámico: mientras scanning=true muestra el
+                // SubtÃ­tulo dinÃ¡mico: mientras scanning=true muestra el
                 // contador "1200/7000" en vivo, incluyendo el fichero
                 // actual cuando viene. Al terminar, muestra el resumen
-                // del último escaneo si existe.
+                // del Ãºltimo escaneo si existe.
                 val scanSubtitle = run {
                     val s = state.scannerStatus
                     when {
@@ -421,16 +421,16 @@ fun ProfileScreen(
                                 "importing" -> "Importando"
                                 else -> "Escaneando"
                             }
-                            if (cur.isNotEmpty()) "$label ${s.processed}/${s.total} · $cur"
+                            if (cur.isNotEmpty()) "$label ${s.processed}/${s.total} Â· $cur"
                             else "$label ${s.processed}/${s.total}"
                         }
-                        state.scanning -> "Preparando…"
+                        state.scanning -> "Preparandoâ€¦"
                         s?.lastResult != null -> {
                             val r = s.lastResult
                             buildString {
                                 append("${r.imported} nuevas")
-                                if (r.duplicates > 0) append(" · ${r.duplicates} duplicadas")
-                                if (r.deleted > 0) append(" · ${r.deleted} borradas")
+                                if (r.duplicates > 0) append(" Â· ${r.duplicates} duplicadas")
+                                if (r.deleted > 0) append(" Â· ${r.deleted} borradas")
                             }
                         }
                         else -> "Busca canciones nuevas en el servidor"
@@ -438,9 +438,9 @@ fun ProfileScreen(
                 }
                 val scanTitle = when {
                     !state.scanning -> "Rescanear biblioteca"
-                    state.scannerStatus?.phase == "hashing" -> "Analizando ficheros…"
-                    state.scannerStatus?.phase == "importing" -> "Importando canciones…"
-                    else -> "Escaneando…"
+                    state.scannerStatus?.phase == "hashing" -> "Analizando ficherosâ€¦"
+                    state.scannerStatus?.phase == "importing" -> "Importando cancionesâ€¦"
+                    else -> "Escaneandoâ€¦"
                 }
                 SettingRow(
                     icon = if (state.scanning) Icons.Filled.Refresh else Icons.Filled.LibraryMusic,
@@ -461,15 +461,15 @@ fun ProfileScreen(
                 Spacer(Modifier.height(6.dp))
                 SettingRow(
                     icon = Icons.Filled.Folder,
-                    title = "Carpetas de música",
-                    subtitle = "Elige qué subcarpetas se escanean",
+                    title = "Carpetas de mÃºsica",
+                    subtitle = "Elige quÃ© subcarpetas se escanean",
                     onClick = onOpenFolders
                 )
                 Spacer(Modifier.height(6.dp))
                 SettingRow(
                     icon = Icons.Filled.Insights,
-                    title = "Análisis del servidor",
-                    subtitle = "Catálogo, letras, disco y actividad",
+                    title = "AnÃ¡lisis del servidor",
+                    subtitle = "CatÃ¡logo, letras, disco y actividad",
                     onClick = onOpenServerStats
                 )
                 Spacer(Modifier.height(6.dp))
@@ -488,12 +488,12 @@ fun ProfileScreen(
                 Spacer(Modifier.height(6.dp))
                 SettingRow(
                     icon = Icons.Filled.NewReleases,
-                    title = "Publicar actualización",
-                    subtitle = "Anunciar nueva versión del APK",
+                    title = "Publicar actualizaciÃ³n",
+                    subtitle = "Anunciar nueva versiÃ³n del APK",
                     onClick = onOpenPublishUpdate
                 )
 
-                // ── USUARIOS (solo OWNER) ─────────────────────────────
+                // â”€â”€ USUARIOS (solo OWNER) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                 SectionTitle("Usuarios")
                 SettingRow(
                     icon = Icons.Filled.PersonAdd,
@@ -522,7 +522,7 @@ fun ProfileScreen(
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
-                Text("Cerrar sesión", fontWeight = FontWeight.SemiBold)
+                Text("Cerrar sesiÃ³n", fontWeight = FontWeight.SemiBold)
             }
 
             Spacer(Modifier.height(24.dp))
@@ -582,9 +582,9 @@ fun ProfileScreen(
 }
 
 /**
- * Diálogo de alta de usuario (solo OWNER). Mínimos de validación en UI
- * (3-30 chars nick, 8+ contraseña) para no cargar el backend con pelotas
- * fáciles; la validación real la hace el backend igual.
+ * DiÃ¡logo de alta de usuario (solo OWNER). MÃ­nimos de validaciÃ³n en UI
+ * (3-30 chars nick, 8+ contraseÃ±a) para no cargar el backend con pelotas
+ * fÃ¡ciles; la validaciÃ³n real la hace el backend igual.
  */
 @Composable
 private fun CreateUserDialog(
@@ -610,7 +610,7 @@ private fun CreateUserDialog(
                     label = { Text("Nick") },
                     singleLine = true,
                     supportingText = {
-                        Text("3–30 caracteres · letras, números, _ y -")
+                        Text("3â€“30 caracteres Â· letras, nÃºmeros, _ y -")
                     },
                     isError = nick.isNotEmpty() && !nickValid
                 )
@@ -618,10 +618,10 @@ private fun CreateUserDialog(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Contraseña") },
+                    label = { Text("ContraseÃ±a") },
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
-                    supportingText = { Text("Mínimo 8 caracteres") },
+                    supportingText = { Text("MÃ­nimo 8 caracteres") },
                     isError = password.isNotEmpty() && !passValid
                 )
                 Spacer(Modifier.height(12.dp))
@@ -637,7 +637,7 @@ private fun CreateUserDialog(
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            "Podrá crear otros usuarios y borrar canciones",
+                            "PodrÃ¡ crear otros usuarios y borrar canciones",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -660,16 +660,16 @@ private fun CreateUserDialog(
 @Composable
 private fun StatsCard(stats: com.musarum.mobile.data.network.dto.UserStatsDto) {
     // Formato "bento": header, tarjeta destacada full-width con el tiempo
-    // total escuchado, debajo dos tiles 1:1 (escuchas · distintas) y al pie
-    // una lista compacta con los tops (más escuchada / artista / género).
-    // Más visual que la triple columna anterior y los números respiran.
+    // total escuchado, debajo dos tiles 1:1 (escuchas Â· distintas) y al pie
+    // una lista compacta con los tops (mÃ¡s escuchada / artista / gÃ©nero).
+    // MÃ¡s visual que la triple columna anterior y los nÃºmeros respiran.
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "TUS NÚMEROS",
+                "TUS NÃšMEROS",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,
@@ -678,7 +678,7 @@ private fun StatsCard(stats: com.musarum.mobile.data.network.dto.UserStatsDto) {
         }
         Spacer(Modifier.height(10.dp))
 
-        // Tile destacado: tiempo total — el stat "wow" de la pantalla.
+        // Tile destacado: tiempo total â€” el stat "wow" de la pantalla.
         HeroStatTile(
             icon = Icons.Filled.Schedule,
             value = humanizeDurationMs(stats.totalListenedMs),
@@ -686,7 +686,7 @@ private fun StatsCard(stats: com.musarum.mobile.data.network.dto.UserStatsDto) {
         )
         Spacer(Modifier.height(10.dp))
 
-        // Dos tiles 1:1 debajo: nº de reproducciones y pistas distintas.
+        // Dos tiles 1:1 debajo: nÂº de reproducciones y pistas distintas.
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             BentoStatTile(
                 icon = Icons.Filled.PlayArrow,
@@ -704,10 +704,10 @@ private fun StatsCard(stats: com.musarum.mobile.data.network.dto.UserStatsDto) {
             )
         }
 
-        // Rediseño nov-24 2026: los tops (canción · artista · género) salían
+        // RediseÃ±o nov-24 2026: los tops (canciÃ³n Â· artista Â· gÃ©nero) salÃ­an
         // antes en una tarjeta gris con 3 rows internas, que desentonaba
         // mucho sobre los bentos de color. Ahora son 3 mini-tarjetas apiladas,
-        // cada una con su color de acento, sin contenedor común gris.
+        // cada una con su color de acento, sin contenedor comÃºn gris.
         data class Top(
             val icon: androidx.compose.ui.graphics.vector.ImageVector,
             val label: String,
@@ -719,13 +719,13 @@ private fun StatsCard(stats: com.musarum.mobile.data.network.dto.UserStatsDto) {
         val secondary = MaterialTheme.colorScheme.secondary
         val tops = buildList {
             stats.topSongTitle?.let {
-                add(Top(Icons.Filled.MusicNote, "Más escuchada", it, primary))
+                add(Top(Icons.Filled.MusicNote, "MÃ¡s escuchada", it, primary))
             }
             stats.topArtistName?.let {
                 add(Top(Icons.Filled.Person, "Artista favorito", it, tertiary))
             }
             stats.topGenreName?.let {
-                add(Top(Icons.Filled.Album, "Género favorito", it, secondary))
+                add(Top(Icons.Filled.Album, "GÃ©nero favorito", it, secondary))
             }
         }
         if (tops.isNotEmpty()) {
@@ -745,8 +745,8 @@ private fun StatsCard(stats: com.musarum.mobile.data.network.dto.UserStatsDto) {
 }
 
 /**
- * Mini-tarjeta de "top" (canción/artista/género) con color de acento
- * propio, tintada @14% en el fondo y un círculo sólido del tint con el
+ * Mini-tarjeta de "top" (canciÃ³n/artista/gÃ©nero) con color de acento
+ * propio, tintada @14% en el fondo y un cÃ­rculo sÃ³lido del tint con el
  * icono dentro. Mismo lenguaje que los bento tiles grandes de arriba.
  */
 @Composable
@@ -799,7 +799,7 @@ private fun TopTileCard(
     }
 }
 
-/** Tile grande (full-width) con icono + número + label apilados verticalmente. */
+/** Tile grande (full-width) con icono + nÃºmero + label apilados verticalmente. */
 @Composable
 private fun HeroStatTile(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -847,7 +847,7 @@ private fun HeroStatTile(
     }
 }
 
-/** Tile pequeño (1:1 en Row.weight) con icono arriba y número + label. */
+/** Tile pequeÃ±o (1:1 en Row.weight) con icono arriba y nÃºmero + label. */
 @Composable
 private fun BentoStatTile(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -889,10 +889,10 @@ private fun BentoStatTile(
 }
 
 /**
- * Encabezado de sección estilo InfoScreen: etiqueta pequeña en bold
- * uppercase con color primary. Encima lleva un margen superior cómodo
- * para separar visualmente de la sección anterior sin necesitar un
- * divider duro. La idea nace de lo que Carlos pedía: convertir el
+ * Encabezado de secciÃ³n estilo InfoScreen: etiqueta pequeÃ±a en bold
+ * uppercase con color primary. Encima lleva un margen superior cÃ³modo
+ * para separar visualmente de la secciÃ³n anterior sin necesitar un
+ * divider duro. La idea nace de lo que Carlos pedÃ­a: convertir el
  * Perfil (lista de la compra) en bloques navegables de un vistazo.
  */
 @Composable
@@ -960,7 +960,7 @@ private fun SettingRow(
 }
 
 /** Variante de SettingRow con un Switch en vez de chevron. Para ajustes
- *  tipo on/off que no abren diálogo. */
+ *  tipo on/off que no abren diÃ¡logo. */
 @Composable
 private fun SettingRowSwitch(
     icon: ImageVector,
@@ -1031,7 +1031,7 @@ private fun EditNickDialog(
             TextButton(
                 enabled = !saving && value.trim().length in 3..30 && value.trim() != initial,
                 onClick = { onConfirm(value.trim()) }
-            ) { Text(if (saving) "Guardando…" else "Guardar") }
+            ) { Text(if (saving) "Guardandoâ€¦" else "Guardar") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !saving) { Text("Cancelar") }
@@ -1053,13 +1053,13 @@ private fun ChangePasswordDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Cambiar contraseña") },
+        title = { Text("Cambiar contraseÃ±a") },
         text = {
             Column {
                 OutlinedTextField(
                     value = current,
                     onValueChange = { current = it },
-                    label = { Text("Contraseña actual") },
+                    label = { Text("ContraseÃ±a actual") },
                     singleLine = true,
                     enabled = !saving,
                     visualTransformation = PasswordVisualTransformation(),
@@ -1069,7 +1069,7 @@ private fun ChangePasswordDialog(
                 OutlinedTextField(
                     value = new,
                     onValueChange = { new = it },
-                    label = { Text("Nueva contraseña (mín. 6)") },
+                    label = { Text("Nueva contraseÃ±a (mÃ­n. 6)") },
                     singleLine = true,
                     enabled = !saving,
                     isError = tooShort,
@@ -1089,7 +1089,7 @@ private fun ChangePasswordDialog(
                 )
                 if (mismatch) {
                     Text(
-                        "Las contraseñas no coinciden",
+                        "Las contraseÃ±as no coinciden",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -1100,7 +1100,7 @@ private fun ChangePasswordDialog(
             TextButton(
                 enabled = !saving && current.isNotBlank() && new.length >= 6 && new == confirm,
                 onClick = { onConfirm(current, new) }
-            ) { Text(if (saving) "Guardando…" else "Guardar") }
+            ) { Text(if (saving) "Guardandoâ€¦" else "Guardar") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !saving) { Text("Cancelar") }
@@ -1121,14 +1121,14 @@ private fun CrossfadeDialog(
         text = {
             Column {
                 Text(
-                    text = if (value <= 0) "Desactivado — corte seco entre canciones."
+                    text = if (value <= 0) "Desactivado â€” corte seco entre canciones."
                     else "$value segundos de fundido entre canciones.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(Modifier.height(16.dp))
                 // Slider con thumb discreto (punto de 10dp) + track fino (2dp)
-                // — la variante por defecto de Material 3 pinta un "barrote"
+                // â€” la variante por defecto de Material 3 pinta un "barrote"
                 // demasiado visual para algo tan sutil como el crossfade.
                 Slider(
                     value = value.toFloat(),
@@ -1179,9 +1179,9 @@ private fun CrossfadeDialog(
 }
 
 /**
- * Estado del diálogo "Buscar actualizaciones": loading / resultado / error.
- * Vive en memoria del composable — no se propaga al ViewModel porque solo
- * importa durante esta sesión de pantalla.
+ * Estado del diÃ¡logo "Buscar actualizaciones": loading / resultado / error.
+ * Vive en memoria del composable â€” no se propaga al ViewModel porque solo
+ * importa durante esta sesiÃ³n de pantalla.
  */
 private sealed class UpdateDialogState {
     object Loading : UpdateDialogState()
@@ -1199,7 +1199,7 @@ private fun CheckUpdatesDialog(
         title = {
             Text(
                 when (state) {
-                    is UpdateDialogState.Loading -> "Buscando actualizaciones…"
+                    is UpdateDialogState.Loading -> "Buscando actualizacionesâ€¦"
                     is UpdateDialogState.Error -> "No se pudo comprobar"
                     is UpdateDialogState.Report -> "Resultado"
                 }
@@ -1214,7 +1214,7 @@ private fun CheckUpdatesDialog(
                             strokeWidth = 2.dp
                         )
                         Spacer(Modifier.width(12.dp))
-                        Text("Mirando GitHub y pidiéndole a Watchtower que recargue el backend…")
+                        Text("Mirando GitHub y pidiÃ©ndole a Watchtower que recargue el backendâ€¦")
                     }
                 }
                 is UpdateDialogState.Error -> {
@@ -1223,12 +1223,12 @@ private fun CheckUpdatesDialog(
                 is UpdateDialogState.Report -> {
                     Column {
                         val report = state.data
-                        // ── APK ──────────────────────────────
+                        // â”€â”€ APK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         val apk = report.apk
                         val apkLine = when {
                             apk == null -> "APK: no se pudo detectar."
                             apk.published ->
-                                "APK ${apk.latestTag}: anunciada. Al reabrir la app verás el diálogo de actualizar."
+                                "APK ${apk.latestTag}: anunciada. Al reabrir la app verÃ¡s el diÃ¡logo de actualizar."
                             apk.latestTag != null && apk.latestTag == apk.previouslyAnnounced ->
                                 "APK ${apk.latestTag}: ya estaba anunciada."
                             apk.latestTag != null ->
@@ -1239,7 +1239,7 @@ private fun CheckUpdatesDialog(
 
                         Spacer(Modifier.height(10.dp))
 
-                        // ── Backend ──────────────────────────
+                        // â”€â”€ Backend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         val be = report.backend
                         val beLine = when {
                             be == null -> "Backend: no se pudo detectar."
@@ -1248,12 +1248,12 @@ private fun CheckUpdatesDialog(
                             be.watchtowerTriggered ->
                                 "Backend: recarga pedida a Watchtower."
                             be.latestTag != null ->
-                                "Backend ${be.latestTag}: Watchtower no respondió (ver abajo)."
+                                "Backend ${be.latestTag}: Watchtower no respondiÃ³ (ver abajo)."
                             else -> "Backend: no se pudo contactar con Watchtower."
                         }
                         Text(beLine, style = MaterialTheme.typography.bodyMedium)
 
-                        // ── Errores no fatales ─────────────────
+                        // â”€â”€ Errores no fatales â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
                         if (report.errors.isNotEmpty()) {
                             Spacer(Modifier.height(12.dp))
                             Text(
@@ -1263,7 +1263,7 @@ private fun CheckUpdatesDialog(
                             )
                             report.errors.forEach { err ->
                                 Text(
-                                    "· $err",
+                                    "Â· $err",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

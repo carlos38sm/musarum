@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+﻿@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.musarum.mobile.music.genres
 
@@ -30,7 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,16 +56,16 @@ fun GenreDetailScreen(
         key = "genre_$genreId",
         factory = GenreDetailViewModel.factory(container.apiService, genreId)
     )
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
 
-    val currentTitle = (state as? GenreDetailUiState.Ready)?.genre?.name ?: "Género"
+    val currentTitle = (state as? GenreDetailUiState.Ready)?.genre?.name ?: "GÃ©nero"
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(currentTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
                     }
                 }
             )
@@ -98,7 +98,7 @@ fun GenreDetailScreen(
                     if (s.songs.isEmpty()) {
                         item {
                             Text(
-                                "Este género todavía no tiene canciones.",
+                                "Este gÃ©nero todavÃ­a no tiene canciones.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(24.dp)
@@ -175,7 +175,7 @@ private fun GenreHero(
                 color = Color.White
             )
             Text(
-                "$songCount canciones · ${humanizeDurationMs(totalMs)}",
+                "$songCount canciones Â· ${humanizeDurationMs(totalMs)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.85f)
             )

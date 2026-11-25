@@ -1,4 +1,4 @@
-package com.musarum.mobile.party
+﻿package com.musarum.mobile.party
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,7 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,13 +59,13 @@ import kotlinx.coroutines.launch
 /**
  * Fiesta musical: una cola compartida entre los users de la casa. Hay
  * UNA party activa a la vez en el backend.
- *   - Si NO hay party: botón "Crear fiesta" (yo seré host).
- *   - Si HAY party: lista de cola + canción actual + miembros.
+ *   - Si NO hay party: botÃ³n "Crear fiesta" (yo serÃ© host).
+ *   - Si HAY party: lista de cola + canciÃ³n actual + miembros.
  *     Host: puede iniciar la siguiente, cerrar.
- *     Miembro: puede añadir canciones y salir.
+ *     Miembro: puede aÃ±adir canciones y salir.
  *
- * Polling cada 4 segundos para enterarse de añadidos / cambios del host.
- * Sin WebSocket — es suficiente para 4 users en Tailscale.
+ * Polling cada 4 segundos para enterarse de aÃ±adidos / cambios del host.
+ * Sin WebSocket â€” es suficiente para 4 users en Tailscale.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,14 +75,14 @@ fun PartyScreen(onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     var party by remember { mutableStateOf<PartyDto?>(null) }
     var loading by remember { mutableStateOf(true) }
-    val playerState by container.playerController.state.collectAsState()
+    val playerState by container.playerController.state.collectAsStateWithLifecycle()
 
     suspend fun refresh() {
         val res = runCatching { container.apiService.getActiveParty() }.getOrNull()
         party = if (res != null && res.isSuccessful) res.body() else null
     }
 
-    // Poll inicial + cada 4s mientras la pantalla esté montada.
+    // Poll inicial + cada 4s mientras la pantalla estÃ© montada.
     LaunchedEffect(Unit) {
         refresh()
         loading = false
@@ -115,7 +115,7 @@ fun PartyScreen(onBack: () -> Unit) {
                         runCatching { container.apiService.createParty() }
                             .onSuccess {
                                 party = it
-                                snackbar("Fiesta creada · eres el host")
+                                snackbar("Fiesta creada Â· eres el host")
                             }
                             .onFailure { snackbar("No se pudo crear la fiesta") }
                     }
@@ -127,7 +127,7 @@ fun PartyScreen(onBack: () -> Unit) {
                 onAddCurrent = {
                     val song = playerState.currentSong
                     if (song == null) {
-                        snackbar("No hay canción sonando para añadir")
+                        snackbar("No hay canciÃ³n sonando para aÃ±adir")
                         return@ActivePartyView
                     }
                     scope.launch {
@@ -136,16 +136,16 @@ fun PartyScreen(onBack: () -> Unit) {
                                 party!!.id,
                                 com.musarum.mobile.data.network.dto.AddPartySongRequest(song.id)
                             )
-                        }.onSuccess { snackbar("Añadida a la cola") }
-                            .onFailure { snackbar("No se pudo añadir") }
+                        }.onSuccess { snackbar("AÃ±adida a la cola") }
+                            .onFailure { snackbar("No se pudo aÃ±adir") }
                         refresh()
                     }
                 },
                 onPlayQueueItem = { item ->
                     val song = item.song ?: return@ActivePartyView
                     // Si eres host, actualiza el "current" del backend para
-                    // que el resto vea qué suena. Si no, solo lo reproduces
-                    // en local — eres "escuchante" de la party.
+                    // que el resto vea quÃ© suena. Si no, solo lo reproduces
+                    // en local â€” eres "escuchante" de la party.
                     container.playerController.playQueue(listOf(song), 0)
                     if (party!!.iAmHost) {
                         scope.launch {
@@ -201,9 +201,9 @@ private fun NoActiveParty(modifier: Modifier, onCreate: () -> Unit) {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Crea una y los demás verán una cola compartida en vivo. " +
-                "Todos pueden añadir canciones al final. Tú (host) decides " +
-                "qué suena ahora.",
+            "Crea una y los demÃ¡s verÃ¡n una cola compartida en vivo. " +
+                "Todos pueden aÃ±adir canciones al final. TÃº (host) decides " +
+                "quÃ© suena ahora.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -238,7 +238,7 @@ private fun ActivePartyView(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        "Fiesta de ${party.hostNick ?: "—"}${if (party.iAmHost) " (tú)" else ""}",
+                        "Fiesta de ${party.hostNick ?: "â€”"}${if (party.iAmHost) " (tÃº)" else ""}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -273,7 +273,7 @@ private fun ActivePartyView(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Miembros como bolitas pequeñas.
+                        // Miembros como bolitas pequeÃ±as.
                         party.members.take(5).forEach { m ->
                             UserAvatar(nick = m.nick, avatarUrl = m.avatarUrl, size = 28.dp)
                         }
@@ -297,7 +297,7 @@ private fun ActivePartyView(
                 ) {
                     Icon(Icons.Filled.Add, contentDescription = null)
                     Spacer(Modifier.size(6.dp))
-                    Text("Añadir la actual")
+                    Text("AÃ±adir la actual")
                 }
                 if (party.iAmHost) {
                     OutlinedButton(
@@ -327,7 +327,7 @@ private fun ActivePartyView(
         if (party.queue.isEmpty()) {
             item {
                 Text(
-                    "La cola está vacía. Añade canciones desde aquí o desde el long-press en cualquier lista.",
+                    "La cola estÃ¡ vacÃ­a. AÃ±ade canciones desde aquÃ­ o desde el long-press en cualquier lista.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp)
@@ -360,13 +360,13 @@ private fun QueueRow(item: PartyQueueItemDto, onPlay: () -> Unit) {
             modifier = Modifier.weight(1f).padding(start = 10.dp)
         ) {
             Text(
-                item.song?.title ?: "(canción desaparecida)",
+                item.song?.title ?: "(canciÃ³n desaparecida)",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1
             )
             Text(
-                "${item.song?.artistsLabel.orEmpty()}  ·  añadida por ${item.addedByNick ?: "?"}",
+                "${item.song?.artistsLabel.orEmpty()}  Â·  aÃ±adida por ${item.addedByNick ?: "?"}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1

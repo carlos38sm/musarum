@@ -3,6 +3,11 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    // kotlinx.serialization: añade soporte para @Serializable. Convive con
+    // Gson en Retrofit (ver DualConverter en AppContainer) — un DTO está en
+    // Gson hasta que se le pone @Serializable, momento en que pasa al
+    // converter nuevo sin tocar más. Migración incremental, cero riesgo.
+    alias(libs.plugins.kotlin.serialization)
 }
 
 val localProps = Properties().apply {
@@ -109,6 +114,10 @@ android {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    // collectAsStateWithLifecycle: variante de collectAsState consciente del
+    // lifecycle que para el collect cuando la UI no está visible. Evita que
+    // los StateFlow sigan "despiertos" en background consumiendo batería.
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.compose.material.icons.extended)
@@ -123,6 +132,8 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.retrofit.converter.scalars)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
     implementation(libs.okhttp.logging.interceptor)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.datasource.okhttp)

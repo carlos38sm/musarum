@@ -1,4 +1,4 @@
-package com.musarum.mobile.player
+﻿package com.musarum.mobile.player
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.clickable
@@ -25,7 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -50,7 +50,7 @@ fun LyricsScreen(
 ) {
     val container = LocalAppContainer.current
     val controller = container.playerController
-    val playerState by controller.state.collectAsState()
+    val playerState by controller.state.collectAsStateWithLifecycle()
     val snackbar = LocalSnackbar.current
 
     val viewModel: NowPlayingViewModel = viewModel(
@@ -60,7 +60,7 @@ fun LyricsScreen(
             controller
         )
     )
-    val vmState by viewModel.state.collectAsState()
+    val vmState by viewModel.state.collectAsStateWithLifecycle()
 
     val song = playerState.currentSong
     if (song == null) {
@@ -91,9 +91,9 @@ fun LyricsScreen(
         onToggleFavorite = {},
         onAddToPlaylist = {},
         topActionsVisible = false,
-        // Orden lógico de la pastilla: LYRICS · VIDEO · TRACK · INFO.
+        // Orden lÃ³gico de la pastilla: LYRICS Â· VIDEO Â· TRACK Â· INFO.
         // Desde LYRICS (izq del todo) deslizar a la IZQUIERDA "trae" lo
-        // que hay más a la derecha → Audio.
+        // que hay mÃ¡s a la derecha â†’ Audio.
         onSwipeLeft = onOpenTrack
     ) {
         Column(
@@ -117,17 +117,17 @@ fun LyricsScreen(
         Spacer(Modifier.height(20.dp))
 
         // weight(1f) deja que el Box del contenido ocupe el hueco restante
-        // de la Column del scaffold SIN empujar fuera la Row del botón que
+        // de la Column del scaffold SIN empujar fuera la Row del botÃ³n que
         // va justo debajo. Con fillMaxSize se cargaba toda la altura y la
         // Row quedaba por debajo del borde (invisible).
         Box(modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 28.dp)) {
             when {
                 vmState.detailsLoading -> Center { Progress() }
                 vmState.lyricsLoading -> Center {
-                    // El spinner solo no explica por qué tarda. Si no había
-                    // local, el backend está hablando con LrcLib (hasta 7s
-                    // de timeout). Avisar al usuario de qué está pasando
-                    // evita la sensación de "la app se ha colgado".
+                    // El spinner solo no explica por quÃ© tarda. Si no habÃ­a
+                    // local, el backend estÃ¡ hablando con LrcLib (hasta 7s
+                    // de timeout). Avisar al usuario de quÃ© estÃ¡ pasando
+                    // evita la sensaciÃ³n de "la app se ha colgado".
                     androidx.compose.foundation.layout.Column(
                         horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
                     ) {
@@ -136,7 +136,7 @@ fun LyricsScreen(
                             androidx.compose.ui.Modifier.height(10.dp)
                         )
                         Text(
-                            "Buscando letra…",
+                            "Buscando letraâ€¦",
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -165,7 +165,7 @@ fun LyricsScreen(
             }
         }
 
-        // Botón discreto "Buscar letra de nuevo" cuando SÍ hay letra pero el
+        // BotÃ³n discreto "Buscar letra de nuevo" cuando SÃ hay letra pero el
         // usuario sospecha que es la equivocada. Lo pintamos al pie con un
         // padding bottom generoso para que no quede pegado al borde del
         // sistema ni oculto tras el inset inferior.
@@ -198,9 +198,9 @@ fun LyricsScreen(
 }
 
 /**
- * Mensaje "Sin letra disponible" + botón para re-buscar online. Lo usamos
- * en los dos casos vacíos: cuando el fetch inicial falló y cuando el
- * backend devolvió texto vacío.
+ * Mensaje "Sin letra disponible" + botÃ³n para re-buscar online. Lo usamos
+ * en los dos casos vacÃ­os: cuando el fetch inicial fallÃ³ y cuando el
+ * backend devolviÃ³ texto vacÃ­o.
  */
 @Composable
 private fun NoLyricsWithRefresh(onRefresh: () -> Unit) {
@@ -220,8 +220,8 @@ private fun NoLyricsWithRefresh(onRefresh: () -> Unit) {
 }
 
 /**
- * Letra sincronizada: scroll automático a la línea activa, resaltado en oro,
- * las anteriores/posteriores en gris degradado. Cada línea es CLICABLE —
+ * Letra sincronizada: scroll automÃ¡tico a la lÃ­nea activa, resaltado en oro,
+ * las anteriores/posteriores en gris degradado. Cada lÃ­nea es CLICABLE â€”
  * pulsarla hace seek del reproductor a ese momento (como el Musarum antiguo).
  */
 @Composable
@@ -239,9 +239,9 @@ private fun SyncedLyricsView(
     LaunchedEffect(activeIndex) {
         if (activeIndex >= 0) {
             val info = listState.layoutInfo
-            // Alineamos la línea activa a ~1/5 del viewport desde arriba
-            // (iba a 1/3 y aún quedaba a media pantalla — más arriba se
-            // lee mejor y deja más contexto de las siguientes líneas).
+            // Alineamos la lÃ­nea activa a ~1/5 del viewport desde arriba
+            // (iba a 1/3 y aÃºn quedaba a media pantalla â€” mÃ¡s arriba se
+            // lee mejor y deja mÃ¡s contexto de las siguientes lÃ­neas).
             val targetOffset = info.viewportSize.height / 5
             listState.animateScrollToItem(
                 index = activeIndex.coerceAtLeast(0),
@@ -260,7 +260,7 @@ private fun SyncedLyricsView(
         itemsIndexed(lines, key = { idx, _ -> idx }) { idx, line ->
             val distance = idx - activeIndex
             LyricRow(
-                text = line.text.ifBlank { "♪" },
+                text = line.text.ifBlank { "â™ª" },
                 distance = distance,
                 onClick = { onSeek(line.timeMs) }
             )
@@ -271,9 +271,9 @@ private fun SyncedLyricsView(
 }
 
 /**
- * Fila de letra sincronizada en modo "karaoke": la línea activa es muy
- * grande (displayMedium, bold, primary); las adyacentes (±1) algo más
- * pequeñas y con alpha; a partir de ±2 se desvanecen más. Las ya pasadas
+ * Fila de letra sincronizada en modo "karaoke": la lÃ­nea activa es muy
+ * grande (displayMedium, bold, primary); las adyacentes (Â±1) algo mÃ¡s
+ * pequeÃ±as y con alpha; a partir de Â±2 se desvanecen mÃ¡s. Las ya pasadas
  * se quedan apagadas en gris claro.
  */
 @Composable

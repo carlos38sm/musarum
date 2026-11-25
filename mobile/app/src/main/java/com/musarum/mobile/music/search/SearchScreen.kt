@@ -1,4 +1,4 @@
-package com.musarum.mobile.music.search
+﻿package com.musarum.mobile.music.search
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -44,7 +44,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,10 +77,10 @@ fun SearchScreen(
         )
     )
 ) {
-    val query by viewModel.query.collectAsState()
-    val state by viewModel.state.collectAsState()
-    val filter by viewModel.filter.collectAsState()
-    val recent by viewModel.recentSearches.collectAsState()
+    val query by viewModel.query.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val filter by viewModel.filter.collectAsStateWithLifecycle()
+    val recent by viewModel.recentSearches.collectAsStateWithLifecycle()
     val container = LocalAppContainer.current
     val snackbar = LocalSnackbar.current
     val voiceScope = androidx.compose.runtime.rememberCoroutineScope()
@@ -98,7 +98,7 @@ fun SearchScreen(
 
     // Launcher del reconocedor de voz del SO: devuelve el texto en el result.
     // No usamos SpeechRecognizer directo para no tener que montar UI propia
-    // ni manejar RECORD_AUDIO aquí — la pantalla del sistema ya se encarga.
+    // ni manejar RECORD_AUDIO aquÃ­ â€” la pantalla del sistema ya se encarga.
     val voiceLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -128,7 +128,7 @@ fun SearchScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // Pastilla de búsqueda — redondeada estilo iOS, sin outline y con
+            // Pastilla de bÃºsqueda â€” redondeada estilo iOS, sin outline y con
             // placeholder corto. Altura compacta (52dp) con padding horizontal
             // generoso para que la lupa y el campo respiren.
             TextField(
@@ -162,7 +162,7 @@ fun SearchScreen(
                             // RECOGNIZE_SPEECH abre su propia UI; el usuario no
                             // necesita conceder RECORD_AUDIO a Musarum. El idioma
                             // se fija en "es-ES" para que acierte con acentos
-                            // estañoles; si el dispositivo tiene otro,
+                            // estaÃ±oles; si el dispositivo tiene otro,
                             // el SO degrada al que tenga disponible.
                             val intent = android.content.Intent(
                                 android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH
@@ -177,7 +177,7 @@ fun SearchScreen(
                                 )
                                 putExtra(
                                     android.speech.RecognizerIntent.EXTRA_PROMPT,
-                                    "Di \"pon Rihanna\", \"pausa\", \"siguiente\", …"
+                                    "Di \"pon Rihanna\", \"pausa\", \"siguiente\", â€¦"
                                 )
                             }
                             runCatching { voiceLauncher.launch(intent) }
@@ -187,7 +187,7 @@ fun SearchScreen(
                         }) {
                             Icon(
                                 Icons.Filled.Mic,
-                                contentDescription = "Búsqueda por voz",
+                                contentDescription = "BÃºsqueda por voz",
                                 modifier = Modifier.size(20.dp),
                                 tint = MaterialTheme.colorScheme.primary
                             )
@@ -197,8 +197,8 @@ fun SearchScreen(
                 singleLine = true,
                 shape = RoundedCornerShape(28.dp),
                 // Teclado tipo "Buscar": pulsar la lupa dispara commitSearch,
-                // que es el único punto donde registramos la query como
-                // reciente. Así no se guardan intermedios ("Ba", "Bad"...).
+                // que es el Ãºnico punto donde registramos la query como
+                // reciente. AsÃ­ no se guardan intermedios ("Ba", "Bad"...).
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     imeAction = androidx.compose.ui.text.input.ImeAction.Search
                 ),
@@ -219,7 +219,7 @@ fun SearchScreen(
                     .height(52.dp)
             )
 
-            // Chips de filtro — solo se muestran una vez hay query en marcha
+            // Chips de filtro â€” solo se muestran una vez hay query en marcha
             if (query.isNotBlank()) {
                 FilterChipRow(current = filter, onSelect = viewModel::setFilter)
             }
@@ -268,7 +268,7 @@ fun SearchScreen(
                                     }
                                 }
                                 if (showAlbums && r.albums.isNotEmpty()) {
-                                    item { SectionHeader("Álbumes") }
+                                    item { SectionHeader("Ãlbumes") }
                                     items(r.albums.size, key = { "alb_${r.albums[it].id}" }) { idx ->
                                         val a = r.albums[idx]
                                         AlbumResultRow(a, onClick = {
@@ -307,19 +307,19 @@ fun SearchScreen(
 }
 
 /**
- * Chips-filtro con identidad en 2×2 (FlowRow). Cada filtro tiene su propio
- * icono y color accent — sin seleccionar queda neutro, al seleccionar se
- * colorea del accent y aparece una sombra sutil. Píldora completa.
- * El 2×2 deja los nombres a tamaño cómodo (Canciones sin partirse).
+ * Chips-filtro con identidad en 2Ã—2 (FlowRow). Cada filtro tiene su propio
+ * icono y color accent â€” sin seleccionar queda neutro, al seleccionar se
+ * colorea del accent y aparece una sombra sutil. PÃ­ldora completa.
+ * El 2Ã—2 deja los nombres a tamaÃ±o cÃ³modo (Canciones sin partirse).
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun FilterChipRow(current: SearchFilter, onSelect: (SearchFilter) -> Unit) {
-    // Colores distintos y vivos para cada filtro (ámbar, coral, cian, verde).
-    // Carlos quería "apagados por defecto, al pulsar vivos y cada uno un
-    // color" — los dejamos neutros cuando no están seleccionados y saltan a
+    // Colores distintos y vivos para cada filtro (Ã¡mbar, coral, cian, verde).
+    // Carlos querÃ­a "apagados por defecto, al pulsar vivos y cada uno un
+    // color" â€” los dejamos neutros cuando no estÃ¡n seleccionados y saltan a
     // su accent cuando el user pulsa.
-    val accentTodo = Color(0xFFFFB300)       // ámbar
+    val accentTodo = Color(0xFFFFB300)       // Ã¡mbar
     val accentArtistas = Color(0xFFEC407A)   // coral/rosa
     val accentAlbumes = Color(0xFF26C6DA)    // cian
     val accentCanciones = Color(0xFF9CCC65)  // verde lima
@@ -349,7 +349,7 @@ private fun FilterChipRow(current: SearchFilter, onSelect: (SearchFilter) -> Uni
         )
         SearchFilterChip(
             modifier = Modifier.weight(1f),
-            label = "Álbumes",
+            label = "Ãlbumes",
             icon = Icons.Filled.Album,
             accent = accentAlbumes,
             selected = current == SearchFilter.ALBUMS,
@@ -383,7 +383,7 @@ private fun SearchFilterChip(
     val fg by animateColorAsState(
         // Siempre blanco sobre el accent seleccionado: los 4 colores son
         // suficientemente saturados para dar contraste con blanco. Si
-        // alguna vez metemos uno pastel, habría que calcular por luminance.
+        // alguna vez metemos uno pastel, habrÃ­a que calcular por luminance.
         targetValue = if (selected) Color.White else scheme.onSurfaceVariant,
         label = "chipFg"
     )
@@ -429,9 +429,9 @@ private fun RecentSearchesPanel(
     onClearAll: () -> Unit
 ) {
     val container = LocalAppContainer.current
-    // Cargamos las últimas reproducciones del usuario para ofrecerlas como
-    // acceso rápido cuando el search está vacío (Carlos: "Poner algo en
-    // búsqueda para que no quede vacío"). Son las suyas — logout limpia el
+    // Cargamos las Ãºltimas reproducciones del usuario para ofrecerlas como
+    // acceso rÃ¡pido cuando el search estÃ¡ vacÃ­o (Carlos: "Poner algo en
+    // bÃºsqueda para que no quede vacÃ­o"). Son las suyas â€” logout limpia el
     // historial local, y recentPlays viene filtrado por user_id en backend.
     var recentPlays by remember {
         mutableStateOf<List<com.musarum.mobile.data.network.dto.SongSummaryDto>>(emptyList())
@@ -494,7 +494,7 @@ private fun RecentSearchesPanel(
         if (recentPlays.isNotEmpty()) {
             item {
                 Text(
-                    "Últimas reproducciones",
+                    "Ãšltimas reproducciones",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
@@ -520,13 +520,13 @@ private fun RecentSearchesPanel(
         }
 
         if (topPlays.isNotEmpty() && recentPlays.isEmpty() && recent.isEmpty()) {
-            // Solo usamos "más escuchadas de la semana" como fallback si NI
-            // siquiera hay reproducciones recientes — el user es nuevo o
-            // tiene la biblioteca muy pequeña. Para no saturar cuando ya
-            // había contenido.
+            // Solo usamos "mÃ¡s escuchadas de la semana" como fallback si NI
+            // siquiera hay reproducciones recientes â€” el user es nuevo o
+            // tiene la biblioteca muy pequeÃ±a. Para no saturar cuando ya
+            // habÃ­a contenido.
             item {
                 Text(
-                    "Más escuchadas esta semana",
+                    "MÃ¡s escuchadas esta semana",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)

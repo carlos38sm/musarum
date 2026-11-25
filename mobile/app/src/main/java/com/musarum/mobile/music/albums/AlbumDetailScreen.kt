@@ -1,4 +1,4 @@
-package com.musarum.mobile.music.albums
+﻿package com.musarum.mobile.music.albums
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -31,7 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -65,7 +65,7 @@ fun AlbumDetailScreen(
         key = "album_$albumId",
         factory = AlbumDetailViewModel.factory(container.albumRepository, albumId)
     )
-    val state by viewModel.state.collectAsState()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     var searching by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
 
@@ -121,7 +121,7 @@ fun AlbumDetailScreen(
                             visible = searching,
                             query = query,
                             onQueryChange = { query = it },
-                            placeholder = "Buscar en el álbum"
+                            placeholder = "Buscar en el Ã¡lbum"
                         )
                     }
 
@@ -200,7 +200,7 @@ private fun AlbumHero(
                         .asPaddingValues().calculateTopPadding()
                 )
         ) {
-            // Botón atrás flotante + lupa simétrica a la derecha.
+            // BotÃ³n atrÃ¡s flotante + lupa simÃ©trica a la derecha.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -211,7 +211,7 @@ private fun AlbumHero(
                 ) {
                     Icon(
                         Icons.Filled.ArrowBack,
-                        contentDescription = "Atrás",
+                        contentDescription = "AtrÃ¡s",
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
@@ -263,10 +263,10 @@ private fun AlbumHero(
                 type?.let { add(it) }
                 releaseYear?.let { add(it.toString()) }
                 if (songCount > 0) {
-                    add("$songCount ${if (songCount == 1L) "canción" else "canciones"}")
+                    add("$songCount ${if (songCount == 1L) "canciÃ³n" else "canciones"}")
                 }
                 if (totalDurationMs > 0) add(formatAlbumMinutes(totalDurationMs))
-            }.joinToString(" · ")
+            }.joinToString(" Â· ")
             if (meta.isNotBlank()) {
                 Text(
                     meta,
@@ -278,8 +278,8 @@ private fun AlbumHero(
 
             Spacer(Modifier.height(14.dp))
 
-            // Botones de acción circulares, solo icono (más grandes que
-            // antes). Carlos pidió "solo símbolos, texto fuera" nov-24 2026.
+            // Botones de acciÃ³n circulares, solo icono (mÃ¡s grandes que
+            // antes). Carlos pidiÃ³ "solo sÃ­mbolos, texto fuera" nov-24 2026.
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 CircleAction(
                     icon = Icons.Filled.PlayArrow,
