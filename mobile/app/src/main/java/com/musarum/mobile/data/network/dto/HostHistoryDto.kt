@@ -1,19 +1,23 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
 
 /**
- * Historial agregado de los últimos 30 min del servidor (1 muestra cada
- * sampleIntervalMs, típicamente 10s). Lo pinta `MachineCard` como
+ * Historial agregado de los Ãºltimos 30 min del servidor (1 muestra cada
+ * sampleIntervalMs, tÃ­picamente 10s). Lo pinta `MachineCard` como
  * sparklines encima de los contadores en vivo.
  *
  * El backend acumula el buffer en memoria y lo pierde al reiniciar: si
  * la respuesta trae menos muestras que capacity, significa que el backend
- * arrancó hace poco. El móvil pinta lo que haya.
+ * arrancÃ³ hace poco. El mÃ³vil pinta lo que haya.
  */
+@Serializable
 data class HostHistoryDto(
     val sampleIntervalMs: Long,
     val capacity: Int,
     val samples: List<Sample> = emptyList()
 ) {
+    @Serializable
     data class Sample(
         val capturedAtMs: Long,
         // 0.0..1.0

@@ -1,10 +1,13 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
 
 /**
  * Convivencia: qu&eacute; est&aacute;n escuchando ahora mismo los otros usuarios. El
  * backend filtra ya a los que tienen {@code shareNowPlaying=false} y se
  * excluye a s&iacute; mismo, no hace falta volver a limpiar aqu&iacute;.
  */
+@Serializable
 data class NowPlayingUserDto(
     val userId: Long,
     val nick: String,
@@ -14,6 +17,7 @@ data class NowPlayingUserDto(
 )
 
 /** P&aacute;gina de "Nuevos descubrimientos". {@code totalNew} alimenta el badge. */
+@Serializable
 data class DiscoveryPageDto(
     val windowDays: Int,
     val totalNew: Long,
@@ -25,9 +29,10 @@ data class DiscoveryPageDto(
  * aqu&iacute;: se piden a demanda en {@code getSmartPlaylistSongs(slug)}.
  *
  * {@code iconHint} es un token sem&aacute;ntico ("party", "focus", "undiscovered",
- * "forgotten") que el m&oacute;vil mapea a icono + color — el backend no decide
+ * "forgotten") que el m&oacute;vil mapea a icono + color â€” el backend no decide
  * la presentaci&oacute;n.
  */
+@Serializable
 data class SmartPlaylistInfoDto(
     val slug: String,
     val title: String,
@@ -39,6 +44,7 @@ data class SmartPlaylistInfoDto(
  * Mini-perfil semanal de otro usuario. Cualquiera de los tres top-* puede
  * ser null si no hay dato suficiente en la ventana.
  */
+@Serializable
 data class TasteProfileDto(
     val userId: Long,
     val nick: String,
@@ -48,6 +54,7 @@ data class TasteProfileDto(
     val topGenre: TopGenreDto?,
     val topSong: TopSongDto?
 ) {
+    @Serializable
     data class TopArtistDto(
         val id: Long,
         val name: String,
@@ -55,11 +62,15 @@ data class TasteProfileDto(
         val plays: Long
     )
 
+    @Serializable
+
     data class TopGenreDto(
         val id: Long,
         val name: String,
         val plays: Long
     )
+
+    @Serializable
 
     data class TopSongDto(
         val id: Long,

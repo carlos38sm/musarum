@@ -1,10 +1,16 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
+
+@Serializable
 
 data class ArtistSummaryDto(
     val id: Long,
     val name: String,
     val imageUrl: String?
 )
+
+@Serializable
 
 data class ArtistDetailsDto(
     val id: Long,

@@ -1,4 +1,8 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
+
+@Serializable
 
 data class FavoriteDto(
     val id: Long,
@@ -18,5 +22,7 @@ data class FavoriteDto(
         artists = artists
     )
 }
+
+@Serializable
 
 data class MarkFavoriteRequest(val songId: Long)

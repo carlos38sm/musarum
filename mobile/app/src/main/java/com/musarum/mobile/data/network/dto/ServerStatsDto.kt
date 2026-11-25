@@ -1,11 +1,14 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
 
 /**
- * Snapshot del estado del servidor (pantalla OWNER-only "Análisis del
- * servidor"). Cada sub-record se pinta como su propia tarjeta en el móvil.
- * Nullable en todo lo que el backend puede no saber todavía (nunca hubo
+ * Snapshot del estado del servidor (pantalla OWNER-only "AnÃ¡lisis del
+ * servidor"). Cada sub-record se pinta como su propia tarjeta en el mÃ³vil.
+ * Nullable en todo lo que el backend puede no saber todavÃ­a (nunca hubo
  * reproducciones, nunca hubo scan, etc.).
  */
+@Serializable
 data class ServerStatsDto(
     val catalog: CatalogStats,
     val lyrics: LyricsStats,
@@ -15,6 +18,7 @@ data class ServerStatsDto(
     val activity: ActivityStats,
     val technical: TechnicalStats
 ) {
+    @Serializable
     data class CatalogStats(
         val songs: Long,
         val artists: Long,
@@ -26,6 +30,8 @@ data class ServerStatsDto(
         val blockedUsers: Long
     )
 
+    @Serializable
+
     data class LyricsStats(
         val withLyrics: Long,
         val withoutLyrics: Long,
@@ -33,6 +39,8 @@ data class ServerStatsDto(
         val syncedLyrics: Long,
         val plainLyrics: Long
     )
+
+    @Serializable
 
     data class DiskStats(
         val musicBytes: Long,
@@ -45,6 +53,8 @@ data class ServerStatsDto(
         val diskTotalBytes: Long
     )
 
+    @Serializable
+
     data class EnrichmentStats(
         val missingCover: Long,
         val missingBpm: Long,
@@ -52,7 +62,7 @@ data class ServerStatsDto(
         val missingReplayGain: Long,
         val missingMbid: Long,
         // Desglose por status Emendatium (V6). Nullable para compatibilidad
-        // con backends < 1.0.14 que aún no publicaban estos campos.
+        // con backends < 1.0.14 que aÃºn no publicaban estos campos.
         val enrichPending: Long? = null,
         val enrichOk: Long? = null,
         val enrichNoMatch: Long? = null,
@@ -62,8 +72,9 @@ data class ServerStatsDto(
     /**
      * Estado de Emendatium (servicio aparte de enriquecimiento). Si
      * [enabled] es false, el backend ni siquiera lo tiene configurado. Si
-     * [reachable] es false, está configurado pero no se puede hablar con él.
+     * [reachable] es false, estÃ¡ configurado pero no se puede hablar con Ã©l.
      */
+    @Serializable
     data class EmendatiumStats(
         val enabled: Boolean,
         val baseUrl: String?,
@@ -71,6 +82,8 @@ data class ServerStatsDto(
         val message: String?,
         val lastCheckedAtMs: Long?
     )
+
+    @Serializable
 
     data class ActivityStats(
         val totalPlays: Long,
@@ -82,13 +95,15 @@ data class ServerStatsDto(
         val lastScanSummary: String?
     )
 
+    @Serializable
+
     data class TechnicalStats(
         val uptimeMs: Long,
         val memoryUsedBytes: Long,
         val memoryTotalBytes: Long,
         val memoryMaxBytes: Long,
         val orphanLyricFiles: Long,
-        // Nullable: backend < 1.0.17 no incluía esta lista.
+        // Nullable: backend < 1.0.17 no incluÃ­a esta lista.
         val recentScanErrors: List<String>? = null
     )
 }

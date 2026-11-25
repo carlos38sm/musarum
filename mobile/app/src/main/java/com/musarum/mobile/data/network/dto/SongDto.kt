@@ -1,9 +1,15 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
+
+@Serializable
 
 data class ArtistRefDto(
     val id: Long,
     val name: String
 )
+
+@Serializable
 
 data class SongSummaryDto(
     val id: Long,
@@ -16,6 +22,8 @@ data class SongSummaryDto(
     val artistsLabel: String
         get() = if (artists.isEmpty()) "Desconocido" else artists.joinToString(", ") { it.name }
 }
+
+@Serializable
 
 data class SongDetailsDto(
     val id: Long,

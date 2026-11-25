@@ -1,17 +1,20 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
 
 /**
- * Snapshot de métricas del SO del servidor (CPU, RAM, swap, red, disco IO).
- * Lo pinta la tarjeta "Máquina" del panel "Análisis del servidor". Las
+ * Snapshot de mÃ©tricas del SO del servidor (CPU, RAM, swap, red, disco IO).
+ * Lo pinta la tarjeta "MÃ¡quina" del panel "AnÃ¡lisis del servidor". Las
  * velocidades Rx/Tx y de IO vienen ya calculadas por el backend sobre
- * delta entre lecturas consecutivas: el móvil solo las formatea.
+ * delta entre lecturas consecutivas: el mÃ³vil solo las formatea.
  */
+@Serializable
 data class HostStatsDto(
     val capturedAtMs: Long,
     val osName: String,
     val cpuModel: String,
     val cpuThreads: Int,
-    // 0.0..1.0 — el UI lo multiplica por 100 para mostrar %.
+    // 0.0..1.0 â€” el UI lo multiplica por 100 para mostrar %.
     val cpuLoadSystem: Double,
     val cpuLoadProcess: Double,
     val memUsedBytes: Long,
@@ -23,6 +26,7 @@ data class HostStatsDto(
     val networkInterfaces: List<NetworkInterfaceDto> = emptyList(),
     val diskIo: List<DiskIoDto> = emptyList()
 ) {
+    @Serializable
     data class NetworkInterfaceDto(
         val name: String,
         val displayName: String,
@@ -35,6 +39,8 @@ data class HostStatsDto(
         val rxBytesPerSec: Long,
         val txBytesPerSec: Long
     )
+
+    @Serializable
 
     data class DiskIoDto(
         val name: String,

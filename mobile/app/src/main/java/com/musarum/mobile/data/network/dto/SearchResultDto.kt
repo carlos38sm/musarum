@@ -1,4 +1,8 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
+
+@Serializable
 
 data class SearchResultDto(
     val artists: List<ArtistSummaryDto> = emptyList(),

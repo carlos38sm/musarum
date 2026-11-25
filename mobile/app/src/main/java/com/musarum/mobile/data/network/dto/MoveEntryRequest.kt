@@ -1,4 +1,7 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
 
-/** Nueva posición 0-based de un entry dentro de la playlist. */
+import kotlinx.serialization.Serializable
+
+/** Nueva posiciÃ³n 0-based de un entry dentro de la playlist. */
+@Serializable
 data class MoveEntryRequest(val position: Int)

@@ -1,4 +1,8 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
+
+@Serializable
 
 data class PartyDto(
     val id: Long,
@@ -11,6 +15,8 @@ data class PartyDto(
     val updatedAt: String?
 )
 
+@Serializable
+
 data class PartyQueueItemDto(
     val id: Long,
     val position: Int,
@@ -19,11 +25,16 @@ data class PartyQueueItemDto(
     val song: SongSummaryDto?
 )
 
+@Serializable
+
 data class PartyMemberDto(
     val userId: Long,
     val nick: String?,
     val avatarUrl: String?
 )
 
+@Serializable
+
 data class AddPartySongRequest(val songId: Long)
+@Serializable
 data class SetPartyCurrentRequest(val songId: Long?)

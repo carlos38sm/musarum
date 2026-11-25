@@ -1,4 +1,8 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
+
+@Serializable
 
 data class AlbumCardDto(
     val id: Long,
@@ -12,11 +16,15 @@ data class AlbumCardDto(
     val inferredType: String? = null
 )
 
+@Serializable
+
 data class AlbumSummaryDto(
     val id: Long,
     val title: String,
     val coverUrl: String?
 )
+
+@Serializable
 
 data class AlbumDetailsDto(
     val id: Long,

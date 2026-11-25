@@ -1,10 +1,13 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
 
 /**
  * Patch de tags ID3 + metadatos JPA. Campos nullable para enviar solo lo
  * que cambie. {@code renameFile=true} pide al backend intentar renombrar
  * el fichero del disco a "{artist} - {title}.{ext}".
  */
+@Serializable
 data class TagEditRequest(
     val title: String? = null,
     val artist: String? = null,

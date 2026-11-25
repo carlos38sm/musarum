@@ -1,6 +1,9 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
 
-/** Snapshot del estado de reproducción publicado por un dispositivo. */
+import kotlinx.serialization.Serializable
+
+/** Snapshot del estado de reproducciÃ³n publicado por un dispositivo. */
+@Serializable
 data class HandoffDto(
     val userId: Long,
     val userNick: String?,
@@ -11,6 +14,8 @@ data class HandoffDto(
     val updatedAt: String?,
     val mine: Boolean
 )
+
+@Serializable
 
 data class PublishHandoffRequest(
     val songId: Long,

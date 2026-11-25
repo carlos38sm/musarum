@@ -1,21 +1,25 @@
-package com.musarum.mobile.data.network.dto
+﻿package com.musarum.mobile.data.network.dto
+
+import kotlinx.serialization.Serializable
 
 /**
  * Evento del feed "Comunidad" del Home. {@code type} es un string
- * discriminante que el móvil mapea a icono + verbo:
- *   - "now_playing":  "<nick> está escuchando esta canción"
- *   - "favorited":    "<nick> marcó esta canción como favorita"
+ * discriminante que el mÃ³vil mapea a icono + verbo:
+ *   - "now_playing":  "<nick> estÃ¡ escuchando esta canciÃ³n"
+ *   - "favorited":    "<nick> marcÃ³ esta canciÃ³n como favorita"
  *
- * {@code user} puede llegar null si el backend añade en el futuro
- * tipos sin autor (p. ej. "canción nueva en el catálogo"). {@code song}
- * siempre viene con lo mínimo para pintar fila + reproducir.
+ * {@code user} puede llegar null si el backend aÃ±ade en el futuro
+ * tipos sin autor (p. ej. "canciÃ³n nueva en el catÃ¡logo"). {@code song}
+ * siempre viene con lo mÃ­nimo para pintar fila + reproducir.
  */
+@Serializable
 data class ActivityEventDto(
     val type: String,
     val timestampMs: Long,
     val user: UserRef?,
     val song: SongSummaryDto
 ) {
+    @Serializable
     data class UserRef(
         val id: Long,
         val nick: String,
