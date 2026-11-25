@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Comprueba al arrancar que los binarios externos existen y que las
@@ -31,14 +32,29 @@ public class StartupCheck implements CommandLineRunner {
     }
 
     private void comprobarBinario(String nombre, String etiqueta) {
+        Process p = null;
         try {
             ProcessBuilder pb = new ProcessBuilder(nombre, "-version");
             pb.redirectErrorStream(true);
-            Process p = pb.start();
-            p.waitFor();
+            p = pb.start();
+            // Timeout en arranque: si por lo que sea el binario pide stdin
+            // o se cuelga, no queremos retrasar la app entera esperando. 5s
+            // son mucho más de lo que tarda `ffmpeg -version` normalmente.
+            if (!p.waitFor(5, TimeUnit.SECONDS)) {
+                p.destroyForcibly();
+                log.warn("  ⚠ Binario '{}' no respondió a -version en 5s", etiqueta);
+                return;
+            }
+            // Drain del stdout para no dejar buffers sin cerrar.
+            try (var is = p.getInputStream()) { is.readAllBytes(); }
             log.info("  ✓ Binario '{}' encontrado", etiqueta);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("  ⚠ Comprobación de '{}' interrumpida", etiqueta);
         } catch (Exception e) {
             log.warn("  ⚠ Binario '{}' no encontrado en PATH: {}", etiqueta, e.getMessage());
+        } finally {
+            if (p != null && p.isAlive()) p.destroyForcibly();
         }
     }
 

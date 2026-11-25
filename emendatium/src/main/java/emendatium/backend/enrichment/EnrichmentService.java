@@ -43,8 +43,20 @@ public class EnrichmentService {
         // MDC pone el nombre del fichero como prefijo en cada log de este
         // thread hasta que lo quitemos — así cuando se enriquecen varias
         // canciones en paralelo los logs no se mezclan y se puede filtrar
-        // una concreta con `docker logs | findstr "Camila"`.
+        // una concreta con `docker logs | findstr "Camila"`. Envuelto en
+        // try/finally para que si enrichInternal peta, el MDC no se quede
+        // "pegado" con el nombre de la canción anterior en logs futuros
+        // del mismo thread (eran los famosos logs que salían con nombre
+        // equivocado cuando una canción daba excepción).
         org.slf4j.MDC.put("song", mp3.getFileName().toString());
+        try {
+            return enrichInternal(mp3);
+        } finally {
+            org.slf4j.MDC.remove("song");
+        }
+    }
+
+    private EnrichmentResult enrichInternal(Path mp3) {
         log.info("═══════════════════════════════════════════════════════════");
         log.info("🎵 ENRIQUECIENDO: {}", mp3.getFileName());
         log.info("═══════════════════════════════════════════════════════════");
@@ -160,9 +172,7 @@ public class EnrichmentService {
         log.info("    → fileName:    '{}'", suggestedFileName);
         log.info("═══════════════════════════════════════════════════════════");
 
-        EnrichmentResult out = new EnrichmentResult(result, new Suggestions(suggestedFileName, suggestedTitle, hasIdentity));
-        org.slf4j.MDC.remove("song");
-        return out;
+        return new EnrichmentResult(result, new Suggestions(suggestedFileName, suggestedTitle, hasIdentity));
     }
 
     public static EnrichmentResult stripCoverData(EnrichmentResult full) {
@@ -215,14 +225,23 @@ public class EnrichmentService {
      */
     private Optional<TrackMetadata> runSourceTimed(MetadataSource source, EnrichmentContext context) {
         Timer.Sample sample = Timer.start(meterRegistry);
-        String outcome;
         try {
             Optional<TrackMetadata> partial = source.enrich(context);
-            outcome = partial.isPresent() ? "hit" : "miss";
+            String outcome = partial.isPresent() ? "hit" : "miss";
             sample.stop(meterRegistry.timer("enricher.source.duration",
                     "source", source.name(), "outcome", outcome));
             return partial;
-        } catch (RuntimeException e) {
+        } catch (Throwable e) {
+            // Si alguna source envuelve un InterruptedException en runtime,
+            // re-interrumpimos para que el thread pueda salir limpio.
+            if (e instanceof InterruptedException
+                    || (e.getCause() != null && e.getCause() instanceof InterruptedException)) {
+                Thread.currentThread().interrupt();
+            }
+            // Antes solo RuntimeException → un Error (OOM, StackOverflow,
+            // NoClassDefFoundError al cargar una source) tumbaba la canción
+            // entera sin que se registrara en métricas. Ahora cualquier
+            // fallo de UNA source se marca y las demás siguen trabajando.
             sample.stop(meterRegistry.timer("enricher.source.duration",
                     "source", source.name(), "outcome", "error"));
             log.warn("  ✗ {} falló: {}", source.name(), e.getMessage());

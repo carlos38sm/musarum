@@ -29,6 +29,5 @@ ENV ENRICHER_BINARIES_FFMPEG=/usr/bin/ffmpeg \
 EXPOSE 8081
 HEALTHCHECK --interval=60s --timeout=5s --start-period=40s --retries=3 \
     CMD wget -qO- http://localhost:8081/actuator/health 2>/dev/null \
-     || wget -qO- http://localhost:8081/ 2>/dev/null \
-     || exit 0
+     || exit 1
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

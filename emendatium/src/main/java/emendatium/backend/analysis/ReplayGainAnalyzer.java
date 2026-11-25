@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,7 +30,13 @@ public class ReplayGainAnalyzer {
 
     public record Result(Float trackGain, Float trackPeak) {}
 
+    // ebur128 escanea toda la canción pero sin decodificar a PCM pleno: en
+    // la práctica tarda ~3-10s por pista. Dejamos 120s como techo para
+    // mixes largos sin dejar procesos huérfanos si se cuelga.
+    private static final int PROCESS_TIMEOUT_SECONDS = 120;
+
     public Optional<Result> analyze(Path mp3) {
+        Process proc = null;
         try {
             ProcessBuilder pb = new ProcessBuilder(
                     props.binaries().ffmpeg(),
@@ -38,7 +45,7 @@ public class ReplayGainAnalyzer {
                     "-af", "ebur128=peak=true",
                     "-f", "null", "-");
             pb.redirectErrorStream(true);
-            Process proc = pb.start();
+            proc = pb.start();
 
             Float loudness = null;
             Float peakDbfs = null;
@@ -52,7 +59,13 @@ public class ReplayGainAnalyzer {
                     if (pm.find()) peakDbfs = Float.parseFloat(pm.group(1));
                 }
             }
-            proc.waitFor();
+            // Timeout en vez de waitFor() ciego — un ffmpeg atascado tumbaba
+            // el thread por tiempo indefinido y dejaba el proceso huérfano.
+            if (!proc.waitFor(PROCESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                proc.destroyForcibly();
+                log.warn("ReplayGain: ffmpeg excedió el tiempo sobre {}", mp3.getFileName());
+                return Optional.empty();
+            }
             if (loudness == null) return Optional.empty();
 
             // ReplayGain = objetivo (-18 LUFS) - loudness medido
@@ -62,9 +75,17 @@ public class ReplayGainAnalyzer {
 
             return Optional.of(new Result(trackGain, trackPeak));
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("ReplayGain interrumpido sobre {}", mp3.getFileName());
+            return Optional.empty();
         } catch (Exception e) {
             log.warn("ReplayGain falló sobre {}: {}", mp3.getFileName(), e.getMessage());
             return Optional.empty();
+        } finally {
+            if (proc != null && proc.isAlive()) {
+                proc.destroyForcibly();
+            }
         }
     }
 }
