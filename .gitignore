@@ -35,7 +35,13 @@ dist/
 .angular/
 
 #. Carpeta de Recursos Musicales
+#  Esto ignora carpetas de subida del SERVIDOR (donde se depositan los
+#  audios que los usuarios suben desde el móvil antes de importarlos).
+#  La excepción siguiente conserva el paquete Kotlin `data.uploads`
+#  del móvil, que es código fuente y debe trackearse.
 **/uploads/
+!mobile/app/src/main/java/com/musarum/mobile/data/uploads/
+!mobile/app/src/main/java/com/musarum/mobile/data/uploads/**
 
 #. Certificados y claves
 *.pem
