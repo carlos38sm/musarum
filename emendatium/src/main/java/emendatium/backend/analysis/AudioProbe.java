@@ -13,6 +13,7 @@ import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -24,7 +25,13 @@ public class AudioProbe {
 
     public record ProbeResult(Long durationMs, Integer bitrateKbps, Integer sampleRateHz, Boolean vbr) {}
 
+    // ffprobe suele responder en <1s para un MP3. 15s de techo es "nunca
+    // debería" + margen de volumen Docker lento. Evita que un fichero
+    // corrupto deje el proceso huérfano.
+    private static final int PROBE_TIMEOUT_SECONDS = 15;
+
     public Optional<ProbeResult> probe(Path mp3) {
+        Process proc = null;
         try {
             String ffprobe = props.binaries().ffmpeg().replaceFirst("(?i)ffmpeg(\\.exe)?$", "ffprobe$1");
             if (ffprobe.equals(props.binaries().ffmpeg())) ffprobe = "ffprobe";
@@ -34,13 +41,17 @@ public class AudioProbe {
                     "-show_format", "-show_streams", "-select_streams", "a:0",
                     mp3.toString());
             pb.redirectErrorStream(true);
-            Process proc = pb.start();
+            proc = pb.start();
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             try (InputStream is = proc.getInputStream()) {
                 is.transferTo(baos);
             }
-            proc.waitFor();
+            if (!proc.waitFor(PROBE_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                proc.destroyForcibly();
+                log.warn("ffprobe excedió el tiempo sobre {}", mp3.getFileName());
+                return Optional.empty();
+            }
 
             FfprobeOutput out = mapper.readValue(baos.toByteArray(), FfprobeOutput.class);
             if (out == null || out.format() == null) return Optional.empty();
@@ -57,9 +68,14 @@ public class AudioProbe {
 
             return Optional.of(new ProbeResult(durationMs, bitrateKbps, sampleRateHz, vbr));
 
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return Optional.empty();
         } catch (Exception e) {
             log.warn("ffprobe falló sobre {}: {}", mp3.getFileName(), e.getMessage());
             return Optional.empty();
+        } finally {
+            if (proc != null && proc.isAlive()) proc.destroyForcibly();
         }
     }
 
