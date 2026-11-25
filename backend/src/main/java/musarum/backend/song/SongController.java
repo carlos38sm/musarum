@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import musarum.backend.enrichment.EmendatiumAutoEnricher;
 import musarum.backend.shared.CoverStorage;
+import musarum.backend.shared.ImageResponseBuilder;
 import musarum.backend.shared.VideoStorage;
 import musarum.backend.shared.security.CurrentUserResolver;
 import musarum.backend.song.dto.SongDetailsDto;
@@ -16,12 +17,14 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -177,29 +180,12 @@ class SongController {
      * móvil cae al cover del álbum (criterio del SongMapper).
      */
     @GetMapping("/{id}/cover")
-    ResponseEntity<Resource> getCover(@PathVariable Long id) {
+    ResponseEntity<Resource> getCover(
+            @PathVariable Long id,
+            @RequestHeader(value = HttpHeaders.IF_NONE_MATCH, required = false) String ifNoneMatch) {
         return coverStorage.findSongCover(id)
-                .map(this::buildCoverResponse)
+                .map(path -> ImageResponseBuilder.build(path, coverStorage.contentTypeFor(path), ifNoneMatch))
                 .orElseGet(() -> ResponseEntity.notFound().build());
-    }
-
-    /**
-     * Respuesta con Cache-Control público de 7 días para la portada propia.
-     * El cache-busting del cliente lo hace SongMapper.effectiveCoverUrl
-     * añadiendo ?v={updatedAtMs}.
-     */
-    private ResponseEntity<Resource> buildCoverResponse(Path path) {
-        try {
-            long length = java.nio.file.Files.size(path);
-            return ResponseEntity.ok()
-                    .contentType(MediaType.parseMediaType(coverStorage.contentTypeFor(path)))
-                    .contentLength(length)
-                    .cacheControl(org.springframework.http.CacheControl
-                            .maxAge(java.time.Duration.ofDays(7)).cachePublic())
-                    .body(new FileSystemResource(path));
-        } catch (IOException e) {
-            return ResponseEntity.notFound().build();
-        }
     }
 
     /**

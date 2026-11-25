@@ -32,6 +32,11 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/version").permitAll()
+                // /actuator/prometheus y /actuator/health los scrapean
+                // Prometheus y los healthchecks del compose desde dentro
+                // de la red Docker. Están ocultos detrás de la tailnet y
+                // no sirven datos de usuario — solo contadores JVM/HTTP.
+                .requestMatchers("/actuator/prometheus", "/actuator/health").permitAll()
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                 // /error: endpoint interno al que Spring Boot hace FORWARD
                 // cuando un controller lanza una excepción runtime. En modo
