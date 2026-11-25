@@ -357,7 +357,7 @@ private fun SectionHeader(title: String) {
 
 /**
  * Tarjeta de álbum para el carrusel horizontal: cover grande cuadrado +
- * título debajo + línea de badges (â™© nº · â± min · tipo). ~160dp de ancho,
+ * título debajo + línea de badges (â™© nº · â± min · tipo). ~160dp de ancho,
  * para que entren ~2.2 en pantalla e invite al scroll.
  */
 @Composable
