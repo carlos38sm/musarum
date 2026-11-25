@@ -124,11 +124,26 @@ jobs:
           MUSARUM_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           MUSARUM_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           MUSARUM_BASE_URL: ${{ secrets.MUSARUM_BASE_URL }}
-          # Inyectamos versionName vía -P y lo recoge build.gradle.kts si
-          # lo wire-amos (ver nota más abajo); por ahora lo mantenemos
-          # editado en el pom del móvil al crear el tag.
           MUSARUM_VERSION_NAME: ${{ steps.version.outputs.version }}
-        run: ./gradlew :app:assembleRelease --no-daemon --stacktrace
+        # Tee a build.log para subirlo como artifact siempre — si el build
+        # falla, el log entero (con los "e: file://..." que GitHub a veces
+        # recorta en la UI) queda descargable desde la pestaña "Artifacts"
+        # del run. --info le pide a Gradle que no silencie salida del
+        # worker de Kotlin, que es donde se pierden los mensajes de error.
+        # `set -o pipefail` asegura que el exit del pipe sea el de gradlew.
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace --info 2>&1 | tee build.log
+
+      - name: Upload build log
+        # always() = sube el log aunque el build haya fallado — justo el
+        # caso en el que lo necesitamos para diagnosticar.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ steps.version.outputs.version }}
+          path: mobile/build.log
+          retention-days: 7
 
       - name: Rename APK
         run: |
