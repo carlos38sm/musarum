@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.music.library
+package com.musarum.mobile.music.library
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -78,9 +78,9 @@ fun LibraryScreen(
     Scaffold(
         topBar = { TopAppBar(title = { Text("Biblioteca") }) },
         floatingActionButton = {
-            // FAB flotante redondo pleno (CircleShape) â€” por defecto Material3
-            // le da forma squircle, aquÃ­ lo forzamos a cÃ­rculo porque el
-            // usuario lo prefiere asÃ­. Crear playlist sin invadir el header.
+            // FAB flotante redondo pleno (CircleShape) — por defecto Material3
+            // le da forma squircle, aquí lo forzamos a círculo porque el
+            // usuario lo prefiere así. Crear playlist sin invadir el header.
             FloatingActionButton(
                 onClick = { showCreate = true },
                 containerColor = MaterialTheme.colorScheme.primary,
@@ -96,7 +96,7 @@ fun LibraryScreen(
             contentPadding = PaddingValues(bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            // â”€â”€ Fijadas: dos tarjetas lado a lado (descargas Â· favoritas) â”€â”€
+            // â”€â”€ Fijadas: dos tarjetas lado a lado (descargas · favoritas) â”€â”€
             item { SectionLabel("Fijadas") }
             item {
                 Row(
@@ -134,20 +134,20 @@ fun LibraryScreen(
                     )
                 }
                 is PlaylistsUiState.Ready -> {
-                    // Antes repartÃ­amos las propias en "Colaborativas" (las
+                    // Antes repartíamos las propias en "Colaborativas" (las
                     // isPublic=true) + "Propias" (las privadas). Era un
                     // mapeo falso: isPublic significa "visible por ID" y
                     // "colaborativa" significa "tiene colaboradores". Ahora
                     // las secciones son por propiedad: "Mis playlists" (las
-                    // que creÃ© yo) + "Compartidas conmigo" (donde otro
-                    // user me invitÃ³ como colaborador).
+                    // que creé yo) + "Compartidas conmigo" (donde otro
+                    // user me invitó como colaborador).
                     val own = s.playlists
 
                     item { SectionLabel("Mis playlists") }
                     if (own.isEmpty()) {
                         item {
                             Text(
-                                "AÃºn no tienes playlists propias â€” crea una con el botÃ³n +.",
+                                "Aún no tienes playlists propias — crea una con el botón +.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
@@ -163,7 +163,7 @@ fun LibraryScreen(
                         }
                     }
 
-                    // Solo pintamos la secciÃ³n si hay algo: ahorra espacio
+                    // Solo pintamos la sección si hay algo: ahorra espacio
                     // vertical cuando el usuario no participa en ninguna
                     // playlist ajena (lo normal al principio).
                     if (shared.isNotEmpty()) {
@@ -173,8 +173,8 @@ fun LibraryScreen(
                                 playlist = pl,
                                 onClick = { onOpenPlaylist(pl.id) },
                                 // No le dejamos borrar: no es suya. El
-                                // "salir" de la playlist lo harÃ¡ el owner
-                                // quitÃ¡ndole como colaborador.
+                                // "salir" de la playlist lo hará el owner
+                                // quitándole como colaborador.
                                 onDelete = null
                             )
                         }
@@ -199,7 +199,7 @@ fun LibraryScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("Eliminar playlist") },
-            text = { Text("Â¿Seguro que quieres eliminar \"${pl.name}\"?") },
+            text = { Text("¿Seguro que quieres eliminar \"${pl.name}\"?") },
             confirmButton = {
                 TextButton(onClick = {
                     playlistsViewModel.delete(pl.id)
@@ -263,8 +263,8 @@ private fun FavoritesEntry(count: Int, onClick: () -> Unit) {
                 )
                 Text(
                     when (count) {
-                        0 -> "Marca canciones con el â™¥ para aÃ±adirlas"
-                        1 -> "1 canciÃ³n"
+                        0 -> "Marca canciones con el â™¥ para añadirlas"
+                        1 -> "1 canción"
                         else -> "$count canciones"
                     },
                     style = MaterialTheme.typography.labelMedium,
@@ -283,7 +283,7 @@ private fun FavoritesEntry(count: Int, onClick: () -> Unit) {
 /**
  * Tarjeta cuadrada "Descargadas" en la fila de Fijadas. Un solo nivel
  * visual: fondo tintado + icono grande arriba izq SIN su propia caja
- * (antes habÃ­a icono dentro de cuadrado dentro de cuadrado â€” Carlos lo
+ * (antes había icono dentro de cuadrado dentro de cuadrado — Carlos lo
  * encontraba feo). Texto abajo.
  */
 @Composable
@@ -301,16 +301,16 @@ private fun DownloadsTile(
         subtitle = run {
             val mb = totalBytes / (1024.0 * 1024.0)
             when (count) {
-                0 -> "Nada aÃºn"
-                1 -> "1 pista Â· ${"%.1f".format(mb)} MB"
-                else -> "$count pistas Â· ${"%.1f".format(mb)} MB"
+                0 -> "Nada aún"
+                1 -> "1 pista · ${"%.1f".format(mb)} MB"
+                else -> "$count pistas · ${"%.1f".format(mb)} MB"
             }
         },
         modifier = modifier
     )
 }
 
-/** Tarjeta "Favoritas" (primary). Mismo patrÃ³n que Descargadas. */
+/** Tarjeta "Favoritas" (primary). Mismo patrón que Descargadas. */
 @Composable
 private fun FavoritesTile(
     count: Int,
@@ -323,7 +323,7 @@ private fun FavoritesTile(
         icon = Icons.Filled.Favorite,
         title = "Favoritas",
         subtitle = when (count) {
-            0 -> "Nada aÃºn"
+            0 -> "Nada aún"
             1 -> "1 pista"
             else -> "$count pistas"
         },
@@ -332,10 +332,10 @@ private fun FavoritesTile(
 }
 
 /**
- * Tile base compartido por Descargadas y Favoritas. DiseÃ±o minimalista
- * de un Ãºnico nivel (sin cajitas anidadas): fondo semitransparente del
- * color-tint, icono grande arriba izq del propio color (tint sÃ³lido, no
- * sobre caja), texto abajo izq. Carlos lo prefiriÃ³ asÃ­ nov-24 2026.
+ * Tile base compartido por Descargadas y Favoritas. Diseño minimalista
+ * de un único nivel (sin cajitas anidadas): fondo semitransparente del
+ * color-tint, icono grande arriba izq del propio color (tint sólido, no
+ * sobre caja), texto abajo izq. Carlos lo prefirió así nov-24 2026.
  */
 @Composable
 private fun PinnedTile(
@@ -383,7 +383,7 @@ private fun PinnedTile(
 }
 
 /**
- * Entrada "Descargadas" en la secciÃ³n Fijadas de Biblioteca. Mismo patrÃ³n
+ * Entrada "Descargadas" en la sección Fijadas de Biblioteca. Mismo patrón
  * visual que Favoritas pero con color tertiary para distinguirlas y evitar
  * que ambas peleen por el mismo tono primary.
  */
@@ -427,8 +427,8 @@ private fun DownloadsEntry(count: Int, totalBytes: Long, onClick: () -> Unit) {
                 Text(
                     when (count) {
                         0 -> "Toca el icono de descarga para guardarlas offline"
-                        1 -> "1 canciÃ³n Â· ${"%.1f".format(mb)} MB"
-                        else -> "$count canciones Â· ${"%.1f".format(mb)} MB"
+                        1 -> "1 canción · ${"%.1f".format(mb)} MB"
+                        else -> "$count canciones · ${"%.1f".format(mb)} MB"
                     },
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -444,8 +444,8 @@ private fun DownloadsEntry(count: Int, totalBytes: Long, onClick: () -> Unit) {
 }
 
 /**
- * Tarjeta pÃ¡lida que anuncia la feature de playlists colaborativas (varias
- * personas editando la misma lista â€” pensada para viajes compartidos). Se
+ * Tarjeta pálida que anuncia la feature de playlists colaborativas (varias
+ * personas editando la misma lista — pensada para viajes compartidos). Se
  * dibuja apagada hasta que la implementemos.
  */
 @Composable
@@ -484,7 +484,7 @@ private fun CollaborativePlaceholder() {
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    "PrÃ³ximamente â€” edita listas con otras personas",
+                    "Próximamente — edita listas con otras personas",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -500,12 +500,12 @@ private fun PlaylistRow(
     onClick: () -> Unit,
     onDelete: (() -> Unit)?
 ) {
-    // Tap = abrir playlist; long-press = confirmaciÃ³n de borrado (si es
-    // "mÃ­a"). Antes habÃ­a un icono "papelera" flotando a la derecha que
-    // ensuciaba la fila â€” Carlos prefiere limpio. El long-press es el
+    // Tap = abrir playlist; long-press = confirmación de borrado (si es
+    // "mía"). Antes había un icono "papelera" flotando a la derecha que
+    // ensuciaba la fila — Carlos prefiere limpio. El long-press es el
     // mismo gesto que SongRow usa para sus acciones avanzadas. Para las
     // playlists compartidas conmigo pasamos onDelete=null: solo tap, no
-    // borro algo que no es mÃ­o.
+    // borro algo que no es mío.
     val rowModifier = Modifier
         .fillMaxWidth()
         .let { base ->
@@ -519,7 +519,7 @@ private fun PlaylistRow(
     ) {
         // Mosaico 2Ã—2 con las portadas de las 4 primeras canciones
         // (bloque B20). Los huecos se rellenan con placeholder de
-        // playlists â€” si _placeholders/playlists estÃ¡ vacÃ­o, cae a gris.
+        // playlists — si _placeholders/playlists está vacío, cae a gris.
         com.musarum.mobile.music.PlaylistMosaicCover(
             urls = playlist.coverUrls,
             playlistId = playlist.id,

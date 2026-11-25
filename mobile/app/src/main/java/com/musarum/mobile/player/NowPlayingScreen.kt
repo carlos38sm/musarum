@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.player
+package com.musarum.mobile.player
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -139,18 +139,18 @@ fun NowPlayingScreen(
 
     var showAddToPlaylist by remember { mutableStateOf(false) }
     var showSendSheet by remember { mutableStateOf(false) }
-    // Para la acciÃ³n OWNER "eliminar del disco" del dropdown.
+    // Para la acción OWNER "eliminar del disco" del dropdown.
     val me by container.userRepository.me.collectAsStateWithLifecycle()
     val isOwner = me?.userRole == "OWNER"
     var confirmDelete by remember { mutableStateOf(false) }
     val snackbar = LocalSnackbar.current
     val scope = rememberCoroutineScope()
-    // Toggle de mini-letra persistente mientras no se cambie de sesiÃ³n. El
-    // botÃ³n solo responde si hay lyrics sincronizadas en la pista actual.
+    // Toggle de mini-letra persistente mientras no se cambie de sesión. El
+    // botón solo responde si hay lyrics sincronizadas en la pista actual.
     var showMiniLyric by rememberSaveable { mutableStateOf(false) }
     var showOutputSheet by remember { mutableStateOf(false) }
 
-    // Parseo LRC â€” vacÃ­o si no hay o si no estÃ¡ sincronizada.
+    // Parseo LRC — vacío si no hay o si no está sincronizada.
     val syncedLines = remember(vmState.lyrics) { LrcParser.parse(vmState.lyrics) }
     val hasSyncedLyrics = syncedLines.isNotEmpty()
     val currentLineIndex = remember(syncedLines, playerState.positionMs) {
@@ -173,7 +173,7 @@ fun NowPlayingScreen(
         onBack = onBack,
         onSwipeDown = onBack, // deslizar hacia abajo cierra el player
         isFavorite = vmState.isFavorite,
-        onToggleFavorite = {}, // ya no se usa en el shell â€” las acciones viven abajo
+        onToggleFavorite = {}, // ya no se usa en el shell — las acciones viven abajo
         onAddToPlaylist = {}, // idem
         topActionsVisible = false,
         topEndContent = {
@@ -191,8 +191,8 @@ fun NowPlayingScreen(
         }
     ) {
         // â”€â”€ Hero: cover grande â”€â”€
-        // Swipe izquierda sobre la foto â†’ Info (destino a la derecha en la pÃ­ldora)
-        // Swipe derecha sobre la foto â†’ Letra (destino a la izquierda en la pÃ­ldora)
+        // Swipe izquierda sobre la foto â†’ Info (destino a la derecha en la píldora)
+        // Swipe derecha sobre la foto â†’ Letra (destino a la izquierda en la píldora)
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
@@ -211,22 +211,22 @@ fun NowPlayingScreen(
                 },
             contentAlignment = Alignment.Center
         ) {
-            // Cover ligeramente mÃ¡s grande (340dp) y menos redondeado
-            // (12dp en vez de 20dp) â€” mÃ¡s "foto" y menos pÃ­ldora. Pedido
+            // Cover ligeramente más grande (340dp) y menos redondeado
+            // (12dp en vez de 20dp) — más "foto" y menos píldora. Pedido
             // Carlos nov-24 2026.
             val coverSize = maxWidth.coerceAtMost(340.dp)
             // Pulso al BPM: el cover "late" sincronizado al tempo de la
-            // canciÃ³n. Si el backend no sabe el BPM o la canciÃ³n estÃ¡ en
-            // pausa, el scale se queda quieto en 1.0 â€” sin pulso.
+            // canción. Si el backend no sabe el BPM o la canción está en
+            // pausa, el scale se queda quieto en 1.0 — sin pulso.
             val beatScale by rememberBeatScale(
                 bpm = vmState.details?.bpm,
                 isPlaying = playerState.isPlaying
             )
             // Hero-enter reveal: cuando entras a NowPlaying desde el mini-player
             // (o desde cualquier otra parte), el cover arranca a 0.55× + alfa 0
-            // y springea a tamaÃ±o completo. Visualmente da la sensaciÃ³n de
-            // "cover vuela hasta aquÃ­" sin la gimnasia de un shared element
-            // real entre destinos de navegaciÃ³n. Dura ~400 ms gracias al
+            // y springea a tamaño completo. Visualmente da la sensación de
+            // "cover vuela hasta aquí" sin la gimnasia de un shared element
+            // real entre destinos de navegación. Dura ~400 ms gracias al
             // spring con bajo damping.
             var heroEntered by androidx.compose.runtime.remember {
                 androidx.compose.runtime.mutableStateOf(false)
@@ -252,8 +252,8 @@ fun NowPlayingScreen(
                     .graphicsLayer {
                         // Multiplicamos los dos scales para que el latido del
                         // BPM siga vivo DESPUÃ‰S del reveal y, durante el reveal,
-                        // el pulso quede escondido bajo la animaciÃ³n de entrada
-                        // (0.55 Ã— 1.025 â‰ˆ 0.56 â€” imperceptible).
+                        // el pulso quede escondido bajo la animación de entrada
+                        // (0.55 Ã— 1.025 â‰ˆ 0.56 — imperceptible).
                         scaleX = beatScale * heroScale
                         scaleY = beatScale * heroScale
                         alpha = heroAlpha
@@ -266,7 +266,7 @@ fun NowPlayingScreen(
                     url = playerState.currentCoverUrl,
                     size = coverSize,
                     cornerRadius = 12.dp,
-                    // Cuando la canciÃ³n no tiene portada, servir la
+                    // Cuando la canción no tiene portada, servir la
                     // imagen del pool _placeholders/songs/ (determinista
                     // por songId) en vez del icono gris plano. Mismo
                     // criterio que SongRow.
@@ -278,9 +278,9 @@ fun NowPlayingScreen(
 
         Spacer(Modifier.height(28.dp))
 
-        // â”€â”€ TÃ­tulo + artista â”€â”€
-        // Swipe izquierda sobre el tÃ­tulo â†’ siguiente canciÃ³n
-        // Swipe derecha sobre el tÃ­tulo â†’ canciÃ³n anterior
+        // â”€â”€ Título + artista â”€â”€
+        // Swipe izquierda sobre el título â†’ siguiente canción
+        // Swipe derecha sobre el título â†’ canción anterior
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -319,8 +319,8 @@ fun NowPlayingScreen(
             )
         }
 
-        // Espacio flexible entre tÃ­tulo/artista y las acciones. Si el mini-
-        // lyric estÃ¡ activo y hay LRC, pintamos la lÃ­nea actual centrada
+        // Espacio flexible entre título/artista y las acciones. Si el mini-
+        // lyric está activo y hay LRC, pintamos la línea actual centrada
         // en ese hueco; si no, es solo aire para empujar los controles al
         // fondo del hero.
         Box(
@@ -344,8 +344,8 @@ fun NowPlayingScreen(
         }
 
         // Fila de acciones secundarias justo encima de la barra de progreso.
-        // Orden: mini-letra Â· descargar Â· aÃ±adir Â· â™¥. El menÃº "..." se
-        // moviÃ³ a la esquina superior derecha del shell (topEndContent).
+        // Orden: mini-letra · descargar · añadir · â™¥. El menú "..." se
+        // movió a la esquina superior derecha del shell (topEndContent).
         ActionsRow(
             onOpenOutput = { showOutputSheet = true },
             isFavorite = vmState.isFavorite,
@@ -371,12 +371,12 @@ fun NowPlayingScreen(
                 }
             },
             onDownload = {
-                // Ciclo claro de 3 estados en este botÃ³n, INDEPENDIENTE del
+                // Ciclo claro de 3 estados en este botón, INDEPENDIENTE del
                 // toggle "Descargas temporales por defecto" del Perfil
-                // (que afecta a descargas automÃ¡ticas desde playlist/sheet).
-                // AquÃ­: nube â†’ temporal â†’ permanente â†’ nube.
+                // (que afecta a descargas automáticas desde playlist/sheet).
+                // Aquí: nube â†’ temporal â†’ permanente â†’ nube.
                 val entry = container.downloadsRepository.get(song.id)
-                // Sin snackbar: el icono del botÃ³n ya cambia (nube â†’ reloj â†’
+                // Sin snackbar: el icono del botón ya cambia (nube â†’ reloj â†’
                 // check) y es feedback suficiente. Antes tapaba los controles.
                 when {
                     entry == null ->
@@ -397,8 +397,8 @@ fun NowPlayingScreen(
             SleepTimerSheet(
                 activeAt = playerState.sleepTimerAt,
                 onDismiss = { showSleepSheet = false },
-                // El pill del timer en NowPlaying ya muestra la cuenta atrÃ¡s
-                // en vivo, asÃ­ que no mostramos snackbar â€” tapaba los controles.
+                // El pill del timer en NowPlaying ya muestra la cuenta atrás
+                // en vivo, así que no mostramos snackbar — tapaba los controles.
                 onPickMinutes = { mins ->
                     controller.setSleepTimerMinutes(mins)
                     showSleepSheet = false
@@ -428,8 +428,8 @@ fun NowPlayingScreen(
 
     if (showSendSheet) {
         // Bottom sheet reusable con la lista de usuarios + bolitas. Vive en
-        // SongActionsSheet para no duplicar lÃ³gica con el long-press de
-        // SongRow â€” allÃ­ tambiÃ©n envÃ­a canciones a otros usuarios.
+        // SongActionsSheet para no duplicar lógica con el long-press de
+        // SongRow — allí también envía canciones a otros usuarios.
         com.musarum.mobile.music.SendToUserSheet(
             song = song,
             onDismiss = { showSendSheet = false }
@@ -449,9 +449,9 @@ fun NowPlayingScreen(
             title = { Text("Eliminar del disco") },
             text = {
                 Text(
-                    "Se borrarÃ¡ Â«${song.title}Â» del servidor (fichero, " +
+                    "Se borrará «${song.title}» del servidor (fichero, " +
                     "favoritos, playlists y reproducciones). " +
-                    "Esta acciÃ³n no se puede deshacer."
+                    "Esta acción no se puede deshacer."
                 )
             },
             confirmButton = {
@@ -464,12 +464,12 @@ fun NowPlayingScreen(
                         }
                         // Caso raro pero reproducible: el backend commita el
                         // DELETE pero la respuesta llega 401 (interceptores,
-                        // red flaky, retry a mitad). Antes salÃ­a un snackbar
+                        // red flaky, retry a mitad). Antes salía un snackbar
                         // rojo "No se pudo eliminar: HTTP 401" aunque la
-                        // canciÃ³n ya estaba fuera. Verificamos con un GET:
-                        // si devuelve 404, la canciÃ³n estÃ¡ muerta y lo
-                        // tratamos como Ã©xito. Solo mostramos error si la
-                        // canciÃ³n sigue viva de verdad.
+                        // canción ya estaba fuera. Verificamos con un GET:
+                        // si devuelve 404, la canción está muerta y lo
+                        // tratamos como éxito. Solo mostramos error si la
+                        // canción sigue viva de verdad.
                         val reallyGone = if (deleteResult.isSuccess) true
                         else {
                             runCatching { container.songRepository.details(idToDelete) }
@@ -504,8 +504,8 @@ fun NowPlayingScreen(
 
 /**
  * Scaffold compartido para las 3 pantallas del player (Pista, Letra, Info).
- * Pinta el fondo con gradiente Ã¡mbar sutil, el top con los iconos ghost y
- * la pÃ­ldora de modos justo debajo. El resto lo rellena el contenido.
+ * Pinta el fondo con gradiente ámbar sutil, el top con los iconos ghost y
+ * la píldora de modos justo debajo. El resto lo rellena el contenido.
  */
 @Composable
 fun PlayerShellScaffold(
@@ -518,7 +518,7 @@ fun PlayerShellScaffold(
     onSwipeDown: (() -> Unit)? = null,
     // Swipe horizontal entre modos del player. Pensado para las pantallas
     // "Lyrics" e "Info" donde no hay una portada ancha que ya consuma el
-    // gesto. El caller decide quÃ© modo es cada direcciÃ³n.
+    // gesto. El caller decide qué modo es cada dirección.
     onSwipeLeft: (() -> Unit)? = null,
     onSwipeRight: (() -> Unit)? = null,
     showVideo: Boolean = false,
@@ -526,7 +526,7 @@ fun PlayerShellScaffold(
     // lleva sobre la progress bar), que oculte este bloque superior.
     topActionsVisible: Boolean = true,
     // Slot libre pegado a la esquina superior derecha, por encima del
-    // HandleBar. NowPlaying lo usa para el menÃº "..." vertical. Se pinta
+    // HandleBar. NowPlaying lo usa para el menú "..." vertical. Se pinta
     // siempre, independientemente de topActionsVisible.
     topEndContent: (@Composable () -> Unit)? = null,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
@@ -534,9 +534,9 @@ fun PlayerShellScaffold(
     val primary = MaterialTheme.colorScheme.primary
     val background = MaterialTheme.colorScheme.background
 
-    // Fondo dinÃ¡mico: lee la portada actual del PlayerController y extrae su
+    // Fondo dinámico: lee la portada actual del PlayerController y extrae su
     // color dominante con Palette. Mientras llega, se usa el primary del tema
-    // como fallback. La transiciÃ³n entre canciones se interpola.
+    // como fallback. La transición entre canciones se interpola.
     val shellContainer = com.musarum.mobile.LocalAppContainer.current
     val playerState by shellContainer.playerController.state.collectAsStateWithLifecycle()
     val dominant by rememberDominantCoverColor(
@@ -545,10 +545,10 @@ fun PlayerShellScaffold(
     )
 
     // Drag-to-dismiss interactivo: la Column interior sigue al dedo mientras
-    // arrastras hacia abajo (controles incluidos â€” es un panel entero que
+    // arrastras hacia abajo (controles incluidos — es un panel entero que
     // baja, no una capa parcial). Si al soltar superas ~22% de pantalla,
     // animamos hasta el borde y disparamos onSwipeDown SIN resetear el
-    // offset: asÃ­ el panel ya estÃ¡ fuera cuando el pop de nav termina y no
+    // offset: así el panel ya está fuera cuando el pop de nav termina y no
     // hay parpadeo.
     val scope = rememberCoroutineScope()
     val configuration = LocalConfiguration.current
@@ -588,7 +588,7 @@ fun PlayerShellScaffold(
                             }
                             // No reseteamos dragOffset a 0: dejar el panel
                             // fuera de pantalla evita un parpadeo entre la
-                            // animaciÃ³n y el pop de la navegaciÃ³n.
+                            // animación y el pop de la navegación.
                             onSwipeDown()
                         }
                     } else {
@@ -605,7 +605,7 @@ fun PlayerShellScaffold(
                     }
                 }
             ) { _, dy ->
-                // Solo deja arrastrar hacia abajo â€” hacia arriba lo ignora
+                // Solo deja arrastrar hacia abajo — hacia arriba lo ignora
                 // (coerce â‰¥ 0) para no desenclavar la pantalla.
                 dragOffset = (dragOffset + dy).coerceAtLeast(0f)
             }
@@ -619,10 +619,10 @@ fun PlayerShellScaffold(
             .then(swipeHorizontalModifier)
     ) {
         // Fondo: SOLO color dominante del cover con degradado hacia el
-        // background. Antes habÃ­a una capa con la portada en blur encima,
-        // pero Carlos la querÃ­a quitar porque aÃ±adÃ­a ruido visual y hacÃ­a
+        // background. Antes había una capa con la portada en blur encima,
+        // pero Carlos la quería quitar porque añadía ruido visual y hacía
         // que los textos perdiesen contraste. Sin imagen, el degradado
-        // transmite el "color" de la canciÃ³n sin distraer.
+        // transmite el "color" de la canción sin distraer.
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -661,10 +661,10 @@ fun PlayerShellScaffold(
                 )
             }
 
-            // Cabecera unificada: chevron (bajar reproductor) Â· pÃ­ldora de
-            // modos (centrada) Â· slot derecha (menÃº "..." si lo usa el caller).
-            // Chevron y overflow son IconButton planos (sin cÃ­rculo gris) â€”
-            // Carlos pidiÃ³ "dejar solo el sÃ­mbolo". La pÃ­ldora es discreta
+            // Cabecera unificada: chevron (bajar reproductor) · píldora de
+            // modos (centrada) · slot derecha (menú "..." si lo usa el caller).
+            // Chevron y overflow son IconButton planos (sin círculo gris) —
+            // Carlos pidió "dejar solo el símbolo". La píldora es discreta
             // ahora (36dp), ver ModePill.
             Row(
                 modifier = Modifier
@@ -694,8 +694,8 @@ fun PlayerShellScaffold(
                         showVideo = showVideo
                     )
                 }
-                // Equilibrio Ã³ptico: si el caller no pinta overflow, un hueco
-                // del mismo ancho que el chevron para que la pÃ­ldora quede
+                // Equilibrio óptico: si el caller no pinta overflow, un hueco
+                // del mismo ancho que el chevron para que la píldora quede
                 // bien centrada y no escorada a la derecha.
                 if (topEndContent != null) {
                     topEndContent()
@@ -732,7 +732,7 @@ private fun TopActions(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.End
     ) {
-        GhostCircleButton(onClick = onAddToPlaylist, contentDescription = "AÃ±adir a playlist") {
+        GhostCircleButton(onClick = onAddToPlaylist, contentDescription = "Añadir a playlist") {
             Icon(Icons.Filled.PlaylistAdd, null, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(6.dp))
@@ -749,25 +749,25 @@ private fun TopActions(
 }
 
 /**
- * Fila de acciones secundarias dentro de NowPlaying: AÃ±adir a playlist,
+ * Fila de acciones secundarias dentro de NowPlaying: Añadir a playlist,
  * Favorita y toggle de Mini-letra. Alineadas a la derecha, encima de la
  * barra de progreso. Mini-letra queda deshabilitada si la pista no trae
  * LRC sincronizada.
  */
 /**
- * Estados visuales del botÃ³n de descarga. Mapean a:
+ * Estados visuales del botón de descarga. Mapean a:
  *   NOT_DOWNLOADED â†’ nube con flecha, acento neutro
  *   IN_PROGRESS    â†’ icono "descargando", acento primary
  *   TEMPORARY      â†’ check-con-reloj (dura 24h), acento primary
- *   PERMANENT      â†’ check sÃ³lido verde-tertiary (sin caducidad)
+ *   PERMANENT      â†’ check sólido verde-tertiary (sin caducidad)
  */
 internal enum class DownloadState { NOT_DOWNLOADED, IN_PROGRESS, TEMPORARY, PERMANENT }
 
 /**
- * MenÃº "..." vertical (3 puntos verticales) pegado a la esquina superior
- * derecha del shell del player. Antes vivÃ­a dentro de la fila horizontal
+ * Menú "..." vertical (3 puntos verticales) pegado a la esquina superior
+ * derecha del shell del player. Antes vivía dentro de la fila horizontal
  * de acciones, pero esas opciones se usan poco comparadas con â™¥ y
- * descarga, asÃ­ que el menÃº se mueve arriba del todo y libera un hueco
+ * descarga, así que el menú se mueve arriba del todo y libera un hueco
  * en la fila inferior.
  */
 @Composable
@@ -782,15 +782,15 @@ internal fun OverflowMenu(
 ) {
     Box {
         var showMore by remember { mutableStateOf(false) }
-        // Icono plano (sin el cÃ­rculo ghost) â€” coherente con el chevron de
-        // la izquierda. Pedido Carlos: solo el sÃ­mbolo en las esquinas.
+        // Icono plano (sin el círculo ghost) — coherente con el chevron de
+        // la izquierda. Pedido Carlos: solo el símbolo en las esquinas.
         IconButton(
             onClick = { showMore = true },
             modifier = Modifier.size(40.dp)
         ) {
             Icon(
                 Icons.Filled.MoreVert,
-                contentDescription = "MÃ¡s acciones",
+                contentDescription = "Más acciones",
                 tint = if (sleepTimerActive) MaterialTheme.colorScheme.primary
                        else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.size(24.dp)
@@ -799,7 +799,7 @@ internal fun OverflowMenu(
         DropdownMenu(
             expanded = showMore,
             onDismissRequest = { showMore = false },
-            // El botÃ³n estÃ¡ pegado al borde derecho del shell: desplazamos
+            // El botón está pegado al borde derecho del shell: desplazamos
             // ligeramente a la izquierda para que el popup no sobresalga.
             offset = DpOffset(x = (-8).dp, y = 4.dp),
             modifier = Modifier
@@ -817,9 +817,9 @@ internal fun OverflowMenu(
                 leadingIcon = { Icon(Icons.Filled.Radio, null) },
                 onClick = { showMore = false; onStartRadio() }
             )
-            // Visualizador y YouTube eliminados por peticiÃ³n Carlos (nov-24 2026):
+            // Visualizador y YouTube eliminados por petición Carlos (nov-24 2026):
             // el visualizador apenas se usaba y el buscar-en-YouTube llena el
-            // menÃº de cosas raras. El permiso RECORD_AUDIO del manifest queda
+            // menú de cosas raras. El permiso RECORD_AUDIO del manifest queda
             // por si vuelve en el futuro.
             DropdownMenuItem(
                 text = {
@@ -882,10 +882,10 @@ private fun ActionsRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.End
     ) {
-        // Selector in-app de dispositivo de salida â€” abre el AudioOutputSheet
-        // con la lista de outputs vÃ­a AudioManager (altavoz, auriculares,
+        // Selector in-app de dispositivo de salida — abre el AudioOutputSheet
+        // con la lista de outputs vía AudioManager (altavoz, auriculares,
         // Bluetooth, Alexa pareada, etc.). Reemplaza al picker del sistema
-        // de la versiÃ³n anterior â€” Carlos lo querÃ­a dentro de la app.
+        // de la versión anterior — Carlos lo quería dentro de la app.
         GhostCircleButton(
             onClick = onOpenOutput,
             contentDescription = "Elegir dispositivo de salida"
@@ -923,16 +923,16 @@ private fun ActionsRow(
             )
         }
         Spacer(Modifier.width(6.dp))
-        GhostCircleButton(onClick = onAddToPlaylist, contentDescription = "AÃ±adir a playlist") {
+        GhostCircleButton(onClick = onAddToPlaylist, contentDescription = "Añadir a playlist") {
             Icon(Icons.Filled.PlaylistAdd, null, modifier = Modifier.size(22.dp))
         }
         Spacer(Modifier.width(6.dp))
-        // Favorita con long-press para abrir Favoritas de Biblioteca â€”
+        // Favorita con long-press para abrir Favoritas de Biblioteca —
         // acceso directo pedido por Carlos (nov 2026). Tap normal = toggle.
         GhostCircleButtonLong(
             onClick = onToggleFavorite,
             onLongClick = onLongPressFavorite,
-            contentDescription = "Favorita (mantÃ©n pulsado para ver tus favoritas)"
+            contentDescription = "Favorita (mantén pulsado para ver tus favoritas)"
         ) {
             Icon(
                 imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
@@ -964,8 +964,8 @@ private fun GhostCircleButton(
 
 /**
  * Variante del GhostCircleButton con tap y long-press. IconButton no soporta
- * long-press nativo, asÃ­ que caemos al patrÃ³n combinedClickable sobre un Box
- * del mismo tamaÃ±o para preservar la geometrÃ­a del botÃ³n "fantasma".
+ * long-press nativo, así que caemos al patrón combinedClickable sobre un Box
+ * del mismo tamaño para preservar la geometría del botón "fantasma".
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -1010,7 +1010,7 @@ private fun TrackControls(controller: PlayerController, state: PlayerUiState) {
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
             // Barra fina estilo Spotify con nota negra como pulgar. El track va
-            // de 2dp y el pulgar queda centrado verticalmente respecto a Ã©l.
+            // de 2dp y el pulgar queda centrado verticalmente respecto a él.
             Slider(
                 value = displayPos.toFloat().coerceAtMost(totalMs.toFloat()),
                 valueRange = 0f..(totalMs.toFloat().coerceAtLeast(1f)),
@@ -1159,9 +1159,9 @@ internal fun downloadTint(state: DownloadState) = when (state) {
 
 internal fun downloadContentDescription(state: DownloadState) = when (state) {
     DownloadState.NOT_DOWNLOADED -> "Descargar para offline"
-    DownloadState.IN_PROGRESS    -> "Descargandoâ€¦"
-    DownloadState.TEMPORARY      -> "Descarga temporal â€” tocar para mantener permanente"
-    DownloadState.PERMANENT      -> "Descargada â€” tocar para eliminar"
+    DownloadState.IN_PROGRESS    -> "Descargando…"
+    DownloadState.TEMPORARY      -> "Descarga temporal — tocar para mantener permanente"
+    DownloadState.PERMANENT      -> "Descargada — tocar para eliminar"
 }
 
 internal fun formatMs(ms: Long): String {
@@ -1173,9 +1173,9 @@ internal fun formatMs(ms: Long): String {
 
 /**
  * Pulgar del slider: una corchea (nota musical con bandera) dibujada en
- * Canvas. Cabeza elÃ­ptica inclinada ~-18Â°, plica vertical a la derecha y
+ * Canvas. Cabeza elíptica inclinada ~-18°, plica vertical a la derecha y
  * banderilla curva arriba. Todo con el color primary. Al ser Canvas, se
- * mantiene nÃ­tida a cualquier escala y da identidad propia al reproductor.
+ * mantiene nítida a cualquier escala y da identidad propia al reproductor.
  */
 @Composable
 internal fun QuarterNoteThumb() {
@@ -1192,7 +1192,7 @@ internal fun QuarterNoteThumb() {
         )
 
         // Banderilla: curva Bezier desde la punta superior de la plica
-        // hacia abajo-derecha. Da el perfil caracterÃ­stico de corchea.
+        // hacia abajo-derecha. Da el perfil característico de corchea.
         val flagPath = Path().apply {
             moveTo(w * 0.74f, h * 0.08f)
             cubicTo(
@@ -1211,9 +1211,9 @@ internal fun QuarterNoteThumb() {
             )
         )
 
-        // Cabeza elÃ­ptica inclinada ~-18Â° â€” tÃ­pica de nota en una partitura.
-        // rotate() del drawscope es una extensiÃ³n del DrawScope, por eso se
-        // invoca directamente sin receiver explÃ­cito.
+        // Cabeza elíptica inclinada ~-18° — típica de nota en una partitura.
+        // rotate() del drawscope es una extensión del DrawScope, por eso se
+        // invoca directamente sin receiver explícito.
         rotate(
             degrees = -18f,
             pivot = Offset(w * 0.44f, h * 0.82f)
@@ -1228,10 +1228,10 @@ internal fun QuarterNoteThumb() {
 }
 
 /**
- * Abre el navegador externo en la pÃ¡gina de resultados de YouTube buscando
- * "{artista} {tÃ­tulo}". No usa la API de YouTube â€” es una bÃºsqueda web
- * pura â€” para no tener que lidiar con API keys ni cuotas. Pensado como
- * fallback cuando no hay vÃ­deo local o el OWNER quiere ver una versiÃ³n
+ * Abre el navegador externo en la página de resultados de YouTube buscando
+ * "{artista} {título}". No usa la API de YouTube — es una búsqueda web
+ * pura — para no tener que lidiar con API keys ni cuotas. Pensado como
+ * fallback cuando no hay vídeo local o el OWNER quiere ver una versión
  * en vivo / videoclip.
  */
 internal fun openYouTubeSearch(

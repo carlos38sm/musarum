@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.player
+package com.musarum.mobile.player
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -46,9 +46,9 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 /**
- * Pantalla "Cola de reproducciÃ³n": lista scrollable con la canciÃ³n actual
+ * Pantalla "Cola de reproducción": lista scrollable con la canción actual
  * destacada arriba y las siguientes abajo. Soporta:
- *   - Tap en una fila â†’ saltar a esa canciÃ³n.
+ *   - Tap en una fila â†’ saltar a esa canción.
  *   - Icono X â†’ quitar de la cola.
  *   - Icono drag a la derecha â†’ reordenar arrastrando.
  */
@@ -63,8 +63,8 @@ fun QueueScreen(onBack: () -> Unit) {
 
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        // Las keys son los Ã­ndices de posiciÃ³n, no IDs, porque una misma
-        // canciÃ³n puede aparecer dos veces en la cola. Los sacamos directamente.
+        // Las keys son los índices de posición, no IDs, porque una misma
+        // canción puede aparecer dos veces en la cola. Los sacamos directamente.
         val f = from.index
         val t = to.index
         controller.moveInQueue(f, t)
@@ -73,7 +73,7 @@ fun QueueScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Cola de reproducciÃ³n") },
+                title = { Text("Cola de reproducción") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "Cerrar")
@@ -90,16 +90,16 @@ fun QueueScreen(onBack: () -> Unit) {
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        "La cola estÃ¡ vacÃ­a",
+                        "La cola está vacía",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
             } else {
                 LazyColumn(state = lazyListState, modifier = Modifier.fillMaxSize()) {
-                    // Usamos el Ã­ndice como key (una misma canciÃ³n puede
-                    // aparecer varias veces en la cola, asÃ­ que song.id no es
-                    // Ãºnico). ReorderableItem recibe el mismo key.
+                    // Usamos el índice como key (una misma canción puede
+                    // aparecer varias veces en la cola, así que song.id no es
+                    // único). ReorderableItem recibe el mismo key.
                     items(count = queue.size, key = { it }) { index ->
                         val song = queue[index]
                         ReorderableItem(
@@ -153,7 +153,7 @@ private fun QueueRow(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (isCurrent) {
-                // Marca visual "aquÃ­ vas": pequeÃ±o badge primary con play.
+                // Marca visual "aquí vas": pequeño badge primary con play.
                 Surface(
                     modifier = Modifier.size(28.dp),
                     shape = CircleShape,

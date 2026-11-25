@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.music.home
+package com.musarum.mobile.music.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -69,20 +69,20 @@ import com.musarum.mobile.music.CoverImage
 import kotlinx.coroutines.launch
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Home v2 â€” rediseÃ±o estilo Apple Music (nov-2026)
+// Home v2 — rediseño estilo Apple Music (nov-2026)
 //
 // Bloques ACTUALES, ordenados:
-//   1. Saludo de 1 lÃ­nea
+//   1. Saludo de 1 línea
 //   2. Comunidad (si hay actividad reciente de otros)
-//   3. SongsHero â€” bloque principal, atajo a SongsScreen + shuffle all
+//   3. SongsHero — bloque principal, atajo a SongsScreen + shuffle all
 //   4. Vuelve a escuchar (si tienes historial propio)
-//   5. Nuevos descubrimientos â€” SIEMPRE visible (fallback a CTA si vacÃ­o)
-//   6. Hecho para ti â€” SIEMPRE visible (fallback a las 4 smart playlists
-//      base con slugs predefinidos, para que la secciÃ³n nunca quede vacÃ­a
-//      aunque el backend aÃºn no las haya hidratado)
-//   7. Accesos: Ãlbumes Â· Artistas (chips pequeÃ±os)
+//   5. Nuevos descubrimientos — SIEMPRE visible (fallback a CTA si vacío)
+//   6. Hecho para ti — SIEMPRE visible (fallback a las 4 smart playlists
+//      base con slugs predefinidos, para que la sección nunca quede vacía
+//      aunque el backend aún no las haya hidratado)
+//   7. Accesos: Álbumes · Artistas (chips pequeños)
 //
-// Eliminado: "ContinÃºa escuchando" â€” redundante con "Vuelve a escuchar"
+// Eliminado: "Continúa escuchando" — redundante con "Vuelve a escuchar"
 // y Carlos no lo usaba.
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -143,11 +143,11 @@ fun HomeScreen(
                     )
                 }
 
-                // Comunidad: secciÃ³n SIEMPRE visible aunque estÃ© vacÃ­a (pedido
-                // Carlos nov-24 2026, "ver cÃ³mo se verÃ­a aunque no haya aÃºn").
-                // Cuando no hay eventos, pinta un placeholder explicativo â€”
-                // mejor que un hueco en blanco o una secciÃ³n que aparece/
-                // desaparece segÃºn el momento del dÃ­a.
+                // Comunidad: sección SIEMPRE visible aunque esté vacía (pedido
+                // Carlos nov-24 2026, "ver cómo se vería aunque no haya aún").
+                // Cuando no hay eventos, pinta un placeholder explicativo —
+                // mejor que un hueco en blanco o una sección que aparece/
+                // desaparece según el momento del día.
                 item { SectionBar(title = "Comunidad") }
                 item {
                     if (state.activity.isNotEmpty()) {
@@ -167,10 +167,10 @@ fun HomeScreen(
                         totalSongs = state.totalSongs,
                         onOpenSongs = onOpenSongs,
                         onShuffleAll = {
-                            // Shuffle de todo el catÃ¡logo: una peticiÃ³n a
+                            // Shuffle de todo el catálogo: una petición a
                             // /songs/all (ya gzipada + ETag) y aleatorio
                             // en memoria. Mejor que N shuffle sobre la
-                            // ventana paginada â€” barajea los ~5k reales.
+                            // ventana paginada — barajea los ~5k reales.
                             scope.launch {
                                 runCatching {
                                     container.songRepository.allOrdered().shuffled()
@@ -178,10 +178,10 @@ fun HomeScreen(
                                     if (all.isNotEmpty()) {
                                         container.playerController.playQueue(all, 0)
                                     } else {
-                                        snackbar("No hay canciones en el catÃ¡logo")
+                                        snackbar("No hay canciones en el catálogo")
                                     }
                                 }.onFailure {
-                                    snackbar(it.message ?: "No se pudo cargar el catÃ¡logo")
+                                    snackbar(it.message ?: "No se pudo cargar el catálogo")
                                 }
                             }
                         }
@@ -208,9 +208,9 @@ fun HomeScreen(
                 }
 
                 // Nuevos descubrimientos: SIEMPRE visible. Si el backend
-                // devolviÃ³ items los pintamos; si no, mostramos una CTA
-                // que lleva al catÃ¡logo entero. AsÃ­ el Home nunca queda
-                // "pelado" aunque el backend aÃºn no soporte /home/discoveries.
+                // devolvió items los pintamos; si no, mostramos una CTA
+                // que lleva al catálogo entero. Así el Home nunca queda
+                // "pelado" aunque el backend aún no soporte /home/discoveries.
                 item {
                     SectionBar(
                         title = "Nuevos descubrimientos",
@@ -240,10 +240,10 @@ fun HomeScreen(
                     item { EmptyDiscoveriesCTA(onOpenAlbums = onOpenAlbums) }
                 }
 
-                // Hecho para ti: SIEMPRE visible. Si el backend aÃºn no manda
+                // Hecho para ti: SIEMPRE visible. Si el backend aún no manda
                 // las smart playlists (p.ej. imagen desactualizada), caemos a
-                // las 4 base conocidas â€” al tocar una, loadSmartPlaylist llama
-                // al backend y si Ã©ste responde vacÃ­o se enseÃ±a snackbar.
+                // las 4 base conocidas — al tocar una, loadSmartPlaylist llama
+                // al backend y si éste responde vacío se enseña snackbar.
                 item { SectionBar(title = "Hecho para ti") }
                 val playlists = state.smartPlaylists.ifEmpty { FallbackSmartPlaylists }
                 item {
@@ -287,9 +287,9 @@ fun HomeScreen(
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Saludo compacto â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 // Antes HeroHeader era casi una pantalla propia: avatar 76dp, saludo
-// en labelLarge + nick ExtraBold 30sp, gradient de fondo. ComÃ­a ~120dp
-// verticales y Carlos ni lo usaba. VersiÃ³n v2: 1 sola fila de ~48dp
-// con avatar pequeÃ±o, saludo+nick en una lÃ­nea, y el icono de bandeja.
+// en labelLarge + nick ExtraBold 30sp, gradient de fondo. Comía ~120dp
+// verticales y Carlos ni lo usaba. Versión v2: 1 sola fila de ~48dp
+// con avatar pequeño, saludo+nick en una línea, y el icono de bandeja.
 @Composable
 private fun CompactGreeting(
     nick: String?,
@@ -386,7 +386,7 @@ private fun CompactGreeting(
 private fun greetingFor(nick: String?): String {
     val hour = java.time.LocalTime.now().hour
     val prefix = when (hour) {
-        in 6..11 -> "Buenos dÃ­as"
+        in 6..11 -> "Buenos días"
         in 12..19 -> "Buenas tardes"
         else -> "Buenas noches"
     }
@@ -397,17 +397,17 @@ private fun greetingFor(nick: String?): String {
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Fallbacks del Home â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Smart playlists "base" que se muestran cuando el backend aÃºn no las
+ * Smart playlists "base" que se muestran cuando el backend aún no las
  * expone (p. ej. imagen vieja desplegada). Los slugs coinciden con los
- * que resuelve HomeService.smartPlaylist(slug, â€¦) en el backend nuevo,
- * asÃ­ que al tocar una el flujo normal funciona en cuanto el backend
- * estÃ¡ al dÃ­a. Si no lo estÃ¡, loadSmartPlaylist muestra un snackbar.
+ * que resuelve HomeService.smartPlaylist(slug, …) en el backend nuevo,
+ * así que al tocar una el flujo normal funciona en cuanto el backend
+ * está al día. Si no lo está, loadSmartPlaylist muestra un snackbar.
  */
 private val FallbackSmartPlaylists: List<SmartPlaylistInfoDto> = listOf(
     SmartPlaylistInfoDto(
         slug = "party",
         title = "Para la fiesta",
-        subtitle = "BPM alto, energÃ­a arriba",
+        subtitle = "BPM alto, energía arriba",
         iconHint = "party"
     ),
     SmartPlaylistInfoDto(
@@ -432,8 +432,8 @@ private val FallbackSmartPlaylists: List<SmartPlaylistInfoDto> = listOf(
 
 /**
  * CTA que aparece en lugar del carrusel de "Nuevos descubrimientos"
- * cuando el backend no ha servido ninguna canciÃ³n. Lleva al listado
- * de Ãlbumes como atajo para explorar manualmente.
+ * cuando el backend no ha servido ninguna canción. Lleva al listado
+ * de Álbumes como atajo para explorar manualmente.
  */
 @Composable
 private fun EmptyDiscoveriesCTA(onOpenAlbums: () -> Unit) {
@@ -466,13 +466,13 @@ private fun EmptyDiscoveriesCTA(onOpenAlbums: () -> Unit) {
                 Spacer(Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Explora el catÃ¡logo",
+                        "Explora el catálogo",
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = scheme.onBackground
                     )
                     Text(
-                        "AÃºn no hay descubrimientos recientes â€” toca para abrir Ãlbumes",
+                        "Aún no hay descubrimientos recientes — toca para abrir Álbumes",
                         style = MaterialTheme.typography.bodySmall,
                         color = scheme.onSurfaceVariant,
                         maxLines = 2,
@@ -491,12 +491,12 @@ private fun EmptyDiscoveriesCTA(onOpenAlbums: () -> Unit) {
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Canciones (hero principal) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// Bloque principal del Home â€” Ãºnico uso que Carlos reportÃ³. Tile grande
+// Bloque principal del Home — único uso que Carlos reportó. Tile grande
 // full-width con gradient primary sutil. A la izquierda icono MusicNote
 // gigante tipo "marca de agua", en el centro "Canciones" + contador,
-// a la derecha dos botones: Shuffle (shuffle_all del catÃ¡logo) y
+// a la derecha dos botones: Shuffle (shuffle_all del catálogo) y
 // play principal (abre SongsScreen). Toda la superficie es tappable;
-// los botones solo refinan la acciÃ³n.
+// los botones solo refinan la acción.
 @Composable
 private fun SongsHero(
     totalSongs: Long,
@@ -522,7 +522,7 @@ private fun SongsHero(
                     )
                 )
         ) {
-            // Marca de agua: icono MusicNote enorme detrÃ¡s del texto,
+            // Marca de agua: icono MusicNote enorme detrás del texto,
             // semi-transparente. Estilo Apple Music / YT Music.
             Icon(
                 Icons.Filled.MusicNote,
@@ -548,8 +548,8 @@ private fun SongsHero(
                         maxLines = 1
                     )
                     Text(
-                        if (totalSongs > 0L) "$totalSongs pistas en tu catÃ¡logo"
-                        else "Todo tu catÃ¡logo",
+                        if (totalSongs > 0L) "$totalSongs pistas en tu catálogo"
+                        else "Todo tu catálogo",
                         style = MaterialTheme.typography.labelMedium,
                         color = Color.White.copy(alpha = 0.85f),
                         maxLines = 1
@@ -871,9 +871,9 @@ private fun smartVisualFor(iconHint: String, scheme: androidx.compose.material3.
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Comunidad (feed social) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 /**
- * Placeholder de la secciÃ³n Comunidad cuando NO hay eventos. Lo pedido
+ * Placeholder de la sección Comunidad cuando NO hay eventos. Lo pedido
  * por Carlos: que la caja se vea siempre y no aparezca/desaparezca.
- * Explica a los users nuevos de la red para quÃ© sirve.
+ * Explica a los users nuevos de la red para qué sirve.
  */
 @Composable
 private fun CommunityEmpty() {
@@ -906,14 +906,14 @@ private fun CommunityEmpty() {
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Todo tranquilo por aquÃ­",
+                    "Todo tranquilo por aquí",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = scheme.onBackground
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
-                    "Cuando otros oyentes descubran o marquen favoritas, lo verÃ¡s aquÃ­.",
+                    "Cuando otros oyentes descubran o marquen favoritas, lo verás aquí.",
                     style = MaterialTheme.typography.bodySmall,
                     color = scheme.onSurfaceVariant
                 )
@@ -924,9 +924,9 @@ private fun CommunityEmpty() {
 
 // Bloque "Comunidad" del Home v2 (Fase 2). Muestra los eventos
 // recientes de los otros users respetando sus toggles de privacidad.
-// Compactos: avatar + 1 lÃ­nea de acciÃ³n + mini-cover de la canciÃ³n.
-// Tap sobre un evento = reproducir esa canciÃ³n al momento. Un evento
-// huÃ©rfano (sin user, p. ej. "nuevo en el catÃ¡logo") tambiÃ©n cabe
+// Compactos: avatar + 1 línea de acción + mini-cover de la canción.
+// Tap sobre un evento = reproducir esa canción al momento. Un evento
+// huérfano (sin user, p. ej. "nuevo en el catálogo") también cabe
 // porque UserRef es nullable.
 @Composable
 private fun CommunityCard(
@@ -970,7 +970,7 @@ private fun CommunityRow(event: ActivityEventDto, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Avatar del user del evento (o un chip neutro si es un evento
-        // sin autor â€” tipo "nuevo en el catÃ¡logo").
+        // sin autor — tipo "nuevo en el catálogo").
         val user = event.user
         if (user != null) {
             if (user.avatarUrl != null) {
@@ -983,7 +983,7 @@ private fun CommunityRow(event: ActivityEventDto, onClick: () -> Unit) {
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
-                            user.nick.firstOrNull()?.uppercase() ?: "Â·",
+                            user.nick.firstOrNull()?.uppercase() ?: "·",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.Bold,
                             color = scheme.primary
@@ -1017,7 +1017,7 @@ private fun CommunityRow(event: ActivityEventDto, onClick: () -> Unit) {
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                "${event.song.title} Â· ${event.song.artistsLabel}",
+                "${event.song.title} · ${event.song.artistsLabel}",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = scheme.onBackground,
@@ -1036,18 +1036,18 @@ private fun CommunityRow(event: ActivityEventDto, onClick: () -> Unit) {
     }
 }
 
-/** Mapea el tipo del evento al verbo que verÃ¡ el user. */
+/** Mapea el tipo del evento al verbo que verá el user. */
 private fun verbFor(event: ActivityEventDto): String {
     val nick = event.user?.nick ?: "Alguien"
     return when (event.type) {
-        "now_playing" -> "$nick estÃ¡ escuchando"
+        "now_playing" -> "$nick está escuchando"
         "favorited"   -> "A $nick le gusta"
         else          -> nick
     }
 }
 
 /**
- * "hace Xm" / "hace Xh" / "hace Xd" segÃºn diferencia. Se recalcula al
+ * "hace Xm" / "hace Xh" / "hace Xd" según diferencia. Se recalcula al
  * recomponer: con 4-5 filas no hay coste real.
  */
 private fun formatRelative(timestampMs: Long): String {
@@ -1063,9 +1063,9 @@ private fun formatRelative(timestampMs: Long): String {
 
 // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Accesos (chips al final) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-// Ãlbumes y Artistas quedan como accesos secundarios al pie â€” Carlos
-// los usa desde Buscar o desde una canciÃ³n, no desde Home. Dos chips
-// pequeÃ±os a tono con el resto en vez de los QuickTiles coloridos.
+// Álbumes y Artistas quedan como accesos secundarios al pie — Carlos
+// los usa desde Buscar o desde una canción, no desde Home. Dos chips
+// pequeños a tono con el resto en vez de los QuickTiles coloridos.
 @Composable
 private fun AccessChips(
     onOpenAlbums: () -> Unit,
@@ -1078,7 +1078,7 @@ private fun AccessChips(
     ) {
         AccessChip(
             modifier = Modifier.weight(1f),
-            label = "Ãlbumes",
+            label = "Álbumes",
             icon = Icons.Filled.Album,
             accent = scheme.tertiary,
             onClick = onOpenAlbums

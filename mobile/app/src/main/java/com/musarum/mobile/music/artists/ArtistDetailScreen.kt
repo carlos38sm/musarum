@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.music.artists
+package com.musarum.mobile.music.artists
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -67,7 +67,7 @@ fun ArtistDetailScreen(
     onOpenAlbum: (Long) -> Unit,
     // Callback para saltar a otro artista desde el carrusel
     // "Artistas relacionados" al pie. El navhost lo cablea igual
-    // que onOpenArtist en otras pantallas (navegaciÃ³n push normal).
+    // que onOpenArtist en otras pantallas (navegación push normal).
     onOpenArtist: (Long) -> Unit = {}
 ) {
     val container = LocalAppContainer.current
@@ -91,8 +91,8 @@ fun ArtistDetailScreen(
             ) { Text(s.message, color = MaterialTheme.colorScheme.error) }
 
             is ArtistDetailUiState.Ready -> {
-                // Con lupa activa: filtra Ã¡lbumes (por tÃ­tulo) y canciones
-                // (por tÃ­tulo o artista) con el mismo texto.
+                // Con lupa activa: filtra álbumes (por título) y canciones
+                // (por título o artista) con el mismo texto.
                 val q = query.trim().lowercase()
                 val filteredAlbums = if (q.isBlank()) s.albums
                     else s.albums.filter { it.title.lowercase().contains(q) }
@@ -128,7 +128,7 @@ fun ArtistDetailScreen(
                         )
                     }
 
-                    // BiografÃ­a solo cuando no hay bÃºsqueda â€” ocupa mucho
+                    // Biografía solo cuando no hay búsqueda — ocupa mucho
                     // y no ayuda a centrarse en los resultados.
                     if (query.isBlank()) {
                         s.artist.biography?.takeIf { it.isNotBlank() }?.let { bio ->
@@ -137,16 +137,16 @@ fun ArtistDetailScreen(
                     }
 
                     if (filteredAlbums.isNotEmpty()) {
-                        item { SectionHeader("DiscografÃ­a") }
+                        item { SectionHeader("Discografía") }
                         item {
                             // Altura fija: las AlbumCards tienen alturas
-                            // variables segÃºn si el tÃ­tulo es 1 o 2 lÃ­neas
+                            // variables según si el título es 1 o 2 líneas
                             // y si llevan badges. Al scrollear el LazyRow
-                            // recalculaba el mÃ¡ximo y "Canciones" saltaba
+                            // recalculaba el máximo y "Canciones" saltaba
                             // arriba/abajo. Fijamos 260dp = cover 160 +
                             // texto + stats con holgura. Dentro de cada
                             // AlbumCard queda espacio en blanco si el
-                            // tÃ­tulo es corto, pero la secciÃ³n de
+                            // título es corto, pero la sección de
                             // Canciones queda quieta.
                             LazyRow(
                                 modifier = Modifier.height(260.dp),
@@ -176,10 +176,10 @@ fun ArtistDetailScreen(
                         }
                     }
 
-                    // Carrusel "Artistas relacionados" â€” colaboraciones
-                    // reales segÃºn song_artists, no una lista editorial.
-                    // Solo se pinta cuando hay bÃºsqueda vacÃ­a (si el user
-                    // estÃ¡ filtrando canciones no tiene sentido saltar a
+                    // Carrusel "Artistas relacionados" — colaboraciones
+                    // reales según song_artists, no una lista editorial.
+                    // Solo se pinta cuando hay búsqueda vacía (si el user
+                    // está filtrando canciones no tiene sentido saltar a
                     // otro artista) y hay al menos uno relacionado.
                     if (query.isBlank() && s.related.isNotEmpty()) {
                         item { SectionHeader("Artistas relacionados") }
@@ -257,7 +257,7 @@ private fun ArtistHero(
                 IconButton(onClick = onBack, modifier = Modifier.size(42.dp)) {
                     Icon(
                         Icons.Filled.ArrowBack,
-                        contentDescription = "AtrÃ¡s",
+                        contentDescription = "Atrás",
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
@@ -298,12 +298,12 @@ private fun ArtistHero(
             )
 
             val stats = buildList {
-                if (songCount > 0) add("$songCount ${if (songCount == 1L) "canciÃ³n" else "canciones"}")
-                if (albumCount > 0) add("$albumCount ${if (albumCount == 1L) "Ã¡lbum" else "Ã¡lbumes"}")
+                if (songCount > 0) add("$songCount ${if (songCount == 1L) "canción" else "canciones"}")
+                if (albumCount > 0) add("$albumCount ${if (albumCount == 1L) "álbum" else "álbumes"}")
                 if (totalDurationMs > 0) add(formatLongMinutes(totalDurationMs))
                 country?.let { add(it) }
                 beginYear?.let { add("desde $it") }
-            }.joinToString(" Â· ")
+            }.joinToString(" · ")
             if (stats.isNotBlank()) {
                 Text(
                     stats,
@@ -356,8 +356,8 @@ private fun SectionHeader(title: String) {
 }
 
 /**
- * Tarjeta de Ã¡lbum para el carrusel horizontal: cover grande cuadrado +
- * tÃ­tulo debajo + lÃ­nea de badges (â™© nÂº Â· â± min Â· tipo). ~160dp de ancho,
+ * Tarjeta de álbum para el carrusel horizontal: cover grande cuadrado +
+ * título debajo + línea de badges (â™© nº · â± min · tipo). ~160dp de ancho,
  * para que entren ~2.2 en pantalla e invite al scroll.
  */
 @Composable
@@ -388,7 +388,7 @@ private fun AlbumCard(album: AlbumCardDto, onClick: () -> Unit) {
         val badges = buildList {
             album.releaseYear?.let { add(it.toString()) }
             album.inferredType?.let { add(it) }
-        }.joinToString(" Â· ")
+        }.joinToString(" · ")
         if (badges.isNotBlank()) {
             Text(
                 badges,
@@ -435,7 +435,7 @@ private fun MiniStat(
     }
 }
 
-/** "48 min" / "2 h 15 min" â€” compacto para la tarjeta del Ã¡lbum. */
+/** "48 min" / "2 h 15 min" — compacto para la tarjeta del álbum. */
 private fun formatShortMinutes(ms: Long): String {
     val totalMin = (ms / 60_000).toInt()
     if (totalMin < 60) return "$totalMin min"
@@ -444,7 +444,7 @@ private fun formatShortMinutes(ms: Long): String {
     return if (m == 0) "${h} h" else "${h} h ${m} min"
 }
 
-/** "2 horas y 15 minutos" â€” para el hero del artista. */
+/** "2 horas y 15 minutos" — para el hero del artista. */
 private fun formatLongMinutes(ms: Long): String {
     val totalMin = (ms / 60_000).toInt()
     if (totalMin < 60) return "$totalMin min"

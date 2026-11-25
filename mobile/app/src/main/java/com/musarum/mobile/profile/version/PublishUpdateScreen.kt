@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.profile.version
+package com.musarum.mobile.profile.version
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,12 +52,12 @@ import com.musarum.mobile.LocalAppContainer
 import kotlinx.coroutines.launch
 
 /**
- * Pantalla OWNER para publicar un anuncio de actualizaciÃ³n del APK.
+ * Pantalla OWNER para publicar un anuncio de actualización del APK.
  *
  * Flujo pensado: pushear un tag "android-vX.Y.Z" desde el PC, esperar a que
- * el workflow verde haga la Release, y aquÃ­ pegar la versiÃ³n â†’ botÃ³n
- * "Rellenar URL" â†’ "Publicar". A partir de ese segundo, todos los mÃ³viles
- * verÃ¡n el diÃ¡logo al abrir la app.
+ * el workflow verde haga la Release, y aquí pegar la versión â†’ botón
+ * "Rellenar URL" â†’ "Publicar". A partir de ese segundo, todos los móviles
+ * verán el diálogo al abrir la app.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,10 +73,10 @@ fun PublishUpdateScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Publicar actualizaciÃ³n") },
+                title = { Text("Publicar actualización") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 },
                 actions = {
@@ -139,7 +139,7 @@ private fun FormContent(
         CurrentCard(state = state)
 
         Text(
-            text = "Nueva publicaciÃ³n",
+            text = "Nueva publicación",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(top = 8.dp)
@@ -148,7 +148,7 @@ private fun FormContent(
         OutlinedTextField(
             value = version,
             onValueChange = { version = it },
-            label = { Text("VersiÃ³n (ej. 1.0.4)") },
+            label = { Text("Versión (ej. 1.0.4)") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Text,
@@ -174,7 +174,7 @@ private fun FormContent(
             enabled = version.isNotBlank(),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Rellenar URL desde versiÃ³n")
+            Text("Rellenar URL desde versión")
         }
 
         Row(
@@ -182,9 +182,9 @@ private fun FormContent(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("ActualizaciÃ³n obligatoria", style = MaterialTheme.typography.bodyLarge)
+                Text("Actualización obligatoria", style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    "Si se activa, el diÃ¡logo no se podrÃ¡ cerrar sin actualizar.",
+                    "Si se activa, el diálogo no se podrá cerrar sin actualizar.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -243,11 +243,11 @@ private fun CurrentCard(state: PublishUpdateUiState.Ready) {
             val v = state.currentLatestApk
             if (v.isNullOrBlank()) {
                 Text(
-                    "Sin anuncio activo â€” los mÃ³viles no verÃ¡n ningÃºn diÃ¡logo.",
+                    "Sin anuncio activo — los móviles no verán ningún diálogo.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             } else {
-                Text("VersiÃ³n: $v", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                Text("Versión: $v", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                 state.currentApkUrl?.takeIf { it.isNotBlank() }?.let {
                     Text("URL: $it", style = MaterialTheme.typography.bodySmall)
                 }
@@ -259,7 +259,7 @@ private fun CurrentCard(state: PublishUpdateUiState.Ready) {
             }
             HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
             Text(
-                "Los mÃ³viles la detectan al abrir la app (GET /version).",
+                "Los móviles la detectan al abrir la app (GET /version).",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

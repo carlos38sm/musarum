@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.music.albums
+package com.musarum.mobile.music.albums
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -121,7 +121,7 @@ fun AlbumDetailScreen(
                             visible = searching,
                             query = query,
                             onQueryChange = { query = it },
-                            placeholder = "Buscar en el Ã¡lbum"
+                            placeholder = "Buscar en el álbum"
                         )
                     }
 
@@ -200,7 +200,7 @@ private fun AlbumHero(
                         .asPaddingValues().calculateTopPadding()
                 )
         ) {
-            // BotÃ³n atrÃ¡s flotante + lupa simÃ©trica a la derecha.
+            // Botón atrás flotante + lupa simétrica a la derecha.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -211,7 +211,7 @@ private fun AlbumHero(
                 ) {
                     Icon(
                         Icons.Filled.ArrowBack,
-                        contentDescription = "AtrÃ¡s",
+                        contentDescription = "Atrás",
                         tint = MaterialTheme.colorScheme.onBackground
                     )
                 }
@@ -263,10 +263,10 @@ private fun AlbumHero(
                 type?.let { add(it) }
                 releaseYear?.let { add(it.toString()) }
                 if (songCount > 0) {
-                    add("$songCount ${if (songCount == 1L) "canciÃ³n" else "canciones"}")
+                    add("$songCount ${if (songCount == 1L) "canción" else "canciones"}")
                 }
                 if (totalDurationMs > 0) add(formatAlbumMinutes(totalDurationMs))
-            }.joinToString(" Â· ")
+            }.joinToString(" · ")
             if (meta.isNotBlank()) {
                 Text(
                     meta,
@@ -278,8 +278,8 @@ private fun AlbumHero(
 
             Spacer(Modifier.height(14.dp))
 
-            // Botones de acciÃ³n circulares, solo icono (mÃ¡s grandes que
-            // antes). Carlos pidiÃ³ "solo sÃ­mbolos, texto fuera" nov-24 2026.
+            // Botones de acción circulares, solo icono (más grandes que
+            // antes). Carlos pidió "solo símbolos, texto fuera" nov-24 2026.
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 CircleAction(
                     icon = Icons.Filled.PlayArrow,

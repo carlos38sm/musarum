@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.data.network.dto
+package com.musarum.mobile.data.network.dto
 
 import kotlinx.serialization.Serializable
 
@@ -29,7 +29,7 @@ data class DiscoveryPageDto(
  * aqu&iacute;: se piden a demanda en {@code getSmartPlaylistSongs(slug)}.
  *
  * {@code iconHint} es un token sem&aacute;ntico ("party", "focus", "undiscovered",
- * "forgotten") que el m&oacute;vil mapea a icono + color â€” el backend no decide
+ * "forgotten") que el m&oacute;vil mapea a icono + color — el backend no decide
  * la presentaci&oacute;n.
  */
 @Serializable

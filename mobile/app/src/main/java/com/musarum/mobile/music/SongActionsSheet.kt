@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.music
+package com.musarum.mobile.music
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -48,11 +48,11 @@ import com.musarum.mobile.LocalSnackbar
 import com.musarum.mobile.data.network.dto.SongSummaryDto
 
 /**
- * BottomSheet que aparece al mantener pulsada una canciÃ³n. Siempre ofrece
- * "AÃ±adir a playlist"; si el usuario actual es OWNER, ademÃ¡s aÃ±ade la
- * opciÃ³n "Borrar canciÃ³n" (fila en rojo). La acciÃ³n de borrar la lanza el
- * caller tras confirmaciÃ³n en un diÃ¡logo aparte â€” este sheet solo recoge
- * la intenciÃ³n.
+ * BottomSheet que aparece al mantener pulsada una canción. Siempre ofrece
+ * "Añadir a playlist"; si el usuario actual es OWNER, además añade la
+ * opción "Borrar canción" (fila en rojo). La acción de borrar la lanza el
+ * caller tras confirmación en un diálogo aparte — este sheet solo recoge
+ * la intención.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,7 +79,7 @@ fun SongActionsSheet(
         sheetState = sheetState
     ) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
-            // Cabecera: tÃ­tulo + artista (compacta).
+            // Cabecera: título + artista (compacta).
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
                 Text(
                     song.title,
@@ -98,8 +98,8 @@ fun SongActionsSheet(
             }
             Spacer(Modifier.height(8.dp))
 
-            // Me gusta: primera acciÃ³n porque es lo que el usuario pide mÃ¡s.
-            // Antes para marcar favorito habÃ­a que entrar a NowPlaying e
+            // Me gusta: primera acción porque es lo que el usuario pide más.
+            // Antes para marcar favorito había que entrar a NowPlaying e
             // interrumpir lo que estuviera sonando. Ahora long-press â†’
             // toggle directo sin salir del contexto.
             SheetAction(
@@ -116,17 +116,17 @@ fun SongActionsSheet(
 
             SheetAction(
                 icon = Icons.Filled.PlaylistAdd,
-                label = "AÃ±adir a playlist",
+                label = "Añadir a playlist",
                 onClick = onAddToPlaylist
             )
 
-            // "Enviar a..." â€” abre un sub-sheet con los otros users de la red
-            // para que el OWNER (o cualquier user) comparta esta canciÃ³n con
-            // alguien. Cada envÃ­o se guarda en la bandeja del destinatario.
+            // "Enviar a..." — abre un sub-sheet con los otros users de la red
+            // para que el OWNER (o cualquier user) comparta esta canción con
+            // alguien. Cada envío se guarda en la bandeja del destinatario.
             var showSendTo by remember { mutableStateOf(false) }
             SheetAction(
                 icon = Icons.AutoMirrored.Filled.Send,
-                label = "Enviar aâ€¦",
+                label = "Enviar a…",
                 onClick = { showSendTo = true }
             )
             if (showSendTo) {
@@ -136,7 +136,7 @@ fun SongActionsSheet(
                 )
             }
 
-            // Si hay una fiesta activa, permite aÃ±adir esta canciÃ³n a la
+            // Si hay una fiesta activa, permite añadir esta canción a la
             // cola compartida. La detectamos en caliente: un LaunchedEffect
             // ligero consulta /party/active al abrir el sheet y guarda el id.
             var activePartyId by remember { mutableStateOf<Long?>(null) }
@@ -147,7 +147,7 @@ fun SongActionsSheet(
             activePartyId?.let { pid ->
                 SheetAction(
                     icon = androidx.compose.material.icons.Icons.Filled.Celebration,
-                    label = "AÃ±adir a la fiesta",
+                    label = "Añadir a la fiesta",
                     onClick = {
                         scope.launch {
                             runCatching {
@@ -155,8 +155,8 @@ fun SongActionsSheet(
                                     pid,
                                     com.musarum.mobile.data.network.dto.AddPartySongRequest(song.id)
                                 )
-                            }.onSuccess { snackbar("AÃ±adida a la fiesta") }
-                                .onFailure { snackbar("No se pudo aÃ±adir a la fiesta") }
+                            }.onSuccess { snackbar("Añadida a la fiesta") }
+                                .onFailure { snackbar("No se pudo añadir a la fiesta") }
                         }
                         onDismiss()
                     }
@@ -167,8 +167,8 @@ fun SongActionsSheet(
             when {
                 isDownloading -> SheetAction(
                     icon = Icons.Filled.Downloading,
-                    label = "Descargandoâ€¦",
-                    onClick = {} // sin acciÃ³n mientras va
+                    label = "Descargando…",
+                    onClick = {} // sin acción mientras va
                 )
                 entry == null -> SheetAction(
                     icon = Icons.Filled.CloudDownload,
@@ -211,7 +211,7 @@ fun SongActionsSheet(
             if (isOwner) {
                 SheetAction(
                     icon = Icons.Filled.Delete,
-                    label = "Borrar canciÃ³n",
+                    label = "Borrar canción",
                     destructive = true,
                     onClick = onRequestDelete
                 )
@@ -249,10 +249,10 @@ private fun SheetAction(
 }
 
 /**
- * Sub-sheet "Enviar a..." â€” lista los otros users de la red (usa el mismo
- * endpoint /auth/users que el picker Netflix del Login) y envÃ­a la canciÃ³n
- * al tocar uno. Sin confirmaciÃ³n extra: un tap, un envÃ­o. El destinatario
- * la verÃ¡ en su Bandeja al abrir Musarum.
+ * Sub-sheet "Enviar a..." — lista los otros users de la red (usa el mismo
+ * endpoint /auth/users que el picker Netflix del Login) y envía la canción
+ * al tocar uno. Sin confirmación extra: un tap, un envío. El destinatario
+ * la verá en su Bandeja al abrir Musarum.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -278,7 +278,7 @@ internal fun SendToUserSheet(
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
             Text(
-                "Enviar \"${song.title}\" aâ€¦",
+                "Enviar \"${song.title}\" a…",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)
@@ -329,12 +329,12 @@ internal fun SendToUserSheet(
 
 /**
  * Helper reutilizable: gestiona el estado del sheet de acciones + los
- * diÃ¡logos derivados (aÃ±adir a playlist, confirmar borrado) en un solo
+ * diálogos derivados (añadir a playlist, confirmar borrado) en un solo
  * sitio. Las pantallas de lista solo tienen que llamar a `open(song)` en
- * el long-press y poner `SongActionsHost(...)` en el Ã¡rbol UI.
+ * el long-press y poner `SongActionsHost(...)` en el árbol UI.
  *
- * - isOwner se consulta del container (me) para pintar la opciÃ³n de
- *   "Borrar canciÃ³n" solo si procede.
+ * - isOwner se consulta del container (me) para pintar la opción de
+ *   "Borrar canción" solo si procede.
  * - onDelete por defecto llama a songRepository.delete(id) con snackbar.
  *   Las pantallas que necesiten un reset local (p. ej. SongsScreen
  *   quitando la fila al instante) pueden sobrescribirlo.
@@ -387,7 +387,7 @@ fun SongActionsHost(
                 confirmDeleteSong = null
                 scope.launch {
                     runCatching { container.songRepository.delete(sid) }
-                        // Sin snackbar en Ã©xito: la fila desaparece de la
+                        // Sin snackbar en éxito: la fila desaparece de la
                         // lista al instante y eso basta como feedback.
                         .onFailure { snackbar("No se pudo borrar: ${it.message ?: "error"}") }
                 }
@@ -397,8 +397,8 @@ fun SongActionsHost(
 }
 
 /**
- * ConfirmaciÃ³n destructiva. "Borrar" en rojo; "Cancelar" por defecto.
- * El caller resuelve la acciÃ³n tras el yes.
+ * Confirmación destructiva. "Borrar" en rojo; "Cancelar" por defecto.
+ * El caller resuelve la acción tras el yes.
  */
 @Composable
 fun ConfirmDeleteSongDialog(
@@ -408,12 +408,12 @@ fun ConfirmDeleteSongDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Â¿Borrar \"${song.title}\"?") },
+        title = { Text("¿Borrar \"${song.title}\"?") },
         text = {
             Text(
-                "Se eliminarÃ¡ la canciÃ³n del servidor Y su archivo del disco. " +
+                "Se eliminará la canción del servidor Y su archivo del disco. " +
                     "Los favoritos y entradas en playlists de todos los usuarios " +
-                    "tambiÃ©n se perderÃ¡n. No se puede deshacer.",
+                    "también se perderán. No se puede deshacer.",
                 style = MaterialTheme.typography.bodyMedium
             )
         },

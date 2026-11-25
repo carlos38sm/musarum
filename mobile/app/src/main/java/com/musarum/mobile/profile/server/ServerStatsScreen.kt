@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.profile.server
+package com.musarum.mobile.profile.server
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -92,10 +92,10 @@ fun ServerStatsScreen(onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("AnÃ¡lisis del servidor") },
+                title = { Text("Análisis del servidor") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 },
                 actions = {
@@ -185,13 +185,13 @@ fun ServerStatsScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { showWipeDialog = false },
             icon = { Icon(Icons.Filled.DeleteSweep, contentDescription = null) },
-            title = { Text("Â¿Vaciar la biblioteca?") },
+            title = { Text("¿Vaciar la biblioteca?") },
             text = {
                 Text(
-                    "Se borrarÃ¡n las $songCount canciones, todos los artistas, " +
-                        "Ã¡lbumes y gÃ©neros. TambiÃ©n favoritos y entradas de " +
-                        "playlists. Las playlists (vacÃ­as), usuarios y carpetas " +
-                        "configuradas se mantienen. Esta acciÃ³n no se puede deshacer."
+                    "Se borrarán las $songCount canciones, todos los artistas, " +
+                        "álbumes y géneros. También favoritos y entradas de " +
+                        "playlists. Las playlists (vacías), usuarios y carpetas " +
+                        "configuradas se mantienen. Esta acción no se puede deshacer."
                 )
             },
             confirmButton = {
@@ -283,14 +283,14 @@ private fun MaintenanceCard(
 ) {
     StatCard(title = "Mantenimiento") {
         Text(
-            "Vuelve a pasar Emendatium por TODA la biblioteca: biografÃ­as, " +
+            "Vuelve a pasar Emendatium por TODA la biblioteca: biografías, " +
                 "BPM, tonalidad, portadas, ReplayGain y renombrado. Los campos " +
-                "ya puestos no se pisan â€” solo se rellenan los que estÃ©n vacÃ­os.",
+                "ya puestos no se pisan — solo se rellenan los que estén vacíos.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
-        // Barra de progreso del run activo (o del Ãºltimo si terminÃ³).
+        // Barra de progreso del run activo (o del último si terminó).
         EnrichProgressBlock(
             progress = progress,
             onDismiss = onDismissProgress,
@@ -313,7 +313,7 @@ private fun MaintenanceCard(
             Text(
                 when {
                     songCount <= 0 -> "Nada que enriquecer"
-                    running -> "Enriqueciendoâ€¦"
+                    running -> "Enriqueciendo…"
                     else -> "Re-enriquecer todo ($songCount canciones)"
                 }
             )
@@ -321,7 +321,7 @@ private fun MaintenanceCard(
 
         Spacer(Modifier.height(18.dp))
         Text(
-            "Borra artistas, Ã¡lbumes y gÃ©neros que quedaron sin canciones " +
+            "Borra artistas, álbumes y géneros que quedaron sin canciones " +
                 "tras un borrado (fantasmas en listas).",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -337,13 +337,13 @@ private fun MaintenanceCard(
         ) {
             Icon(Icons.Filled.CleaningServices, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Limpiar huÃ©rfanos de catÃ¡logo")
+            Text("Limpiar huérfanos de catálogo")
         }
 
         Spacer(Modifier.height(18.dp))
         Text(
-            "VacÃ­a el catÃ¡logo musical del servidor cuando vayas a cargar " +
-                "una carpeta de mÃºsica nueva. No toca usuarios, playlists ni " +
+            "Vacía el catálogo musical del servidor cuando vayas a cargar " +
+                "una carpeta de música nueva. No toca usuarios, playlists ni " +
                 "las carpetas configuradas.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -362,7 +362,7 @@ private fun MaintenanceCard(
             Spacer(Modifier.width(8.dp))
             Text(
                 if (songCount > 0) "Vaciar biblioteca ($songCount canciones)"
-                else "Biblioteca ya vacÃ­a"
+                else "Biblioteca ya vacía"
             )
         }
     }
@@ -382,10 +382,10 @@ private fun BackupsCard(onSnackbar: (String) -> Unit) {
         loading = false
     }
 
-    StatCard(title = "Backups automÃ¡ticos") {
+    StatCard(title = "Backups automáticos") {
         Text(
             "El servidor hace backup de playlists y favoritos cada 30 minutos " +
-                "en _backups/. Mantiene los Ãºltimos 10 y rota el resto.",
+                "en _backups/. Mantiene los últimos 10 y rota el resto.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -415,20 +415,20 @@ private fun BackupsCard(onSnackbar: (String) -> Unit) {
         ) {
             Icon(Icons.Filled.Save, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text(if (creating) "Creandoâ€¦" else "Hacer backup ahora")
+            Text(if (creating) "Creando…" else "Hacer backup ahora")
         }
 
         Spacer(Modifier.height(12.dp))
 
         if (loading) {
             Text(
-                "Cargando listaâ€¦",
+                "Cargando lista…",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         } else if (items.isEmpty()) {
             Text(
-                "AÃºn no hay backups guardados.",
+                "Aún no hay backups guardados.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -456,21 +456,21 @@ private fun BackupsCard(onSnackbar: (String) -> Unit) {
     }
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Tarjetas por secciÃ³n â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Tarjetas por sección â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 @Composable
 private fun CatalogCard(c: ServerStatsDto.CatalogStats) {
-    StatCard(title = "CatÃ¡logo") {
+    StatCard(title = "Catálogo") {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             StatBig(label = "Canciones", value = c.songs.toString(), modifier = Modifier.weight(1f))
             StatBig(label = "Artistas", value = c.artists.toString(), modifier = Modifier.weight(1f))
-            StatBig(label = "Ãlbumes", value = c.albums.toString(), modifier = Modifier.weight(1f))
+            StatBig(label = "Álbumes", value = c.albums.toString(), modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(10.dp))
-        StatLine("GÃ©neros", c.genres.toString())
+        StatLine("Géneros", c.genres.toString())
         StatLine("Playlists", c.playlists.toString())
         StatLine("Favoritos totales", c.totalFavorites.toString())
-        val usersSuffix = if (c.blockedUsers > 0) " Â· ${c.blockedUsers} bloqueados" else ""
+        val usersSuffix = if (c.blockedUsers > 0) " · ${c.blockedUsers} bloqueados" else ""
         StatLine("Usuarios", "${c.users}$usersSuffix")
     }
 }
@@ -513,16 +513,16 @@ private fun DiskCard(d: ServerStatsDto.DiskStats) {
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                "${humanBytes(used)} usados Â· ${humanBytes(d.diskFreeBytes)} libres de ${humanBytes(d.diskTotalBytes)}",
+                "${humanBytes(used)} usados · ${humanBytes(d.diskFreeBytes)} libres de ${humanBytes(d.diskTotalBytes)}",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(10.dp))
         }
-        StatLine("MÃºsica", humanBytes(d.musicBytes))
+        StatLine("Música", humanBytes(d.musicBytes))
         StatLine("Portadas", humanBytes(d.coversBytes))
         StatLine("Letras", humanBytes(d.lyricsBytes))
-        StatLine("VÃ­deos", humanBytes(d.videosBytes))
+        StatLine("Vídeos", humanBytes(d.videosBytes))
         StatLine("Avatares", humanBytes(d.avatarsBytes))
         StatLine("Base de datos", humanBytes(d.databaseBytes))
     }
@@ -532,7 +532,7 @@ private fun DiskCard(d: ServerStatsDto.DiskStats) {
 private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) {
     StatCard(title = "Pendiente de enriquecer") {
         Text(
-            "Canciones a las que Emendatium aÃºn no ha dado un valor.",
+            "Canciones a las que Emendatium aún no ha dado un valor.",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -544,8 +544,8 @@ private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) 
         StatLine("Sin MusicBrainz ID", "${e.missingMbid} / $totalSongs")
 
         // Desglose por status del intento Emendatium (si el backend lo trae).
-        // Ãštil para diagnosticar: si ok=0 aunque Emendatium estÃ© verde â†’
-        // estÃ¡ respondiendo pero sin metadata (fpcalc no instalado, etc.).
+        // Ãštil para diagnosticar: si ok=0 aunque Emendatium esté verde â†’
+        // está respondiendo pero sin metadata (fpcalc no instalado, etc.).
         val pending = e.enrichPending
         val ok = e.enrichOk
         val noMatch = e.enrichNoMatch
@@ -571,7 +571,7 @@ private fun EmendatiumCard(e: ServerStatsDto.EmendatiumStats) {
     val titleIcon = when {
         !e.enabled -> "âšª"   // No configurado
         e.reachable -> "ðŸŸ¢"   // Vivo
-        else -> "ðŸ”´"          // CaÃ­do
+        else -> "ðŸ”´"          // Caído
     }
     StatCard(title = "Emendatium $titleIcon") {
         val lineColor = when {
@@ -580,9 +580,9 @@ private fun EmendatiumCard(e: ServerStatsDto.EmendatiumStats) {
             else -> MaterialTheme.colorScheme.error
         }
         val statusText = when {
-            !e.enabled -> "No configurado Â· sin Ã©l, el catÃ¡logo no recibe BPM, tonalidad, bio de artista ni replaygain."
-            e.reachable -> "Alcanzable Â· enriqueciendo canciones a medida que llegan."
-            else -> "Configurado pero NO responde. Mientras siga asÃ­, BPM/tonalidad/bio no van a aparecer aunque re-escanees."
+            !e.enabled -> "No configurado · sin él, el catálogo no recibe BPM, tonalidad, bio de artista ni replaygain."
+            e.reachable -> "Alcanzable · enriqueciendo canciones a medida que llegan."
+            else -> "Configurado pero NO responde. Mientras siga así, BPM/tonalidad/bio no van a aparecer aunque re-escanees."
         }
         Text(
             statusText,
@@ -594,7 +594,7 @@ private fun EmendatiumCard(e: ServerStatsDto.EmendatiumStats) {
         if (e.enabled && !e.reachable && !e.message.isNullOrBlank()) {
             StatLine("Motivo", e.message)
         }
-        e.lastCheckedAtMs?.let { StatLine("Ãšltima comprobaciÃ³n", humanInstant(it)) }
+        e.lastCheckedAtMs?.let { StatLine("Ãšltima comprobación", humanInstant(it)) }
     }
 }
 
@@ -603,12 +603,12 @@ private fun ActivityCard(a: ServerStatsDto.ActivityStats) {
     StatCard(title = "Actividad") {
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             StatBig(label = "Total", value = a.totalPlays.toString(), modifier = Modifier.weight(1f))
-            StatBig(label = "7 dÃ­as", value = a.playsLast7Days.toString(), modifier = Modifier.weight(1f))
-            StatBig(label = "30 dÃ­as", value = a.playsLast30Days.toString(), modifier = Modifier.weight(1f))
+            StatBig(label = "7 días", value = a.playsLast7Days.toString(), modifier = Modifier.weight(1f))
+            StatBig(label = "30 días", value = a.playsLast30Days.toString(), modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(10.dp))
         StatLine("Usuarios activos (30d)", a.activeUsersLast30Days.toString())
-        StatLine("Ãšltima reproducciÃ³n", humanInstant(a.lastPlayAt))
+        StatLine("Ãšltima reproducción", humanInstant(a.lastPlayAt))
         StatLine("Ãšltimo escaneo", humanInstant(a.lastScanAt))
         a.lastScanSummary?.let { StatLine("Resumen escaneo", it) }
     }
@@ -619,16 +619,16 @@ private fun TechnicalCard(
     t: ServerStatsDto.TechnicalStats,
     onCleanOrphans: () -> Unit = {}
 ) {
-    StatCard(title = "TÃ©cnico") {
+    StatCard(title = "Técnico") {
         StatLine("Uptime", humanDuration(t.uptimeMs))
         StatLine("Memoria usada", humanBytes(t.memoryUsedBytes))
         StatLine("Memoria asignada", humanBytes(t.memoryTotalBytes))
-        StatLine("Memoria mÃ¡xima", humanBytes(t.memoryMaxBytes))
+        StatLine("Memoria máxima", humanBytes(t.memoryMaxBytes))
         if (t.orphanLyricFiles > 0) {
-            StatLine("Letras huÃ©rfanas", t.orphanLyricFiles.toString())
+            StatLine("Letras huérfanas", t.orphanLyricFiles.toString())
             Spacer(Modifier.height(6.dp))
             androidx.compose.material3.TextButton(onClick = onCleanOrphans) {
-                Text("Limpiar ${t.orphanLyricFiles} ficheros .lrc huÃ©rfanos")
+                Text("Limpiar ${t.orphanLyricFiles} ficheros .lrc huérfanos")
             }
         }
         val errors = t.recentScanErrors.orEmpty()
@@ -637,17 +637,17 @@ private fun TechnicalCard(
             androidx.compose.material3.HorizontalDivider()
             Spacer(Modifier.height(10.dp))
             Text(
-                "Errores del Ãºltimo scan (Ãºltimos ${errors.size})",
+                "Errores del último scan (últimos ${errors.size})",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.error
             )
             Spacer(Modifier.height(6.dp))
-            // Mostramos los 10 mÃ¡s recientes; el usuario cuenta con el total
+            // Mostramos los 10 más recientes; el usuario cuenta con el total
             // en la cabecera y puede abrir logs del contenedor para el resto.
             errors.takeLast(10).reversed().forEach { line ->
                 Text(
-                    "â€¢ $line",
+                    "• $line",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 1.dp)
@@ -681,8 +681,8 @@ private fun EnrichProgressBlock(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            if (progress.running) "Enriqueciendo cancionesâ€¦"
-            else "Enriquecido Â· ${progress.succeeded} ok / ${progress.failed} fallidas",
+            if (progress.running) "Enriqueciendo canciones…"
+            else "Enriquecido · ${progress.succeeded} ok / ${progress.failed} fallidas",
             style = MaterialTheme.typography.labelMedium,
             color = if (progress.running) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onBackground,
@@ -709,13 +709,13 @@ private fun EnrichProgressBlock(
     Spacer(Modifier.height(6.dp))
     val subLine = buildString {
         append("${progress.processed} / ${progress.total}")
-        append(" Â· %.0f%%".format(pct * 100))
+        append(" · %.0f%%".format(pct * 100))
         if (progress.running && etaMs > 0) {
-            append(" Â· quedan ~")
+            append(" · quedan ~")
             append(humanDuration(etaMs))
         }
         if (!progress.running && progress.startedAtMs != null && progress.finishedAtMs != null) {
-            append(" Â· tardÃ³ ")
+            append(" · tardó ")
             append(humanDuration(progress.finishedAtMs - progress.startedAtMs))
         }
     }
@@ -726,7 +726,7 @@ private fun EnrichProgressBlock(
     )
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Tarjeta MÃ¡quina â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ Tarjeta Máquina â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 @Composable
 private fun MachineCard(
@@ -735,7 +735,7 @@ private fun MachineCard(
     live: Boolean,
     onLiveChange: (Boolean) -> Unit
 ) {
-    StatCard(title = "MÃ¡quina") {
+    StatCard(title = "Máquina") {
         // Cabecera con toggle live.
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -761,7 +761,7 @@ private fun MachineCard(
         if (host == null) {
             Spacer(Modifier.height(10.dp))
             Text(
-                "Cargando mÃ©tricas del sistemaâ€¦ (o el backend no las expone todavÃ­a)",
+                "Cargando métricas del sistema… (o el backend no las expone todavía)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -793,7 +793,7 @@ private fun MachineCard(
             )
             Spacer(Modifier.width(6.dp))
             Text(
-                "CPU Â· ${host.cpuThreads} hilos",
+                "CPU · ${host.cpuThreads} hilos",
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold
             )
@@ -812,8 +812,8 @@ private fun MachineCard(
             color = MaterialTheme.colorScheme.primary,
             trackColor = MaterialTheme.colorScheme.surfaceVariant
         )
-        // Sparkline histÃ³rica (30 min). Sin backend viejo o buffer vacÃ­o
-        // no pinta nada â€” deja hueco controlado para que el salto no sea
+        // Sparkline histórica (30 min). Sin backend viejo o buffer vacío
+        // no pinta nada — deja hueco controlado para que el salto no sea
         // brusco cuando entre la primera muestra.
         history?.let {
             Spacer(Modifier.height(6.dp))
@@ -887,7 +887,7 @@ private fun MachineCard(
             )
         }
 
-        // Uptime de la mÃ¡quina + hilos JVM
+        // Uptime de la máquina + hilos JVM
         Spacer(Modifier.height(6.dp))
         StatLine("Uptime del PC", humanDuration(host.osUptimeSeconds * 1000L))
         StatLine("Hilos JVM", host.jvmThreadCount.toString())
@@ -909,9 +909,9 @@ private fun MachineCard(
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            // Sparkline agregada rx+tx. Se normaliza al mÃ¡ximo del propio
-            // buffer: asÃ­ visualmente siempre hay contraste, sin importar
-            // que la red del portÃ¡til tope en 50 KB/s o en 50 MB/s.
+            // Sparkline agregada rx+tx. Se normaliza al máximo del propio
+            // buffer: así visualmente siempre hay contraste, sin importar
+            // que la red del portátil tope en 50 KB/s o en 50 MB/s.
             history?.let {
                 val totals = it.samples.map { s -> (s.rxBytesPerSec + s.txBytesPerSec).toFloat() }
                 val max = (totals.maxOrNull() ?: 0f).coerceAtLeast(1f)
@@ -946,7 +946,7 @@ private fun MachineCard(
                         fontWeight = FontWeight.Medium
                     )
                     Text(
-                        "${humanBytes(d.sizeBytes)} Â· â†“ ${humanBytesPerSec(d.readBytesPerSec)} Â· â†‘ ${humanBytesPerSec(d.writeBytesPerSec)}",
+                        "${humanBytes(d.sizeBytes)} · â†“ ${humanBytesPerSec(d.readBytesPerSec)} · â†‘ ${humanBytesPerSec(d.writeBytesPerSec)}",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -978,8 +978,8 @@ private fun NetworkInterfaceRow(nif: HostStatsDto.NetworkInterfaceDto) {
         val sub = buildString {
             nif.ipv4?.let { append(it) }
             if (!nif.up) {
-                if (isNotEmpty()) append(" Â· ")
-                append("caÃ­do")
+                if (isNotEmpty()) append(" · ")
+                append("caído")
             }
         }
         if (sub.isNotBlank()) {
@@ -993,15 +993,15 @@ private fun NetworkInterfaceRow(nif: HostStatsDto.NetworkInterfaceDto) {
 }
 
 /**
- * Mini-grÃ¡fica de los Ãºltimos N valores normalizados 0..1. Se dibuja
- * una lÃ­nea con el color dado + relleno semi-transparente debajo.
- * Si hay menos de 2 muestras no pinta nada (dejarÃ­a lÃ­neas/puntos
- * sueltos que confunden mÃ¡s que ayudan).
+ * Mini-gráfica de los últimos N valores normalizados 0..1. Se dibuja
+ * una línea con el color dado + relleno semi-transparente debajo.
+ * Si hay menos de 2 muestras no pinta nada (dejaría líneas/puntos
+ * sueltos que confunden más que ayudan).
  *
  * Nota: la escala de X es "una muestra por paso", no por tiempo real.
  * Eso vale porque el backend muestrea a tick fijo (10s); si saltase
- * algÃºn tick el hueco se verÃ­a como una muestra "repetida" del
- * Ãºltimo valor conocido â€” aceptable.
+ * algún tick el hueco se vería como una muestra "repetida" del
+ * último valor conocido — aceptable.
  */
 @Composable
 private fun Sparkline(
@@ -1010,7 +1010,7 @@ private fun Sparkline(
     modifier: Modifier = Modifier
 ) {
     if (values.size < 2) {
-        // Placeholder vacÃ­o con la misma altura, para que el layout no
+        // Placeholder vacío con la misma altura, para que el layout no
         // pegue saltos cuando entra la primera muestra.
         Spacer(modifier)
         return
@@ -1019,13 +1019,13 @@ private fun Sparkline(
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
-        // Fondo sutil (sin esto, con valores cerca de 0 la lÃ­nea se pierde
+        // Fondo sutil (sin esto, con valores cerca de 0 la línea se pierde
         // al tener fondo del card casi del mismo color).
         drawRect(color = track.copy(alpha = 0.35f))
 
         val stepX = if (values.size > 1) w / (values.size - 1).toFloat() else 0f
-        // Invertimos Y: valor 0 abajo, valor 1 arriba. PequeÃ±o margen (2px)
-        // para que una lÃ­nea pegada al 100% no se coma el borde superior.
+        // Invertimos Y: valor 0 abajo, valor 1 arriba. Pequeño margen (2px)
+        // para que una línea pegada al 100% no se coma el borde superior.
         val margin = 2f
         fun yFor(v: Float): Float = margin + (1f - v.coerceIn(0f, 1f)) * (h - margin * 2)
 
@@ -1036,7 +1036,7 @@ private fun Sparkline(
             }
         }
         // Relleno: cerramos el path hacia abajo a la derecha y a la izquierda
-        // para que quede un Ã¡rea semi-transparente degradada bajo la lÃ­nea.
+        // para que quede un área semi-transparente degradada bajo la línea.
         val fillPath = Path().apply {
             addPath(linePath)
             lineTo((values.size - 1) * stepX, h)
@@ -1153,7 +1153,7 @@ internal fun humanDuration(ms: Long): String {
 }
 
 internal fun humanInstant(ms: Long?): String {
-    if (ms == null) return "â€”"
+    if (ms == null) return "—"
     val fmt = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm").withZone(ZoneId.systemDefault())
     return fmt.format(Instant.ofEpochMilli(ms))
 }

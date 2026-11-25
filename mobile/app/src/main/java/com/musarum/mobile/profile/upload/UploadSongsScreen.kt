@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.profile.upload
+package com.musarum.mobile.profile.upload
 
 import android.net.Uri
 import android.provider.OpenableColumns
@@ -52,15 +52,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.LocalSnackbar
 
-// Pantalla OWNER para subir audios al servidor desde el mÃ³vil. Usa el
+// Pantalla OWNER para subir audios al servidor desde el móvil. Usa el
 // Storage Access Framework de Android (OpenMultipleDocuments) filtrando
 // por mime audio. El VM sube cada fichero secuencialmente con POST
 // /admin/songs/upload; cada item de la lista refleja su estado en vivo
 // (pendiente, subiendo, hecho, error).
 //
 // El fichero aterriza en MUSARUM_MUSIC_PATH/_inbox/ del servidor y se
-// importa en caliente. Emendatium (cuando estÃ© desplegado) renombrarÃ¡ y
-// moverÃ¡ a la carpeta canÃ³nica.
+// importa en caliente. Emendatium (cuando esté desplegado) renombrará y
+// moverá a la carpeta canónica.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UploadSongsScreen(
@@ -93,14 +93,14 @@ fun UploadSongsScreen(
                 title = { Text("Subir canciones") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 }
             )
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            // Botonera: seleccionar + subir todas. La selecciÃ³n abre
+            // Botonera: seleccionar + subir todas. La selección abre
             // el picker nativo de Android (SAF) filtrado por audio.
             Row(
                 modifier = Modifier
@@ -127,7 +127,7 @@ fun UploadSongsScreen(
                 }
             }
             Text(
-                "Se envÃ­an al servidor y Emendatium las moverÃ¡ a su " +
+                "Se envían al servidor y Emendatium las moverá a su " +
                     "carpeta cuando las identifique.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -185,7 +185,7 @@ private fun UploadRow(item: UploadItem) {
             val sub = buildString {
                 if (item.sizeBytes > 0) append(humanBytes(item.sizeBytes))
                 item.message?.let {
-                    if (isNotEmpty()) append(" Â· ")
+                    if (isNotEmpty()) append(" · ")
                     append(it)
                 }
             }
@@ -229,10 +229,10 @@ private fun StatusIcon(status: UploadStatus) {
 }
 
 /**
- * Obtiene nombre visible y tamaÃ±o del content-URI. En Android ambos
- * se consultan vÃ­a OpenableColumns sobre el ContentResolver. Si el
+ * Obtiene nombre visible y tamaño del content-URI. En Android ambos
+ * se consultan vía OpenableColumns sobre el ContentResolver. Si el
  * provider del picker no los expone (raro pero posible), caemos a
- * "sin nombre" y tamaÃ±o 0 â€” la subida aÃºn se intenta.
+ * "sin nombre" y tamaño 0 — la subida aún se intenta.
  */
 private fun probeUri(context: android.content.Context, uri: Uri): PickedFile {
     var name: String? = null
@@ -250,8 +250,8 @@ private fun probeUri(context: android.content.Context, uri: Uri): PickedFile {
     return PickedFile(uri, name ?: uri.lastPathSegment ?: "sin nombre", size)
 }
 
-/** IdÃ©ntico al humanBytes del panel servidor pero duplicado para no
- *  arrastrar la dependencia al paquete profile.upload. 3-4 lÃ­neas. */
+/** Idéntico al humanBytes del panel servidor pero duplicado para no
+ *  arrastrar la dependencia al paquete profile.upload. 3-4 líneas. */
 private fun humanBytes(bytes: Long): String {
     if (bytes < 1024) return "$bytes B"
     val kb = bytes / 1024.0

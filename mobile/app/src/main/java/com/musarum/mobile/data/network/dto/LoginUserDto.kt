@@ -1,10 +1,10 @@
-﻿package com.musarum.mobile.data.network.dto
+package com.musarum.mobile.data.network.dto
 
 import kotlinx.serialization.Serializable
 
 /**
  * Perfil minimal del picker del login (bolitas estilo Netflix). El backend
- * SOLO envÃ­a id/nick/avatarUrl por esta ruta pÃºblica â€” ni role, ni blocked.
+ * SOLO envía id/nick/avatarUrl por esta ruta pública — ni role, ni blocked.
  */
 @Serializable
 data class LoginUserDto(

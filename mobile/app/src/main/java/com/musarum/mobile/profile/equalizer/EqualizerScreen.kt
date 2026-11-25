@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.profile.equalizer
+package com.musarum.mobile.profile.equalizer
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,8 +37,8 @@ import com.musarum.mobile.LocalAppContainer
 
 /**
  * Pantalla de Ecualizador. 5 bandas verticales (sliders) con los centros
- * 60 Hz / 230 Hz / 910 Hz / 3.6 kHz / 14 kHz â€” distribuciÃ³n estÃ¡ndar que
- * cubre graves, medios y agudos. Rango Â±15 dB en milibelios (âˆ’1500..+1500).
+ * 60 Hz / 230 Hz / 910 Hz / 3.6 kHz / 14 kHz — distribución estándar que
+ * cubre graves, medios y agudos. Rango ±15 dB en milibelios (âˆ’1500..+1500).
  *
  * El EQ real vive en PlayerService (enganchado al audio session del ExoPlayer).
  * Esta pantalla solo escribe en PlayerPreferences; el service observa el
@@ -58,7 +58,7 @@ fun EqualizerScreen(onBack: () -> Unit) {
                 title = { Text("Ecualizador") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 }
             )
@@ -87,9 +87,9 @@ fun EqualizerScreen(onBack: () -> Unit) {
                 Switch(checked = enabled, onCheckedChange = { prefs.setEqualizerEnabled(it) })
             }
 
-            // 5 sliders horizontales â€” mÃ¡s legibles que verticales rotados.
+            // 5 sliders horizontales — más legibles que verticales rotados.
             // Cada uno con etiqueta de frecuencia a la izquierda y dB actual
-            // a la derecha, rango Â±15 dB.
+            // a la derecha, rango ±15 dB.
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 BAND_LABELS.forEachIndexed { i, label ->
                     BandSlider(
@@ -104,7 +104,7 @@ fun EqualizerScreen(onBack: () -> Unit) {
                 }
             }
 
-            // Reset rÃ¡pido a flat (0 dB en todas).
+            // Reset rápido a flat (0 dB en todas).
             Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
                 TextButton(onClick = { prefs.setEqualizerBands(List(5) { 0 }) }) {
                     Text("Restablecer plano")
@@ -152,7 +152,7 @@ private fun BandSlider(
     }
 }
 
-// Centros estÃ¡ndar aproximados cubriendo graves/medios/agudos. El Equalizer
+// Centros estándar aproximados cubriendo graves/medios/agudos. El Equalizer
 // de Android se encarga de mapear la banda i al rango real que soporta el
-// device â€” no todos exponen 5 bandas con estos centros exactos.
+// device — no todos exponen 5 bandas con estos centros exactos.
 private val BAND_LABELS = listOf("60 Hz", "230 Hz", "910 Hz", "3.6 kHz", "14 kHz")

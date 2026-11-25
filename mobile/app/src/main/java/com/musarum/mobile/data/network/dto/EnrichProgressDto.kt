@@ -1,9 +1,9 @@
-﻿package com.musarum.mobile.data.network.dto
+package com.musarum.mobile.data.network.dto
 
 import kotlinx.serialization.Serializable
 
 /**
- * Snapshot del progreso de "Re-enriquecer todo". El mÃ³vil hace polling cada
+ * Snapshot del progreso de "Re-enriquecer todo". El móvil hace polling cada
  * 2s mientras running=true. Cuando el backend lo marca false y
  * finishedAtMs != null, el polling para y se muestra el resumen final.
  */

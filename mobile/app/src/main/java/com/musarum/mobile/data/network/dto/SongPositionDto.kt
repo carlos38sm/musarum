@@ -1,11 +1,11 @@
-﻿package com.musarum.mobile.data.network.dto
+package com.musarum.mobile.data.network.dto
 
 import kotlinx.serialization.Serializable
 
 /**
  * Respuesta de GET /songs/{id}/position. index es 0-based en la lista
- * paginada por defecto (title ASC). El mÃ³vil hace page = index / PAGE_SIZE
- * y despuÃ©s scroll al Ã­ndice absoluto.
+ * paginada por defecto (title ASC). El móvil hace page = index / PAGE_SIZE
+ * y después scroll al índice absoluto.
  */
 @Serializable
 data class SongPositionDto(val index: Long)

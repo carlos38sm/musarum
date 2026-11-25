@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.data.network.dto
+package com.musarum.mobile.data.network.dto
 
 import kotlinx.serialization.Serializable
 
@@ -7,17 +7,17 @@ import kotlinx.serialization.Serializable
 data class UserResponseDto(
     val id: Long,
     val nick: String,
-    // Nullable porque /users/search (pÃºblico entre users) devuelve null
-    // para no revelar quiÃ©n es OWNER. /users/me y /users/admin sÃ­ lo traen.
+    // Nullable porque /users/search (público entre users) devuelve null
+    // para no revelar quién es OWNER. /users/me y /users/admin sí lo traen.
     val userRole: String? = null,
     val createdAt: String? = null,
     val avatarUrl: String? = null,
     val blocked: Boolean = false,
-    // Toggles de privacidad (Home â€” convivencia). Nullable: /users/search
+    // Toggles de privacidad (Home — convivencia). Nullable: /users/search
     // los deja fuera para no filtrar preferencias ajenas.
     val shareNowPlaying: Boolean? = null,
     val shareTaste: Boolean? = null,
-    // Ãšltima conexiÃ³n (login). Solo se rellena en /users/admin para el
+    // Ãšltima conexión (login). Solo se rellena en /users/admin para el
     // OWNER; en el resto de respuestas viene null. ISO-8601 UTC.
     val lastLoginAt: String? = null
 )
@@ -41,8 +41,8 @@ data class ChangePasswordRequest(
 )
 
 /**
- * Alta de usuario â€” solo el OWNER puede llamarlo. role=null â†’ MEMBER por
- * defecto en el backend. Se envÃ­a como String ("OWNER" / "MEMBER") para
+ * Alta de usuario — solo el OWNER puede llamarlo. role=null â†’ MEMBER por
+ * defecto en el backend. Se envía como String ("OWNER" / "MEMBER") para
  * que casar con el enum de Java sin configuraciones extra en Gson.
  */
 @Serializable

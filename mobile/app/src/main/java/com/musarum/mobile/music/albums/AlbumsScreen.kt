@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.music.albums
+package com.musarum.mobile.music.albums
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,7 +54,7 @@ fun AlbumsScreen(
     val refreshing by viewModel.refreshing.collectAsStateWithLifecycle()
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Ãlbumes") }) }
+        topBar = { TopAppBar(title = { Text("Álbumes") }) }
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = refreshing,
@@ -68,7 +68,7 @@ fun AlbumsScreen(
                     onRetry = { viewModel.refresh() }
                 )
                 is AlbumsUiState.Ready -> if (s.totalCount == 0) {
-                    EmptyView("Sin Ã¡lbumes")
+                    EmptyView("Sin álbumes")
                 } else {
                     val gridState = rememberLazyGridState()
                     // Dispara loadMore cuando quedan <10 items por verse.
@@ -95,7 +95,7 @@ fun AlbumsScreen(
                         modifier = Modifier.fillMaxSize()
                     ) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
-                            LibraryStatsHeader(primary = "${s.totalCount} Ã¡lbumes")
+                            LibraryStatsHeader(primary = "${s.totalCount} álbumes")
                         }
                         items(s.albums, key = { it.id }) { album ->
                             AlbumGridItem(album, onClick = { onOpenAlbum(album.id) })

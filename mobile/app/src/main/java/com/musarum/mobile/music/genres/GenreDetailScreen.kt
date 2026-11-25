@@ -1,4 +1,4 @@
-﻿@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 
 package com.musarum.mobile.music.genres
 
@@ -58,14 +58,14 @@ fun GenreDetailScreen(
     )
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    val currentTitle = (state as? GenreDetailUiState.Ready)?.genre?.name ?: "GÃ©nero"
+    val currentTitle = (state as? GenreDetailUiState.Ready)?.genre?.name ?: "Género"
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(currentTitle) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "AtrÃ¡s")
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 }
             )
@@ -98,7 +98,7 @@ fun GenreDetailScreen(
                     if (s.songs.isEmpty()) {
                         item {
                             Text(
-                                "Este gÃ©nero todavÃ­a no tiene canciones.",
+                                "Este género todavía no tiene canciones.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(24.dp)
@@ -175,7 +175,7 @@ private fun GenreHero(
                 color = Color.White
             )
             Text(
-                "$songCount canciones Â· ${humanizeDurationMs(totalMs)}",
+                "$songCount canciones · ${humanizeDurationMs(totalMs)}",
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.85f)
             )

@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.data.network.dto
+package com.musarum.mobile.data.network.dto
 
 import kotlinx.serialization.Serializable
 
@@ -9,13 +9,13 @@ data class PlaylistSummaryDto(
     val name: String,
     val isPublic: Boolean = false,
     val songCount: Int = 0,
-    // Hasta 4 URLs de las primeras canciones (mosaico 2x2). Slots vacÃ­os
-    // llegan como null â€” el cliente los pinta con placeholder.
+    // Hasta 4 URLs de las primeras canciones (mosaico 2x2). Slots vacíos
+    // llegan como null — el cliente los pinta con placeholder.
     //
-    // NULLABLE a propÃ³sito: Gson ignora defaults de Kotlin si el campo
-    // estÃ¡ ausente en el JSON. Si el mÃ³vil es nuevo y el backend aÃºn es
+    // NULLABLE a propósito: Gson ignora defaults de Kotlin si el campo
+    // está ausente en el JSON. Si el móvil es nuevo y el backend aún es
     // viejo (Watchtower sin pullear), la respuesta no trae coverUrls y
-    // Gson lo pone a null â€” al hacer `.take(4)` sobre eso crashea la
+    // Gson lo pone a null — al hacer `.take(4)` sobre eso crashea la
     // app entera al entrar en Biblioteca. Con nullable + `orEmpty()` al
     // consumir se degrada limpio.
     val coverUrls: List<String?>? = null
@@ -65,7 +65,7 @@ data class PlaylistDetailsDto(
     val createdAt: String? = null
 )
 
-// avatarUrl nullable: si el colaborador aÃºn no subiÃ³ foto, el mÃ³vil pinta
+// avatarUrl nullable: si el colaborador aún no subió foto, el móvil pinta
 // la inicial del nick con fondo coloreado (ver UserAvatar).
 @Serializable
 data class CollaboratorRefDto(
@@ -98,7 +98,7 @@ data class PlaylistUpdateRequest(
 
 data class AddSongToPlaylistRequest(val songId: Long)
 
-// AÃ±adir N canciones a una playlist en una sola peticiÃ³n. El backend
-// ignora las que ya estÃ¡n dentro; el orden fija la secuencia.
+// Añadir N canciones a una playlist en una sola petición. El backend
+// ignora las que ya están dentro; el orden fija la secuencia.
 @Serializable
 data class AddSongsBulkRequest(val songIds: List<Long>)

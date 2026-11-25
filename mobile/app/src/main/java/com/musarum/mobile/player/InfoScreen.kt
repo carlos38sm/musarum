@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.player
+package com.musarum.mobile.player
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -93,10 +93,10 @@ fun InfoScreen(
         onToggleFavorite = {},
         onAddToPlaylist = {},
         topActionsVisible = false,
-        // Orden lÃ³gico: LYRICS Â· VIDEO Â· TRACK Â· INFO. Desde INFO,
-        // deslizar a la derecha "va hacia atrÃ¡s" en la pastilla â†’
-        // la pestaÃ±a anterior es TRACK (Audio). A la izquierda ya no
-        // hay mÃ¡s â€” lo dejamos no-op.
+        // Orden lógico: LYRICS · VIDEO · TRACK · INFO. Desde INFO,
+        // deslizar a la derecha "va hacia atrás" en la pastilla â†’
+        // la pestaña anterior es TRACK (Audio). A la izquierda ya no
+        // hay más — lo dejamos no-op.
         onSwipeRight = onOpenTrack
     ) {
         Column(
@@ -162,8 +162,8 @@ fun InfoScreen(
 
 /**
  * Vista nueva en secciones. Los campos CORTOS se reparten en pares (2
- * columnas al 50%) para aprovechar el ancho; los LARGOS (tÃ­tulo, ruta,
- * Ã¡lbum, compositor, identificadores) siguen a ancho completo.
+ * columnas al 50%) para aprovechar el ancho; los LARGOS (título, ruta,
+ * álbum, compositor, identificadores) siguen a ancho completo.
  */
 @Composable
 private fun InfoSections(
@@ -191,24 +191,24 @@ private fun InfoSections(
                 } }
             } else null
         ) {
-            InfoLine("TÃ­tulo", details.title)
+            InfoLine("Título", details.title)
             if (details.artists.isNotEmpty()) {
                 InfoLine("Artistas", details.artists.joinToString(", ") { it.name })
             }
-            details.albumTitle?.let { InfoLine("Ãlbum", it) }
+            details.albumTitle?.let { InfoLine("Álbum", it) }
             details.composer?.let { InfoLine("Compositor", it) }
 
             val year = details.year ?: details.albumYear
             PairRow(
-                left = details.genreName?.let { "GÃ©nero" to it },
-                right = year?.let { "AÃ±o" to it.toString() }
+                left = details.genreName?.let { "Género" to it },
+                right = year?.let { "Año" to it.toString() }
             )
             val trackValue = details.trackNumber?.let { t ->
-                details.discNumber?.let { d -> "$t Â· disco $d" } ?: t.toString()
+                details.discNumber?.let { d -> "$t · disco $d" } ?: t.toString()
             }
             PairRow(
-                left = trackValue?.let { "NÂº de pista" to it },
-                right = details.durationMs?.let { "DuraciÃ³n" to formatMs(it.toLong()) }
+                left = trackValue?.let { "Nº de pista" to it },
+                right = details.durationMs?.let { "Duración" to formatMs(it.toLong()) }
             )
         }
 
@@ -221,8 +221,8 @@ private fun InfoSections(
                     left = details.bpm?.let { "BPM" to it.toString() },
                     right = details.musicalKey?.let { "Tonalidad" to it }
                 )
-                // Segunda fila: Camelot (cÃ³digo DJ) + ReplayGain. El texto
-                // explicativo del ReplayGain se quitÃ³ nov-24 2026 â€” ocupaba
+                // Segunda fila: Camelot (código DJ) + ReplayGain. El texto
+                // explicativo del ReplayGain se quitó nov-24 2026 — ocupaba
                 // mucho y Carlos ya sabe lo que es.
                 PairRow(
                     left = camelot?.let { "Camelot" to it },
@@ -231,13 +231,13 @@ private fun InfoSections(
             }
         }
 
-        // â”€â”€ TÃ©cnico â”€â”€
+        // â”€â”€ Técnico â”€â”€
         val hasTech = details.format != null || details.bitrate != null
                 || details.sampleRate != null || details.channels != null
                 || details.fileSize != null || details.audioPath != null
                 || isOwner
         if (hasTech) {
-            Section("TÃ©cnico") {
+            Section("Técnico") {
                 PairRow(
                     left = details.format?.let { "Formato" to it },
                     right = details.bitrate?.let { "Bitrate" to "$it kbps" }
@@ -247,15 +247,15 @@ private fun InfoSections(
                     right = details.channels?.let { "Canales" to formatChannels(it) }
                 )
                 PairRow(
-                    left = details.fileSize?.let { "TamaÃ±o" to formatFileSize(it) },
+                    left = details.fileSize?.let { "Tamaño" to formatFileSize(it) },
                     right = null
                 )
                 details.audioPath?.let { InfoLine("Ruta del archivo", it) }
-                // ID visible solo para el OWNER: Ãºtil para consultas directas
-                // en la DB cuando una canciÃ³n se porta mal (letras raras,
+                // ID visible solo para el OWNER: útil para consultas directas
+                // en la DB cuando una canción se porta mal (letras raras,
                 // metadata inconsistente). No aporta nada al resto de users.
                 if (isOwner) {
-                    InfoLine("ID canciÃ³n", details.id.toString())
+                    InfoLine("ID canción", details.id.toString())
                 }
             }
         }
@@ -269,15 +269,15 @@ private fun InfoSections(
             }
         }
 
-        // â”€â”€ Esta canciÃ³n suena aâ€¦
-        // La secciÃ³n SIEMPRE se muestra. SegÃºn el caso pinta cards o un
-        // mensaje que explica por quÃ© no hay sugerencias. produceState
+        // â”€â”€ Esta canción suena a…
+        // La sección SIEMPRE se muestra. Según el caso pinta cards o un
+        // mensaje que explica por qué no hay sugerencias. produceState
         // se rearranca al cambiar details.id.
         //
-        //   bpm/key en null en la canciÃ³n â†’ "Falta BPM o tonalidad"
+        //   bpm/key en null en la canción â†’ "Falta BPM o tonalidad"
         //   endpoint devuelve []          â†’ "Sin canciones compatibles"
         //   endpoint falla (red/5xx)      â†’ "No se pudo cargar"
-        //   lista no vacÃ­a                â†’ cards
+        //   lista no vacía                â†’ cards
         val container = LocalAppContainer.current
         val hasBpm = details.bpm != null && details.bpm > 0
         val hasKey = !details.musicalKey.isNullOrBlank()
@@ -300,9 +300,9 @@ private fun InfoSections(
                 )
             }
         }
-        Section("Esta canciÃ³n suena aâ€¦") {
+        Section("Esta canción suena a…") {
             when (val s = similarState.value) {
-                SimilarState.Loading -> SimilarHint("Buscando canciones similaresâ€¦")
+                SimilarState.Loading -> SimilarHint("Buscando canciones similares…")
                 is SimilarState.NoMeta -> {
                     val falta = when {
                         !s.bpm && !s.key -> "BPM ni tonalidad"
@@ -310,16 +310,16 @@ private fun InfoSections(
                         else -> "tonalidad"
                     }
                     SimilarHint(
-                        "Esta canciÃ³n no tiene $falta en la DB. " +
-                                "Pide un re-enriquecimiento desde AnÃ¡lisis del servidor."
+                        "Esta canción no tiene $falta en la DB. " +
+                                "Pide un re-enriquecimiento desde Análisis del servidor."
                     )
                 }
                 SimilarState.Empty -> SimilarHint(
-                    "Sin canciones compatibles en tu catÃ¡logo. " +
-                            "AÃ±ade mÃ¡s mÃºsica o re-enriquece para ampliar el abanico."
+                    "Sin canciones compatibles en tu catálogo. " +
+                            "Añade más música o re-enriquece para ampliar el abanico."
                 )
                 SimilarState.Error -> SimilarHint(
-                    "No se pudieron cargar las sugerencias (Â¿se perdiÃ³ la conexiÃ³n?)."
+                    "No se pudieron cargar las sugerencias (¿se perdió la conexión?)."
                 )
                 is SimilarState.Loaded -> LazyRow(
                     contentPadding = PaddingValues(horizontal = 2.dp),
@@ -389,7 +389,7 @@ private fun InfoSections(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(if (uploading) "Subiendoâ€¦" else "Cambiar portada de esta canciÃ³n")
+                    Text(if (uploading) "Subiendo…" else "Cambiar portada de esta canción")
                 }
                 Spacer(Modifier.height(8.dp))
                 androidx.compose.material3.OutlinedButton(
@@ -402,7 +402,7 @@ private fun InfoSections(
                                     resp.isSuccessful
                                 }.getOrDefault(false)
                                 snackbar(
-                                    if (ok) "Enriquecimiento en curso â€” datos nuevos llegarÃ¡n en unos segundos"
+                                    if (ok) "Enriquecimiento en curso — datos nuevos llegarán en unos segundos"
                                     else "No se pudo lanzar el enriquecimiento"
                                 )
                                 requesting = false
@@ -418,7 +418,7 @@ private fun InfoSections(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text(if (requesting) "Lanzandoâ€¦" else "Volver a enriquecer esta canciÃ³n")
+                    Text(if (requesting) "Lanzando…" else "Volver a enriquecer esta canción")
                 }
             }
         }
@@ -429,9 +429,9 @@ private fun InfoSections(
 
 
 /**
- * Estados del bloque "Esta canciÃ³n suena aâ€¦". Permite diferenciar
- * entre "aÃºn cargando", "la canciÃ³n no tiene metadata musical",
- * "no hay nada que casar en el catÃ¡logo" y "fallÃ³ la peticiÃ³n",
+ * Estados del bloque "Esta canción suena a…". Permite diferenciar
+ * entre "aún cargando", "la canción no tiene metadata musical",
+ * "no hay nada que casar en el catálogo" y "falló la petición",
  * para pintar un mensaje adecuado en cada caso.
  */
 private sealed class SimilarState {
@@ -456,9 +456,9 @@ private fun SimilarHint(text: String) {
 }
 
 /**
- * Tarjeta mini del carrusel "Esta canciÃ³n suena aâ€¦": cover 100dp +
- * tÃ­tulo y artista debajo, ancho fijo para que entren ~3 en pantalla.
- * Toque = reproduce la cola de similares empezando por Ã©sta.
+ * Tarjeta mini del carrusel "Esta canción suena a…": cover 100dp +
+ * título y artista debajo, ancho fijo para que entren ~3 en pantalla.
+ * Toque = reproduce la cola de similares empezando por ésta.
  */
 @Composable
 private fun SimilarCard(song: SongSummaryDto, onClick: () -> Unit) {
@@ -488,8 +488,8 @@ private fun SimilarCard(song: SongSummaryDto, onClick: () -> Unit) {
 }
 
 /**
- * Cada secciÃ³n se dibuja como una tarjeta glass con esquinas redondeadas
- * para que el ojo las separe claramente â€” era un bloque corrido antes.
+ * Cada sección se dibuja como una tarjeta glass con esquinas redondeadas
+ * para que el ojo las separe claramente — era un bloque corrido antes.
  */
 @Composable
 private fun Section(
@@ -546,7 +546,7 @@ private fun InfoLine(label: String, value: String) {
 
 /**
  * Fila con dos columnas al 50%. Si solo viene uno de los dos lados, se
- * dibuja ocupando su columna sin estirarse a ancho completo (asÃ­ siempre
+ * dibuja ocupando su columna sin estirarse a ancho completo (así siempre
  * queda alineado con las parejas vecinas).
  */
 @Composable
@@ -595,7 +595,7 @@ private fun formatSampleRate(hz: Int): String {
 
 private fun formatChannels(c: Int): String = when (c) {
     1 -> "Mono"
-    2 -> "EstÃ©reo"
+    2 -> "Estéreo"
     else -> "$c canales"
 }
 

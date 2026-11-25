@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.profile.folders
+package com.musarum.mobile.profile.folders
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -54,11 +54,11 @@ import com.musarum.mobile.data.network.dto.DiscoveredFolderDto
 import com.musarum.mobile.data.network.dto.LibraryFolderDto
 
 /**
- * GestiÃ³n de sub-carpetas de biblioteca â€” solo accesible al OWNER (el
+ * Gestión de sub-carpetas de biblioteca — solo accesible al OWNER (el
  * backend bloquea 403 a cualquier otro). La pantalla ofrece: lista de
- * carpetas registradas con switch de activar/desactivar y botÃ³n de borrar,
- * y una fila "AÃ±adir" (FAB) que abre un diÃ¡logo con las sub-carpetas que
- * existen fÃ­sicamente bajo la paraguas pero aÃºn no estÃ¡n registradas.
+ * carpetas registradas con switch de activar/desactivar y botón de borrar,
+ * y una fila "Añadir" (FAB) que abre un diálogo con las sub-carpetas que
+ * existen físicamente bajo la paraguas pero aún no están registradas.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,7 +77,7 @@ fun LibraryFoldersScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Carpetas de mÃºsica") },
+                title = { Text("Carpetas de música") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -95,7 +95,7 @@ fun LibraryFoldersScreen(
                 contentColor = MaterialTheme.colorScheme.onPrimary,
                 shape = androidx.compose.foundation.shape.CircleShape
             ) {
-                Icon(Icons.Filled.Add, contentDescription = "AÃ±adir carpeta")
+                Icon(Icons.Filled.Add, contentDescription = "Añadir carpeta")
             }
         }
     ) { padding ->
@@ -135,7 +135,7 @@ fun LibraryFoldersScreen(
                 if (state.folders.isEmpty()) {
                     item {
                         Text(
-                            "No hay carpetas registradas aÃºn. AÃ±ade una con el +.",
+                            "No hay carpetas registradas aún. Añade una con el +.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(16.dp)
                         )
@@ -169,8 +169,8 @@ private fun HeaderExplainer() {
         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
     ) {
         Text(
-            "Musarum escanea solo las carpetas marcadas aquÃ­. " +
-                "Para aÃ±adir una, debe vivir dentro de la carpeta raÃ­z que " +
+            "Musarum escanea solo las carpetas marcadas aquí. " +
+                "Para añadir una, debe vivir dentro de la carpeta raíz que " +
                 "montaste en el servidor.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface,
@@ -209,8 +209,8 @@ private fun FolderRow(
             Text(
                 buildString {
                     append(folder.path)
-                    if (!folder.existsOnDisk) append(" Â· no existe en disco")
-                    else if (folder.songCount > 0) append(" Â· ${folder.songCount} canciones")
+                    if (!folder.existsOnDisk) append(" · no existe en disco")
+                    else if (folder.songCount > 0) append(" · ${folder.songCount} canciones")
                 },
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -245,13 +245,13 @@ private fun AddFolderDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("AÃ±adir carpeta") },
+        title = { Text("Añadir carpeta") },
         text = {
             Column {
                 if (discoverable.isEmpty()) {
                     Text(
                         "No hay sub-carpetas sin registrar bajo la carpeta " +
-                            "raÃ­z. Si creaste una ahora, pulsa recargar " +
+                            "raíz. Si creaste una ahora, pulsa recargar " +
                             "en la pantalla anterior.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -290,7 +290,7 @@ private fun AddFolderDialog(
                                     )
                                 }
                                 TextButton(onClick = { onPickDiscovered(d) }) {
-                                    Text("AÃ±adir")
+                                    Text("Añadir")
                                 }
                             }
                         }
@@ -298,7 +298,7 @@ private fun AddFolderDialog(
                 }
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "O ruta manual (debe estar bajo la raÃ­z):",
+                    "O ruta manual (debe estar bajo la raíz):",
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -316,7 +316,7 @@ private fun AddFolderDialog(
             TextButton(
                 enabled = customPath.isNotBlank(),
                 onClick = { onAddCustom(customPath.trim()) }
-            ) { Text("AÃ±adir manual") }
+            ) { Text("Añadir manual") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cerrar") }

@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.player
+package com.musarum.mobile.player
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
@@ -49,7 +49,7 @@ import kotlinx.coroutines.launch
 
 /**
  * Mini-player tipo pastilla flotante (foto 5 de referencias).
- * Esquinas muy redondeadas, cover a la izquierda, tÃ­tulo + artista en el
+ * Esquinas muy redondeadas, cover a la izquierda, título + artista en el
  * centro, play y next a la derecha. Debajo una barra fina de progreso.
  */
 @Composable
@@ -66,8 +66,8 @@ fun MiniPlayer(
 
     // Offset horizontal: la fila sigue al dedo mientras arrastras. Al soltar,
     // si pasa umbral animamos fuera + dispara next/prev; si no, spring vuelve
-    // a 0. El alpha baja con el arrastre para dar sensaciÃ³n de "paso de
-    // pÃ¡gina". Al cambiar de canciÃ³n el estado se refresca y la nueva row
+    // a 0. El alpha baja con el arrastre para dar sensación de "paso de
+    // página". Al cambiar de canción el estado se refresca y la nueva row
     // aparece en el centro sin flash.
     val scope = rememberCoroutineScope()
     var dragX by remember { mutableFloatStateOf(0f) }
@@ -75,9 +75,9 @@ fun MiniPlayer(
     val rowAlpha = (1f - (abs(dragX) / fadeDistancePx).coerceIn(0f, 0.6f))
 
     // Fondo FIJO del mini-player: surface del tema (sin degradado animado
-    // ni color extraÃ­do del cover). Carlos pidiÃ³ que SOLO el play/pause y
-    // el anillo de progreso cambien con la canciÃ³n. Antes el fondo entero
-    // cambiaba con cada canciÃ³n y era ruido visual innecesario.
+    // ni color extraído del cover). Carlos pidió que SOLO el play/pause y
+    // el anillo de progreso cambien con la canción. Antes el fondo entero
+    // cambiaba con cada canción y era ruido visual innecesario.
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -93,7 +93,7 @@ fun MiniPlayer(
                 // Swipe horizontal sobre la pastilla â†’ siguiente / anterior.
                 // El gesto se captura en toda la fila (incluidos los botones)
                 // pero el offset visual + fade se aplican SOLO al bloque
-                // cover+tÃ­tulo+artista. Los controles (play, siguiente) se
+                // cover+título+artista. Los controles (play, siguiente) se
                 // quedan fijos como en Spotify / Apple Music.
                 .pointerInput(Unit) {
                     val threshold = 90.dp.toPx()
@@ -133,9 +133,9 @@ fun MiniPlayer(
                 .padding(start = 8.dp, end = 4.dp, top = 5.dp, bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Bloque desplazable: cover + tÃ­tulo + artista. weight(1f) para
+            // Bloque desplazable: cover + título + artista. weight(1f) para
             // ocupar lo que haya hasta los botones. El offset lo mueve con
-            // el dedo; alpha baja segÃºn el arrastre.
+            // el dedo; alpha baja según el arrastre.
             Row(
                 modifier = Modifier
                     .weight(1f)
@@ -145,11 +145,11 @@ fun MiniPlayer(
             ) {
                 CoverImage(
                     url = state.currentCoverUrl,
-                    // Cover 40dp (antes 44). PequeÃ±o ajuste de corner
-                    // para que no se vea cuadrado al bajar de tamaÃ±o.
+                    // Cover 40dp (antes 44). Pequeño ajuste de corner
+                    // para que no se vea cuadrado al bajar de tamaño.
                     size = 40.dp,
                     cornerRadius = 10.dp,
-                    // Placeholder determinista por canciÃ³n (mismo criterio
+                    // Placeholder determinista por canción (mismo criterio
                     // que SongRow y NowPlaying). Sin esto el miniplayer
                     // muestra un gris plano cuando la pista no tiene cover.
                     placeholderKind = com.musarum.mobile.music.PlaceholderKind.SONGS,
@@ -175,10 +175,10 @@ fun MiniPlayer(
                 }
             }
 
-            // Anillo y fondo del play usan UN color extraÃ­do del cover
+            // Anillo y fondo del play usan UN color extraído del cover
             // (rememberDominantCoverColor, el mismo que el shell del
-            // NowPlaying). Es lo ÃšNICO que cambia con la canciÃ³n en el
-            // mini-player â€” el fondo de la pastilla queda fijo.
+            // NowPlaying). Es lo ÃšNICO que cambia con la canción en el
+            // mini-player — el fondo de la pastilla queda fijo.
             val accent by rememberDominantCoverColor(
                 coverUrl = state.currentCoverUrl,
                 fallback = MaterialTheme.colorScheme.primary
@@ -190,7 +190,7 @@ fun MiniPlayer(
                 CircularProgressIndicator(
                     progress = { progress },
                     // Anillo 42dp (antes 48) para alinearlo con el cover
-                    // de 40dp â€” se mantiene proporcional y la pastilla
+                    // de 40dp — se mantiene proporcional y la pastilla
                     // deja de "sobresalir" por la derecha.
                     modifier = Modifier.size(42.dp),
                     color = ringColor,

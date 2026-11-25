@@ -1,4 +1,4 @@
-﻿package com.musarum.mobile.navigation
+package com.musarum.mobile.navigation
 
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.AnimatedContentTransitionScope.SlideDirection
@@ -73,9 +73,9 @@ fun MusarumNavHost(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     // Shortcut pendiente de procesar (long-press icono launcher â†’ MainActivity
-    // lo expone aquÃ­). Cuando no sea null y el usuario estÃ© autenticado,
+    // lo expone aquí). Cuando no sea null y el usuario esté autenticado,
     // navegamos a la ruta correspondiente y llamamos onShortcutConsumed para
-    // que la prÃ³xima recomposiciÃ³n no vuelva a navegar.
+    // que la próxima recomposición no vuelva a navegar.
     pendingShortcut: String? = null,
     onShortcutConsumed: () -> Unit = {}
 ) {
@@ -87,10 +87,10 @@ fun MusarumNavHost(
 
     val startDestination = if (isAuthenticated) Routes.HOME else Routes.LOGIN
 
-    // Procesa el shortcut del launcher cuando llega: en frÃ­o (app cerrada
+    // Procesa el shortcut del launcher cuando llega: en frío (app cerrada
     // â†’ onCreate puso el extra antes del primer render) o en caliente
     // (app en background â†’ onNewIntent lo actualiza con la Activity viva).
-    // Solo navega si hay sesiÃ³n; si el user estÃ¡ en Login, el shortcut
+    // Solo navega si hay sesión; si el user está en Login, el shortcut
     // queda pendiente y se re-dispara cuando isAuthenticated pase a true.
     LaunchedEffect(pendingShortcut, isAuthenticated) {
         val sc = pendingShortcut ?: return@LaunchedEffect
@@ -108,13 +108,13 @@ fun MusarumNavHost(
         onShortcutConsumed()
     }
 
-    // Reacciona a la pÃ©rdida de sesiÃ³n en caliente: cuando el JWT expira o
+    // Reacciona a la pérdida de sesión en caliente: cuando el JWT expira o
     // el backend responde 401, UnauthorizedInterceptor limpia el token â†’
-    // isAuthenticated pasa a false. Como `startDestination` solo se evalÃºa
+    // isAuthenticated pasa a false. Como `startDestination` solo se evalúa
     // una vez al construir el graph, SIN este LaunchedEffect el usuario se
     // quedaba en Home viendo errores de red hasta cerrar y reabrir la app.
-    // La transiciÃ³n login(falseâ†’true) la gestiona LoginScreen.onLoginSuccess;
-    // solo nos interesa la caÃ­da trueâ†’false post-login.
+    // La transición login(falseâ†’true) la gestiona LoginScreen.onLoginSuccess;
+    // solo nos interesa la caída trueâ†’false post-login.
     var wasAuthenticated by remember { mutableStateOf(isAuthenticated) }
     LaunchedEffect(isAuthenticated) {
         if (wasAuthenticated && !isAuthenticated) {
@@ -133,8 +133,8 @@ fun MusarumNavHost(
     val isNowPlaying = currentRoute == Routes.NOW_PLAYING
     val isVideo = currentRoute == Routes.VIDEO
     val isPlayerSibling = currentRoute == Routes.LYRICS || currentRoute == Routes.INFO
-    // Letra e Info sÃ­ muestran mini-player (son pantallas de contenido)
-    // VÃ­deo no â€” ocupa toda la pantalla y gestiona su propio control.
+    // Letra e Info sí muestran mini-player (son pantallas de contenido)
+    // Vídeo no — ocupa toda la pantalla y gestiona su propio control.
     val showMini = !isLogin && !isNowPlaying && !isVideo
     val showBottomNav = !isLogin && !isNowPlaying && !isPlayerSibling && !isVideo
 
@@ -155,8 +155,8 @@ fun MusarumNavHost(
         // No pasamos `snackbarHost` al Scaffold: lo pintamos manualmente
         // como overlay en la zona superior (dentro del Box de contenido)
         // para que NUNCA tape los controles de NowPlaying / Video, que son
-        // la parte baja de la pantalla. Como pÃ­ldora pequeÃ±a arriba, estilo
-        // toast de Android â€” ver [MusarumMiniSnackbar].
+        // la parte baja de la pantalla. Como píldora pequeña arriba, estilo
+        // toast de Android — ver [MusarumMiniSnackbar].
         bottomBar = {
             if (showMini || showBottomNav) {
                 Column {
@@ -180,7 +180,7 @@ fun MusarumNavHost(
                             },
                             onPopToTabRoot = { route ->
                                 // Pop hasta el root del tab SIN restaurar
-                                // estado: asÃ­ el usuario ve la pantalla
+                                // estado: así el usuario ve la pantalla
                                 // principal del tab, no la subpantalla en la
                                 // que estaba. navigate(... popUpTo(route) {
                                 // inclusive = false }) hace exactamente eso.
@@ -196,21 +196,21 @@ fun MusarumNavHost(
         }
     ) { innerPadding ->
       Box(modifier = Modifier.fillMaxSize()) {
-        // DiÃ¡logo global de "actualizaciÃ³n disponible": lo monitorizamos
-        // aquÃ­ (fuera del NavHost) para que aparezca en cualquier pantalla.
+        // Diálogo global de "actualización disponible": lo monitorizamos
+        // aquí (fuera del NavHost) para que aparezca en cualquier pantalla.
         val update by container.updateChecker.available.collectAsStateWithLifecycle()
         update?.let { avail ->
             val ctx = androidx.compose.ui.platform.LocalContext.current
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = {
-                    // Solo cerrable si no es mandatory â€” asÃ­ forzamos al
+                    // Solo cerrable si no es mandatory — así forzamos al
                     // usuario a actualizar cuando el backend lo exige.
                     if (!avail.mandatory) container.updateChecker.dismiss()
                 },
-                title = { androidx.compose.material3.Text("Nueva versiÃ³n disponible") },
+                title = { androidx.compose.material3.Text("Nueva versión disponible") },
                 text = {
                     androidx.compose.material3.Text(
-                        "Hay una versiÃ³n mÃ¡s reciente de Musarum (${avail.latest}). " +
+                        "Hay una versión más reciente de Musarum (${avail.latest}). " +
                             "Tienes instalada la ${avail.current}."
                     )
                 },
@@ -226,7 +226,7 @@ fun MusarumNavHost(
                     if (!avail.mandatory) {
                         androidx.compose.material3.TextButton(onClick = {
                             container.updateChecker.dismiss()
-                        }) { androidx.compose.material3.Text("MÃ¡s tarde") }
+                        }) { androidx.compose.material3.Text("Más tarde") }
                     }
                 }
             )
@@ -251,10 +251,10 @@ fun MusarumNavHost(
                 container.playerController.stop()
                 container.favoriteRepository.clear()
                 container.playlistRepository.clear()
-                // Historial de bÃºsqueda, EQ y preferencias "por usuario": al
-                // cerrar sesiÃ³n los limpiamos para que si otro user entra en
-                // el mismo mÃ³vil no vea las bÃºsquedas del anterior. Las
-                // preferencias de sistema (crossfade, replaygain) sÃ­ quedan,
+                // Historial de búsqueda, EQ y preferencias "por usuario": al
+                // cerrar sesión los limpiamos para que si otro user entra en
+                // el mismo móvil no vea las búsquedas del anterior. Las
+                // preferencias de sistema (crossfade, replaygain) sí quedan,
                 // son de "aparato" no de "cuenta".
                 container.playerPreferences.clearRecentSearches()
                 sessionViewModel.logout()
@@ -616,8 +616,8 @@ fun MusarumNavHost(
         }
         }
         // Overlay del Snackbar: TOP-CENTER con padding de status bar y un
-        // pequeÃ±o respiro vertical. Fuera del NavHost para que persista
-        // entre navegaciones. Usa la pÃ­ldora pequeÃ±a â€” ver
+        // pequeño respiro vertical. Fuera del NavHost para que persista
+        // entre navegaciones. Usa la píldora pequeña — ver
         // [MusarumMiniSnackbar].
         SnackbarHost(
             hostState = snackbarHostState,
@@ -631,14 +631,14 @@ fun MusarumNavHost(
 }
 
 // â”€â”€ Transiciones entre pantallas del player â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Las 4 pantallas (Audio, Letra, Info, VÃ­deo) comparten la misma pÃ­ldora de
-// arriba. Las transicionamos con un slide horizontal pequeÃ±o + fade en 300 ms:
-// la nueva entra desde la derecha (o izquierda) segÃºn el orden lÃ³gico de la
-// pÃ­ldora, no segÃºn el stack de navegaciÃ³n â€” asÃ­ el movimiento acompaÃ±a al
-// highlight que corre dentro de la pÃ­ldora en vez de ir en contra.
+// Las 4 pantallas (Audio, Letra, Info, Vídeo) comparten la misma píldora de
+// arriba. Las transicionamos con un slide horizontal pequeño + fade en 300 ms:
+// la nueva entra desde la derecha (o izquierda) según el orden lógico de la
+// píldora, no según el stack de navegación — así el movimiento acompaña al
+// highlight que corre dentro de la píldora en vez de ir en contra.
 //
-// Orden lÃ³gico (de izquierda a derecha, como se pintan en la pÃ­ldora):
-//   LYRICS Â· VIDEO Â· NOW_PLAYING Â· INFO
+// Orden lógico (de izquierda a derecha, como se pintan en la píldora):
+//   LYRICS · VIDEO · NOW_PLAYING · INFO
 
 private const val PILL_ANIM_MS = 300
 
@@ -652,7 +652,7 @@ private val playerOrder = listOf(
 private fun AnimatedContentTransitionScope<NavBackStackEntry>.directionTowards(): SlideDirection {
     val from = playerOrder.indexOf(initialState.destination.route)
     val to   = playerOrder.indexOf(targetState.destination.route)
-    // Si cualquiera no estÃ¡ en la lista (venimos de fuera del player, p. ej.
+    // Si cualquiera no está en la lista (venimos de fuera del player, p. ej.
     // el MiniPlayer), usamos "sube desde abajo" como fallback neutro.
     if (from < 0 || to < 0) return SlideDirection.Up
     return if (to > from) SlideDirection.Left else SlideDirection.Right
