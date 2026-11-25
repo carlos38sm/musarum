@@ -177,7 +177,7 @@ fun MiniPlayer(
 
             // Anillo y fondo del play usan UN color extraído del cover
             // (rememberDominantCoverColor, el mismo que el shell del
-            // NowPlaying). Es lo ÃšNICO que cambia con la canción en el
+            // NowPlaying). Es lo ÚNICO que cambia con la canción en el
             // mini-player — el fondo de la pastilla queda fijo.
             val accent by rememberDominantCoverColor(
                 coverUrl = state.currentCoverUrl,

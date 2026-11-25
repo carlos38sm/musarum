@@ -4,6 +4,7 @@ import android.content.Context
 import com.musarum.mobile.data.auth.AuthRepository
 import com.musarum.mobile.data.downloads.DownloadsManager
 import com.musarum.mobile.data.downloads.DownloadsRepository
+import com.musarum.mobile.data.uploads.UploadsManager
 import com.musarum.mobile.data.library.LibraryFolderRepository
 import com.musarum.mobile.data.music.AlbumRepository
 import com.musarum.mobile.data.music.ArtistRepository
@@ -55,4 +56,12 @@ class DataContainer(
     val updateChecker: UpdateChecker = UpdateChecker(network.apiService, applicationScope).also {
         it.checkOnce()
     }
+
+    /** Subidas de canciones en vivo. Vive aquí (no en el VM) para que al
+     *  salir de UploadSongsScreen la lista y el job sigan vivos. */
+    val uploadsManager: UploadsManager = UploadsManager(
+        context = context,
+        apiService = network.apiService,
+        applicationScope = applicationScope
+    )
 }

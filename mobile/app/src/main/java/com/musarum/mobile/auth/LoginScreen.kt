@@ -258,7 +258,7 @@ fun LoginScreen(
             }
         }
 
-        // IMPORTANTE: el IconButton del servidor va DESPUÃ‰S del Column en el
+        // IMPORTANTE: el IconButton del servidor va DESPUÉS del Column en el
         // Box (= encima en Z-order) para que los taps lleguen a él. Antes
         // estaba antes del Column, y el .verticalScroll del Column consume
         // TODOS los eventos pointer de su área â†’ el botón no respondía a

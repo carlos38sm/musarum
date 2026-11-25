@@ -176,7 +176,7 @@ private fun UserRow(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            // Ãšltima conexión: solo la pintamos para MEMBERS (el OWNER se
+            // Última conexión: solo la pintamos para MEMBERS (el OWNER se
             // ve a sí mismo cada vez que abre la app, no tiene sentido).
             if (user.userRole != "OWNER") {
                 Text(

@@ -517,7 +517,7 @@ private fun PlaylistRow(
         modifier = rowModifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Mosaico 2Ã—2 con las portadas de las 4 primeras canciones
+        // Mosaico 2×2 con las portadas de las 4 primeras canciones
         // (bloque B20). Los huecos se rellenan con placeholder de
         // playlists — si _placeholders/playlists está vacío, cae a gris.
         com.musarum.mobile.music.PlaylistMosaicCover(

@@ -600,7 +600,7 @@ private fun SongsLibraryHero(
 }
 
 /**
- * "Y h" ó "Y h M min" según convenga. Ãštil para el hero de Canciones.
+ * "Y h" ó "Y h M min" según convenga. Útil para el hero de Canciones.
  */
 private fun humanizeHours(ms: Long): String {
     val totalMinutes = ms / 60_000L

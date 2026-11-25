@@ -207,7 +207,7 @@ fun PlaylistDetailScreen(
                                     .fillMaxWidth()
                                     .padding(16.dp)
                             ) {
-                                // Mosaico 2Ã—2 + título como header (B20).
+                                // Mosaico 2×2 + título como header (B20).
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     com.musarum.mobile.music.PlaylistMosaicCover(
                                         urls = s.playlist.coverUrls,
@@ -237,7 +237,7 @@ fun PlaylistDetailScreen(
                                     }
                                 }
                                 Spacer(Modifier.height(14.dp))
-                                // Info extra (B21) en bento 2Ã—2: canciones,
+                                // Info extra (B21) en bento 2×2: canciones,
                                 // duración total, artista top, género top.
                                 // La fecha va aparte como pie pequeño.
                                 val totalMs = s.playlist.durationMs

@@ -261,7 +261,7 @@ fun ProfileScreen(
                 enabled = state.user != null
             )
 
-            // â”€â”€ REPRODUCCIÃ“N â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+            // â”€â”€ REPRODUCCIÓN â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SectionTitle("Reproducción")
             SettingRow(
                 icon = Icons.Filled.Tune,
@@ -669,7 +669,7 @@ private fun StatsCard(stats: com.musarum.mobile.data.network.dto.UserStatsDto) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "TUS NÃšMEROS",
+                "TUS NÚMEROS",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold,

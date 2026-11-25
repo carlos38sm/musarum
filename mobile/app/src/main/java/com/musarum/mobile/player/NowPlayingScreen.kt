@@ -215,13 +215,6 @@ fun NowPlayingScreen(
             // (12dp en vez de 20dp) — más "foto" y menos píldora. Pedido
             // Carlos nov-24 2026.
             val coverSize = maxWidth.coerceAtMost(340.dp)
-            // Pulso al BPM: el cover "late" sincronizado al tempo de la
-            // canción. Si el backend no sabe el BPM o la canción está en
-            // pausa, el scale se queda quieto en 1.0 — sin pulso.
-            val beatScale by rememberBeatScale(
-                bpm = vmState.details?.bpm,
-                isPlaying = playerState.isPlaying
-            )
             // Hero-enter reveal: cuando entras a NowPlaying desde el mini-player
             // (o desde cualquier otra parte), el cover arranca a 0.55× + alfa 0
             // y springea a tamaño completo. Visualmente da la sensación de
@@ -250,12 +243,10 @@ fun NowPlayingScreen(
                     .size(coverSize)
                     .aspectRatio(1f)
                     .graphicsLayer {
-                        // Multiplicamos los dos scales para que el latido del
-                        // BPM siga vivo DESPUÃ‰S del reveal y, durante el reveal,
-                        // el pulso quede escondido bajo la animación de entrada
-                        // (0.55 Ã— 1.025 â‰ˆ 0.56 — imperceptible).
-                        scaleX = beatScale * heroScale
-                        scaleY = beatScale * heroScale
+                        // Solo el hero-reveal de entrada. El pulso al BPM se
+                        // retiró porque distraía durante la escucha.
+                        scaleX = heroScale
+                        scaleY = heroScale
                         alpha = heroAlpha
                     },
                 shape = RoundedCornerShape(12.dp),
@@ -643,7 +634,7 @@ fun PlayerShellScaffold(
         ) {
             // Barrita de arrastre estilo bottom-sheet. Pista visual de
             // "se puede bajar deslizando". Pedida por Carlos (nov 2026,
-            // bloque 1 de tanda 20-items). 40Ã—4dp onSurface @25%.
+            // bloque 1 de tanda 20-items). 40×4dp onSurface @25%.
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

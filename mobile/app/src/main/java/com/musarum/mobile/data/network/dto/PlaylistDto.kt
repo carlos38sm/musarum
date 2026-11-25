@@ -55,7 +55,7 @@ data class PlaylistDetailsDto(
     val ownerId: Long?,
     val entries: PageDto<PlaylistEntryDto> = PageDto(),
     val collaborators: List<CollaboratorRefDto> = emptyList(),
-    // Header enriquecido (bloque B21): mosaico 2Ã—2, totales y tops.
+    // Header enriquecido (bloque B21): mosaico 2×2, totales y tops.
     // Nullable por el mismo motivo que PlaylistSummaryDto.coverUrls.
     val coverUrls: List<String?>? = null,
     val songCount: Int = 0,

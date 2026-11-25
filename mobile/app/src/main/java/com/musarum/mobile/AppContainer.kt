@@ -53,6 +53,7 @@ class AppContainer(context: Context) {
     val downloadsRepository get() = data.downloadsRepository
     val downloadsManager get() = data.downloadsManager
     val updateChecker get() = data.updateChecker
+    val uploadsManager get() = data.uploadsManager
 
     val audioSessionIdFlow get() = player.audioSessionIdFlow
     val preferredAudioDeviceId get() = player.preferredAudioDeviceId

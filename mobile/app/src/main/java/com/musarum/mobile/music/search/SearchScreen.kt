@@ -307,10 +307,10 @@ fun SearchScreen(
 }
 
 /**
- * Chips-filtro con identidad en 2Ã—2 (FlowRow). Cada filtro tiene su propio
+ * Chips-filtro con identidad en 2×2 (FlowRow). Cada filtro tiene su propio
  * icono y color accent — sin seleccionar queda neutro, al seleccionar se
  * colorea del accent y aparece una sombra sutil. Píldora completa.
- * El 2Ã—2 deja los nombres a tamaño cómodo (Canciones sin partirse).
+ * El 2×2 deja los nombres a tamaño cómodo (Canciones sin partirse).
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -494,7 +494,7 @@ private fun RecentSearchesPanel(
         if (recentPlays.isNotEmpty()) {
             item {
                 Text(
-                    "Ãšltimas reproducciones",
+                    "Últimas reproducciones",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)

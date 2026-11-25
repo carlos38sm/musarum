@@ -17,7 +17,7 @@ data class UserResponseDto(
     // los deja fuera para no filtrar preferencias ajenas.
     val shareNowPlaying: Boolean? = null,
     val shareTaste: Boolean? = null,
-    // Ãšltima conexión (login). Solo se rellena en /users/admin para el
+    // Última conexión (login). Solo se rellena en /users/admin para el
     // OWNER; en el resto de respuestas viene null. ISO-8601 UTC.
     val lastLoginAt: String? = null
 )

@@ -544,7 +544,7 @@ private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) 
         StatLine("Sin MusicBrainz ID", "${e.missingMbid} / $totalSongs")
 
         // Desglose por status del intento Emendatium (si el backend lo trae).
-        // Ãštil para diagnosticar: si ok=0 aunque Emendatium esté verde â†’
+        // Útil para diagnosticar: si ok=0 aunque Emendatium esté verde â†’
         // está respondiendo pero sin metadata (fpcalc no instalado, etc.).
         val pending = e.enrichPending
         val ok = e.enrichOk
@@ -553,7 +553,7 @@ private fun EnrichmentCard(e: ServerStatsDto.EnrichmentStats, totalSongs: Long) 
         if (pending != null && ok != null) {
             Spacer(Modifier.height(14.dp))
             Text(
-                "Ãšltimo intento Emendatium",
+                "Último intento Emendatium",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -594,7 +594,7 @@ private fun EmendatiumCard(e: ServerStatsDto.EmendatiumStats) {
         if (e.enabled && !e.reachable && !e.message.isNullOrBlank()) {
             StatLine("Motivo", e.message)
         }
-        e.lastCheckedAtMs?.let { StatLine("Ãšltima comprobación", humanInstant(it)) }
+        e.lastCheckedAtMs?.let { StatLine("Última comprobación", humanInstant(it)) }
     }
 }
 
@@ -608,8 +608,8 @@ private fun ActivityCard(a: ServerStatsDto.ActivityStats) {
         }
         Spacer(Modifier.height(10.dp))
         StatLine("Usuarios activos (30d)", a.activeUsersLast30Days.toString())
-        StatLine("Ãšltima reproducción", humanInstant(a.lastPlayAt))
-        StatLine("Ãšltimo escaneo", humanInstant(a.lastScanAt))
+        StatLine("Última reproducción", humanInstant(a.lastPlayAt))
+        StatLine("Último escaneo", humanInstant(a.lastScanAt))
         a.lastScanSummary?.let { StatLine("Resumen escaneo", it) }
     }
 }

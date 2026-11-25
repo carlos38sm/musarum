@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.HourglassEmpty
 import androidx.compose.material.icons.filled.MusicNote
@@ -38,25 +39,23 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.musarum.mobile.LocalAppContainer
 import com.musarum.mobile.LocalSnackbar
+import com.musarum.mobile.data.uploads.PickedFile
+import com.musarum.mobile.data.uploads.UploadItem
+import com.musarum.mobile.data.uploads.UploadStatus
 
 // Pantalla OWNER para subir audios al servidor desde el móvil. Usa el
 // Storage Access Framework de Android (OpenMultipleDocuments) filtrando
-// por mime audio. El VM sube cada fichero secuencialmente con POST
-// /admin/songs/upload; cada item de la lista refleja su estado en vivo
-// (pendiente, subiendo, hecho, error).
+// por mime audio. El estado real vive en UploadsManager (AppContainer)
+// para sobrevivir cuando el usuario sale a otra pestaña a mitad de una
+// subida larga.
 //
 // El fichero aterriza en MUSARUM_MUSIC_PATH/_inbox/ del servidor y se
 // importa en caliente. Emendatium (cuando esté desplegado) renombrará y
@@ -69,22 +68,20 @@ fun UploadSongsScreen(
     val context = LocalContext.current
     val container = LocalAppContainer.current
     val snackbar = LocalSnackbar.current
-    val viewModel: UploadSongsViewModel = viewModel(
-        factory = UploadSongsViewModel.factory(context, container)
-    )
-    val items by viewModel.items.collectAsStateWithLifecycle()
-    val uploading by viewModel.uploading.collectAsStateWithLifecycle()
+    val manager = container.uploadsManager
+    val items by manager.items.collectAsStateWithLifecycle()
+    val uploading by manager.uploading.collectAsStateWithLifecycle()
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
     ) { uris: List<Uri> ->
         if (uris.isEmpty()) return@rememberLauncherForActivityResult
         val picked = uris.map { uri -> probeUri(context, uri) }
-        viewModel.addFiles(picked)
+        manager.addFiles(picked)
     }
 
     LaunchedEffect(Unit) {
-        viewModel.events.collect { msg -> snackbar(msg) }
+        manager.events.collect { msg -> snackbar(msg) }
     }
 
     Scaffold(
@@ -118,7 +115,7 @@ fun UploadSongsScreen(
                     Text("Elegir audios")
                 }
                 Button(
-                    onClick = { viewModel.startUpload() },
+                    onClick = { manager.startUpload() },
                     enabled = !uploading && items.any { it.status == UploadStatus.Pending }
                 ) {
                     Icon(Icons.Filled.CloudUpload, contentDescription = null)
@@ -155,7 +152,10 @@ fun UploadSongsScreen(
             } else {
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(items, key = { it.id }) { it ->
-                        UploadRow(it)
+                        UploadRow(
+                            item = it,
+                            onRemove = { manager.remove(it.id) }
+                        )
                         HorizontalDivider()
                     }
                 }
@@ -165,7 +165,7 @@ fun UploadSongsScreen(
 }
 
 @Composable
-private fun UploadRow(item: UploadItem) {
+private fun UploadRow(item: UploadItem, onRemove: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -196,6 +196,19 @@ private fun UploadRow(item: UploadItem) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        // Papelera: solo si NO está subiéndose ahora mismo (abortar una
+        // subida en vuelo pediría cancelar el multipart → fuera de scope).
+        // Pending / Done / Error se pueden quitar para limpiar la lista o
+        // descartar algo antes de pulsar "Subir".
+        if (item.status != UploadStatus.Uploading) {
+            IconButton(onClick = onRemove) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = "Quitar de la lista",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -259,5 +272,3 @@ private fun humanBytes(bytes: Long): String {
     val mb = kb / 1024.0
     return if (mb < 1024) "%.1f MB".format(mb) else "%.2f GB".format(mb / 1024.0)
 }
-
-data class PickedFile(val uri: Uri, val displayName: String, val sizeBytes: Long)
