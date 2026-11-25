@@ -53,9 +53,11 @@ class DataContainer(
         it.cleanExpired(currentlyPlayingId = null)
     }
 
-    val updateChecker: UpdateChecker = UpdateChecker(network.apiService, applicationScope).also {
-        it.checkOnce()
-    }
+    val updateChecker: UpdateChecker = UpdateChecker(
+        apiService = network.apiService,
+        okHttpClient = network.okHttpClient,
+        applicationScope = applicationScope
+    ).also { it.checkOnce() }
 
     /** Subidas de canciones en vivo. Vive aquí (no en el VM) para que al
      *  salir de UploadSongsScreen la lista y el job sigan vivos. */

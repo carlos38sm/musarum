@@ -9,6 +9,8 @@ import androidx.compose.animation.fadeOut
 import androidx.navigation.NavBackStackEntry
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -199,31 +201,57 @@ fun MusarumNavHost(
         // Diálogo global de "actualización disponible": lo monitorizamos
         // aquí (fuera del NavHost) para que aparezca en cualquier pantalla.
         val update by container.updateChecker.available.collectAsStateWithLifecycle()
+        val missing by container.updateChecker.downloadMissing.collectAsStateWithLifecycle()
         update?.let { avail ->
             val ctx = androidx.compose.ui.platform.LocalContext.current
+            // Si el fichero del APK no es accesible (404 al hacer HEAD),
+            // relajamos el modo mandatory — nadie debería quedar atrapado
+            // en un bucle "Descargar → 404 → diálogo" por un anuncio mal
+            // publicado. El OWNER tendrá que arreglar el anuncio desde
+            // Perfil → Publicar actualización.
+            val blocking = avail.mandatory && !missing
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = {
-                    // Solo cerrable si no es mandatory — así forzamos al
-                    // usuario a actualizar cuando el backend lo exige.
-                    if (!avail.mandatory) container.updateChecker.dismiss()
+                    if (!blocking) container.updateChecker.dismiss()
                 },
-                title = { androidx.compose.material3.Text("Nueva versión disponible") },
-                text = {
+                title = {
                     androidx.compose.material3.Text(
-                        "Hay una versión más reciente de Musarum (${avail.latest}). " +
-                            "Tienes instalada la ${avail.current}."
+                        if (missing) "Actualización no disponible"
+                        else "Nueva versión disponible"
                     )
                 },
+                text = {
+                    androidx.compose.foundation.layout.Column {
+                        androidx.compose.material3.Text(
+                            "Hay una versión más reciente de Musarum (${avail.latest}). " +
+                                "Tienes instalada la ${avail.current}."
+                        )
+                        if (missing) {
+                            Spacer(Modifier.height(10.dp))
+                            androidx.compose.material3.Text(
+                                "El archivo de la ${avail.latest} no está disponible " +
+                                    "en el servidor. Pide al OWNER que corrija el " +
+                                    "anuncio o lo retire.",
+                                color = androidx.compose.material3.MaterialTheme.colorScheme.error,
+                                style = androidx.compose.material3.MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                },
                 confirmButton = {
-                    androidx.compose.material3.TextButton(onClick = {
-                        container.updateChecker.openDownload(ctx)
-                        if (!avail.mandatory) container.updateChecker.dismiss()
-                    }) {
-                        androidx.compose.material3.Text("Descargar")
+                    if (missing) {
+                        androidx.compose.material3.TextButton(onClick = {
+                            container.updateChecker.dismiss()
+                        }) { androidx.compose.material3.Text("Entendido") }
+                    } else {
+                        androidx.compose.material3.TextButton(onClick = {
+                            container.updateChecker.openDownload(ctx)
+                            if (!avail.mandatory) container.updateChecker.dismiss()
+                        }) { androidx.compose.material3.Text("Descargar") }
                     }
                 },
                 dismissButton = {
-                    if (!avail.mandatory) {
+                    if (!blocking && !missing) {
                         androidx.compose.material3.TextButton(onClick = {
                             container.updateChecker.dismiss()
                         }) { androidx.compose.material3.Text("Más tarde") }
