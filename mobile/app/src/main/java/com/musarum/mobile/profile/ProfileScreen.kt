@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Celebration
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.DevicesOther
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Folder
@@ -94,6 +95,7 @@ fun ProfileScreen(
     onOpenEqualizer: () -> Unit = {},
     onOpenPublishUpdate: () -> Unit = {},
     onOpenUploadSongs: () -> Unit = {},
+    onOpenUnidentifiedSongs: () -> Unit = {},
     onOpenCarMode: () -> Unit = {},
     onOpenHandoff: () -> Unit = {},
     onOpenParty: () -> Unit = {},
@@ -457,6 +459,13 @@ fun ProfileScreen(
                     title = "Subir canciones",
                     subtitle = "Enviar audios al servidor",
                     onClick = onOpenUploadSongs
+                )
+                Spacer(Modifier.height(6.dp))
+                SettingRow(
+                    icon = Icons.Filled.Help,
+                    title = "Canciones sin identificar",
+                    subtitle = "Edita sus tags y Emendatium las moverá",
+                    onClick = onOpenUnidentifiedSongs
                 )
                 Spacer(Modifier.height(6.dp))
                 SettingRow(

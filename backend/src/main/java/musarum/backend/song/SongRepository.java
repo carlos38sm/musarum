@@ -179,6 +179,21 @@ public interface SongRepository extends JpaRepository<Song, Long> {
     @Query("SELECT COUNT(s) FROM Song s WHERE s.enrichStatus = musarum.backend.song.EnrichStatus.FAILED_TRANSIENT")
     long countEnrichTransient();
 
+    /**
+     * Canciones "sin identificar" para la pantalla OWNER. Dos criterios
+     * unidos con OR:
+     *  - Emendatium las marcó FAILED_NO_MATCH (no las supo identificar).
+     *  - Su fichero vive en _inbox/sin-identificar/ (ya las movimos ahí).
+     *
+     * Ambos set suelen coincidir, pero puede haber desfase si el watcher
+     * recolocó algo sin pasar por Emendatium. Con OR cubrimos los dos.
+     */
+    @Query("SELECT s FROM Song s WHERE " +
+           "s.enrichStatus = musarum.backend.song.EnrichStatus.FAILED_NO_MATCH " +
+           "OR s.audioPath LIKE '%/_inbox/sin-identificar/%' " +
+           "ORDER BY s.createdAt DESC")
+    List<Song> findUnidentified();
+
     // ── Home / Nuevos descubrimientos ─────────────────────────────────────
 
     /** Página de canciones creadas desde :since, orden desc por createdAt. */

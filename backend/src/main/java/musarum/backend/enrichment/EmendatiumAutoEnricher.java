@@ -1,7 +1,9 @@
 package musarum.backend.enrichment;
 
+import java.nio.file.Path;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import musarum.backend.enrichment.dto.EnrichmentResponse;
@@ -13,11 +15,16 @@ import musarum.backend.song.SongService;
  * recién importada. No bloquea el scan: usa el pool {@code scannerExecutor}.
  * Si Emendatium no está configurado, no hace nada (silencioso).
  *
- * <p>El resultado se aplica vía {@link BatchResultApplier#applySingle} para
- * reutilizar la misma lógica que el batch (letras, portadas, biografías…).
- * Cada intento marca {@code enrich_status} en la canción: OK si llegó
- * metadata, FAILED_NO_MATCH si Emendatium no identificó la pista,
- * FAILED_TRANSIENT si fue un error de red/timeout (reintentable).
+ * <p>Política de reubicación del fichero según dónde esté:
+ * <ul>
+ *   <li><b>Está en {@code _inbox/}</b> (bandeja de entrada, directo o en
+ *       {@code _inbox/sin-identificar/}): si identificamos la canción
+ *       la MOVEMOS a la raíz de la biblioteca con nombre bonito; si no,
+ *       la movemos a {@code _inbox/sin-identificar/}.</li>
+ *   <li><b>Fuera de {@code _inbox/}</b> (ya organizada por el OWNER a
+ *       mano, p. ej. canciones viejas): solo renombramos in-place si
+ *       hay sugerencia nueva. Jamás la movemos de carpeta sin permiso.</li>
+ * </ul>
  */
 @Service
 public class EmendatiumAutoEnricher {
@@ -28,50 +35,46 @@ public class EmendatiumAutoEnricher {
     private final BatchResultApplier applier;
     private final SongService songService;
     private final EnrichmentProgress progress;
+    private final Path musicRoot;
+    private final Path inboxRoot;
 
     EmendatiumAutoEnricher(EmendatiumClient client,
                            BatchResultApplier applier,
                            SongService songService,
-                           EnrichmentProgress progress) {
+                           EnrichmentProgress progress,
+                           @Value("${MUSARUM_MUSIC_PATH}") String musicPath) {
         this.client = client;
         this.applier = applier;
         this.songService = songService;
         this.progress = progress;
+        this.musicRoot = Path.of(musicPath).toAbsolutePath().normalize();
+        this.inboxRoot = this.musicRoot.resolve("_inbox");
     }
 
     /**
      * Sin @Transactional externo: {@link BatchResultApplier#applySingle} y
      * {@link SongService#findEntityById} abren sus propias transacciones.
-     * Mezclar @Async + @Transactional externo + @Transactional internos
-     * provocaba {@code UnexpectedRollbackException} al commitear la externa.
      */
     @Async("scannerExecutor")
     public void enrichAsync(Long songId, String audioPath) {
         if (!client.isEnabled()) {
-            // Aun así cuenta como "procesada" para que si alguien llamó
-            // startRun(total), el contador cierre y el progreso llegue a 100%.
             progress.onDone(false);
             return;
         }
-        // Si el OWNER canceló el run, salimos sin tocar Emendatium. Contamos
-        // como procesada para que la barra llegue al total rápido y el
-        // "running" pase a false sin que haya que esperar a las N miles de
-        // tareas en cola que ya no vamos a ejecutar.
         if (progress.isCancelled()) {
             progress.onDone(false);
             return;
         }
         boolean ok = false;
         try {
+            boolean inInbox = isInInbox(audioPath);
             EnrichmentResponse resp = client.enrich(audioPath).orElse(null);
             if (resp == null || resp.metadata() == null) {
-                // Emendatium respondió sin metadata usable → sin match.
-                // Igualmente intentamos limpiar la basura del nombre si la
-                // sugerencia vino rellena (p. ej. quitar "(Official Audio)"
-                // aunque AcoustID no identificara la canción).
-                if (resp != null && resp.suggestions() != null
-                        && resp.suggestions().fileName() != null) {
-                    String newPath = client.rename(audioPath, resp.suggestions().fileName());
+                // No match. Si está en _inbox (directo), lo mandamos a
+                // cuarentena para que la raíz quede limpia. Si ya está en
+                // sin-identificar/ no lo movemos (ya está donde toca).
+                if (inInbox && !isInQuarantine(audioPath)) {
+                    String newPath = client.quarantine(audioPath);
                     if (!newPath.equals(audioPath)) {
                         songService.updateAudioPath(songId, newPath);
                     }
@@ -82,10 +85,6 @@ public class EmendatiumAutoEnricher {
             }
             ok = true;
 
-            // Log de lo que llega para que el OWNER pueda ver en docker logs
-            // por qué BPM/key siguen null aunque Emendatium esté 🟢. Si
-            // bpm/key vienen null aquí, el problema está dentro de
-            // Emendatium (fpcalc falta, FFT no corre, etc.).
             var m = resp.metadata();
             log.info("Emendatium OK: id={} bpm={} key={} rg={} mbArtist={} mbRelease={} cover={}",
                     songId, m.bpm(), m.musicalKey(), m.replayGainTrackGain(),
@@ -93,24 +92,52 @@ public class EmendatiumAutoEnricher {
                     m.coverArt() != null ? "yes" : "no");
 
             applier.applySingle(songId, m);
-            // Renombrado: si Emendatium sugiere un nombre nuevo, aplicamos
-            // el rename en Emendatium (que vive el único con acceso al fs
-            // montado) y actualizamos la ruta en la DB. Sin esto los
-            // "cancion-spotifydownload.com.mp3" se quedaban eternamente.
+
+            // Sugerencia de nombre: siempre que venga, la usamos. La
+            // operación concreta depende de dónde viva el fichero.
             if (resp.suggestions() != null && resp.suggestions().fileName() != null) {
-                String newPath = client.rename(audioPath, resp.suggestions().fileName());
+                String newPath;
+                if (inInbox) {
+                    // Sacamos de _inbox a la raíz de la biblioteca.
+                    newPath = client.organize(audioPath, resp.suggestions().fileName());
+                } else {
+                    // Ya organizada por el OWNER: rename in-place, nada
+                    // más. No sacamos de su carpeta.
+                    newPath = client.rename(audioPath, resp.suggestions().fileName());
+                }
                 if (!newPath.equals(audioPath)) {
                     songService.updateAudioPath(songId, newPath);
                 }
             }
             songService.markEnrichment(songId, EnrichStatus.OK);
         } catch (Exception e) {
-            // Red caída, timeout, 5xx → marcamos como transient para que
-            // "Re-enriquecer todo" lo re-intente la próxima vez.
             songService.markEnrichment(songId, EnrichStatus.FAILED_TRANSIENT);
             log.warn("Auto-enrich fallido (transient) id={}: {}", songId, e.getMessage());
         } finally {
             progress.onDone(ok);
+        }
+    }
+
+    /**
+     * ¿El fichero está en la bandeja de entrada (incluida la subcarpeta
+     * {@code sin-identificar/})? Normaliza el path para evitar falsos
+     * negativos por {@code ../} o barras mixtas.
+     */
+    private boolean isInInbox(String audioPath) {
+        try {
+            Path p = Path.of(audioPath).toAbsolutePath().normalize();
+            return p.startsWith(inboxRoot);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private boolean isInQuarantine(String audioPath) {
+        try {
+            Path p = Path.of(audioPath).toAbsolutePath().normalize();
+            return p.startsWith(inboxRoot.resolve("sin-identificar"));
+        } catch (Exception e) {
+            return false;
         }
     }
 }

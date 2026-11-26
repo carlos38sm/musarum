@@ -473,6 +473,15 @@ interface ApiService {
         @Body request: com.musarum.mobile.data.network.dto.PublishUpdateRequest
     ): com.musarum.mobile.data.network.dto.AppUpdateDto
 
+    // ── Canciones sin identificar (OWNER) ──
+    // Lista las canciones que Emendatium no supo reconocer o que viven
+    // ya en _inbox/sin-identificar/. Las ordena por fecha de alta
+    // descendente para que las últimas subidas salgan primero.
+    @GET("admin/songs/unidentified")
+    suspend fun unidentifiedSongs():
+            List<com.musarum.mobile.data.network.dto.SongSummaryDto>
+
+
     @retrofit2.http.POST("admin/server/clean-orphan-lyrics")
     suspend fun cleanOrphanLyrics(): com.musarum.mobile.data.network.dto.CleanOrphanLyricsDto
 

@@ -322,6 +322,7 @@ fun MusarumNavHost(
                     onOpenEqualizer = { navController.navigate(Routes.EQUALIZER) },
                     onOpenPublishUpdate = { navController.navigate(Routes.PUBLISH_UPDATE) },
                     onOpenUploadSongs = { navController.navigate(Routes.UPLOAD_SONGS) },
+                    onOpenUnidentifiedSongs = { navController.navigate(Routes.UNIDENTIFIED_SONGS) },
                     onOpenCarMode = { navController.navigate(Routes.CAR_MODE) },
                     onOpenHandoff = { navController.navigate(Routes.HANDOFF) },
                     onOpenParty = { navController.navigate(Routes.PARTY) }
@@ -352,6 +353,12 @@ fun MusarumNavHost(
 
             composable(Routes.UPLOAD_SONGS) {
                 com.musarum.mobile.profile.upload.UploadSongsScreen(
+                    onBack = { navController.popBackStack() }
+                )
+            }
+
+            composable(Routes.UNIDENTIFIED_SONGS) {
+                com.musarum.mobile.profile.unidentified.UnidentifiedSongsScreen(
                     onBack = { navController.popBackStack() }
                 )
             }

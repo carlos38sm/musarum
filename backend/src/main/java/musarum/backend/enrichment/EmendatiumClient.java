@@ -118,7 +118,67 @@ public class EmendatiumClient {
     }
 
     public record RenameRequest(String path, Object metadata, String overrideName) {}
+    public record OrganizeRequest(String path, Object metadata, String overrideName) {}
+    public record QuarantineRequest(String path) {}
     public record RenameResponse(String oldPath, String newPath, boolean changed) {}
+
+    /**
+     * Mueve el fichero a la raíz de la biblioteca (donde Carlos tiene
+     * todas las canciones planas). Se usa cuando la canción está en
+     * {@code _inbox/} y Emendatium la identificó. Devuelve el path
+     * nuevo, o el original si falla.
+     */
+    public String organize(String audioPath, String suggestedName) {
+        if (!isEnabled()) return audioPath;
+        if (suggestedName == null || suggestedName.isBlank()) return audioPath;
+        String baseName = suggestedName;
+        int dot = baseName.lastIndexOf('.');
+        if (dot > 0) baseName = baseName.substring(0, dot);
+        try {
+            RenameResponse resp = http.post()
+                    .uri(baseUrl + "/api/enrich/organize")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new OrganizeRequest(audioPath, null, baseName))
+                    .retrieve()
+                    .body(RenameResponse.class);
+            if (resp == null) return audioPath;
+            if (resp.changed()) {
+                log.info("📦 Emendatium movió a raíz {} → {}", audioPath, resp.newPath());
+                return resp.newPath();
+            }
+            return audioPath;
+        } catch (Exception e) {
+            log.warn("Emendatium organize falló para {}: {}", audioPath, e.getMessage());
+            return audioPath;
+        }
+    }
+
+    /**
+     * Mueve el fichero a {@code _inbox/sin-identificar/}. Se usa cuando
+     * Emendatium no pudo identificar la canción — así la raíz de
+     * {@code _inbox/} queda limpia. Devuelve el path nuevo, o el
+     * original si falla.
+     */
+    public String quarantine(String audioPath) {
+        if (!isEnabled()) return audioPath;
+        try {
+            RenameResponse resp = http.post()
+                    .uri(baseUrl + "/api/enrich/quarantine")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new QuarantineRequest(audioPath))
+                    .retrieve()
+                    .body(RenameResponse.class);
+            if (resp == null) return audioPath;
+            if (resp.changed()) {
+                log.info("🗂️ Emendatium a cuarentena {} → {}", audioPath, resp.newPath());
+                return resp.newPath();
+            }
+            return audioPath;
+        } catch (Exception e) {
+            log.warn("Emendatium quarantine falló para {}: {}", audioPath, e.getMessage());
+            return audioPath;
+        }
+    }
 
     /**
      * Snapshot del estado de Emendatium para el panel de servidor. Hace ping

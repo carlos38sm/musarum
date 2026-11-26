@@ -4,6 +4,7 @@ import emendatium.backend.batch.BatchJob;
 import emendatium.backend.batch.BatchService;
 import emendatium.backend.enrichment.EnrichmentService;
 import emendatium.backend.enrichment.EnrichmentService.EnrichmentResult;
+import emendatium.backend.naming.FileOrganizer;
 import emendatium.backend.naming.FileRenamer;
 import emendatium.backend.naming.FilenameBuilder;
 import emendatium.backend.shared.PathGuard;
@@ -29,6 +30,7 @@ public class EnrichController {
     private final PathGuard pathGuard;
     private final TagWriter tagWriter;
     private final FileRenamer fileRenamer;
+    private final FileOrganizer fileOrganizer;
     private final FilenameBuilder filenameBuilder;
 
     // ════════════════════════════════════════════════════════════════════════
@@ -102,6 +104,63 @@ public class EnrichController {
         }
 
         Path moved = fileRenamer.renameInPlace(audio, newBase);
+        boolean changed = !moved.equals(audio);
+        return ResponseEntity.ok(new RenameResponse(
+                audio.toString(), moved.toString(), changed));
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // 3b. ORGANIZAR (mover a raíz de la biblioteca)
+    // ════════════════════════════════════════════════════════════════════════
+
+    public record OrganizeRequest(String path, TrackMetadata metadata, String overrideName) {}
+
+    /**
+     * POST /api/enrich/organize
+     * Body: {"path": "...", "metadata": {...}}  — usa la plantilla configurada
+     *   o: {"path": "...", "overrideName": "nombre sin extension"}
+     *
+     * Mueve el fichero a la RAÍZ de la biblioteca ({@code enricher.folders.input})
+     * con el nombre indicado. Diseñado para sacar canciones recién subidas de
+     * {@code _inbox/} una vez Emendatium las identifica. Si en destino hay
+     * colisión, añade " (2)", " (3)"... El backend llama a este endpoint
+     * SOLO cuando el fichero estaba en la bandeja de entrada — para otros
+     * paths usa {@code /enrich/rename} que mantiene la carpeta.
+     */
+    @PostMapping("/enrich/organize")
+    public ResponseEntity<RenameResponse> organize(@RequestBody OrganizeRequest req) {
+        Path audio = pathGuard.validateAudio(req.path());
+
+        String newBase = req.overrideName();
+        if (newBase == null || newBase.isBlank()) {
+            if (req.metadata() == null) {
+                throw new IllegalArgumentException("Hace falta 'metadata' o 'overrideName'");
+            }
+            newBase = filenameBuilder.build(req.metadata());
+        }
+
+        Path moved = fileOrganizer.moveToRoot(audio, newBase);
+        boolean changed = !moved.equals(audio);
+        return ResponseEntity.ok(new RenameResponse(
+                audio.toString(), moved.toString(), changed));
+    }
+
+    public record QuarantineRequest(String path) {}
+
+    /**
+     * POST /api/enrich/quarantine
+     * Body: {"path": "..."}
+     *
+     * Mueve el fichero a {@code _inbox/sin-identificar/} preservando su
+     * nombre original. El backend llama aquí cuando Emendatium NO
+     * identificó la pista — así la raíz de {@code _inbox/} queda limpia
+     * (solo contiene ficheros en proceso) y el OWNER puede gestionar
+     * las fallidas desde una pantalla dedicada.
+     */
+    @PostMapping("/enrich/quarantine")
+    public ResponseEntity<RenameResponse> quarantine(@RequestBody QuarantineRequest req) {
+        Path audio = pathGuard.validateAudio(req.path());
+        Path moved = fileOrganizer.moveToQuarantine(audio);
         boolean changed = !moved.equals(audio);
         return ResponseEntity.ok(new RenameResponse(
                 audio.toString(), moved.toString(), changed));
