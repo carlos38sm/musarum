@@ -495,6 +495,16 @@ interface ApiService {
     @retrofit2.http.POST("admin/server/re-enrich-all")
     suspend fun reEnrichAll(): com.musarum.mobile.data.network.dto.ReEnrichSummaryDto
 
+    // Re-enriquece SOLO artistas (foto + bio). No toca canciones. Es barato
+    // porque no analiza audio: una llamada HTTP a TheAudioDB por artista.
+    @retrofit2.http.POST("admin/server/re-enrich-artists")
+    suspend fun reEnrichArtists(): com.musarum.mobile.data.network.dto.ReEnrichSummaryDto
+
+    // Re-enriquece SOLO canciones aplicando escalares (bpm, key, replaygain,
+    // letras). No toca artistas ni álbumes — preserva lo que ya curó el OWNER.
+    @retrofit2.http.POST("admin/server/re-enrich-songs-only")
+    suspend fun reEnrichSongsOnly(): com.musarum.mobile.data.network.dto.ReEnrichSummaryDto
+
     // "Buscar actualizaciones": detecta tags nuevos en GitHub Releases,
     // publica el anuncio de APK si hay una nueva y dispara Watchtower para
     // recrear el backend al instante.

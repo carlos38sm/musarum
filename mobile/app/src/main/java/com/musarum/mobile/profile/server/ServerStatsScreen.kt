@@ -29,7 +29,9 @@ import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.NetworkCheck
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Storage
@@ -43,6 +45,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -150,6 +153,7 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                 )
                 MaintenanceCard(
                     songCount = s.stats.catalog.songs,
+                    artistCount = s.stats.catalog.artists,
                     progress = enrichProgress,
                     onDismissProgress = { viewModel.dismissEnrichProgress() },
                     onCancelEnrich = {
@@ -160,6 +164,16 @@ fun ServerStatsScreen(onBack: () -> Unit) {
                     onWipeRequested = { showWipeDialog = true },
                     onReEnrichRequested = {
                         viewModel.reEnrichAll { _, msg ->
+                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
+                    },
+                    onReEnrichArtistsRequested = {
+                        viewModel.reEnrichArtists { _, msg ->
+                            scope.launch { snackbarHostState.showSnackbar(msg) }
+                        }
+                    },
+                    onReEnrichSongsOnlyRequested = {
+                        viewModel.reEnrichSongsOnly { _, msg ->
                             scope.launch { snackbarHostState.showSnackbar(msg) }
                         }
                     },
@@ -274,18 +288,21 @@ private fun deriveGrafanaUrl(baseUrl: String): String {
 @Composable
 private fun MaintenanceCard(
     songCount: Long,
+    artistCount: Long,
     progress: com.musarum.mobile.data.network.dto.EnrichProgressDto?,
     onDismissProgress: () -> Unit,
     onCancelEnrich: () -> Unit,
     onWipeRequested: () -> Unit,
     onReEnrichRequested: () -> Unit,
+    onReEnrichArtistsRequested: () -> Unit,
+    onReEnrichSongsOnlyRequested: () -> Unit,
     onCleanOrphansRequested: () -> Unit
 ) {
     StatCard(title = "Mantenimiento") {
         Text(
-            "Vuelve a pasar Emendatium por TODA la biblioteca: biografías, " +
-                "BPM, tonalidad, portadas, ReplayGain y renombrado. Los campos " +
-                "ya puestos no se pisan — solo se rellenan los que estén vacíos.",
+            "Vuelve a pasar Emendatium por el catálogo. Elige qué refrescar: " +
+                "todo a la vez, solo artistas (fotos + bio, es lo más rápido) " +
+                "o solo canciones (BPM, tonalidad, letras, ReplayGain).",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -316,6 +333,34 @@ private fun MaintenanceCard(
                     running -> "Enriqueciendo…"
                     else -> "Re-enriquecer todo ($songCount canciones)"
                 }
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = onReEnrichArtistsRequested,
+            enabled = artistCount > 0 && !running,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.Person, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (artistCount > 0) "Re-enriquecer artistas ($artistCount)"
+                else "Sin artistas que refrescar"
+            )
+        }
+
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(
+            onClick = onReEnrichSongsOnlyRequested,
+            enabled = songCount > 0 && !running,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Icon(Icons.Filled.MusicNote, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                if (songCount > 0) "Re-enriquecer canciones ($songCount)"
+                else "Sin canciones que refrescar"
             )
         }
 

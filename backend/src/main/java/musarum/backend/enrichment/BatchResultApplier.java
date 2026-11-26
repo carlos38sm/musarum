@@ -227,4 +227,32 @@ class BatchResultApplier {
         String coverUrl = meta.coverArt() != null ? meta.coverArt().sourceUrl() : null;
         albumService.applyEnrichment(album.getId(), meta.mbReleaseId(), meta.year(), coverUrl);
     }
+
+    /**
+     * Variante de {@link #applySingle} que solo toca los escalares de la
+     * canción (bpm, key, replaygain, letras, isrc, mbRelease) y NO los
+     * campos de artista ni álbum. Para "Re-enriquecer solo canciones":
+     * el OWNER ya curó las fotos/bios de artistas y las covers de álbum
+     * a mano y no quiere que esta pasada se las pise.
+     */
+    public void applyScalarsOnly(Long songId, EnrichedMetadata meta) {
+        String lyricsPath = null;
+        if (meta.syncedLyrics() != null && !meta.syncedLyrics().isBlank()) {
+            try {
+                Song current = songService.findEntityById(songId);
+                boolean alreadyHasLyrics = current.getLyricsPath() != null
+                        && !current.getLyricsPath().isBlank()
+                        && java.nio.file.Files.exists(lyricsWriter.pathFor(songId));
+                if (!alreadyHasLyrics) {
+                    lyricsPath = lyricsWriter.write(songId, meta.syncedLyrics());
+                }
+            } catch (Exception e) {
+                log.warn("No se pudo guardar letra embebida id={}: {}", songId, e.getMessage());
+            }
+        }
+
+        songService.applyScalarEnrichment(songId,
+                meta.bpm(), meta.musicalKey(), meta.replayGainTrackGain(),
+                lyricsPath, meta.mbReleaseId(), meta.isrc());
+    }
 }

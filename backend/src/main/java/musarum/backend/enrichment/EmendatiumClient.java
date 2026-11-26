@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import musarum.backend.enrichment.dto.ArtistInfo;
 import musarum.backend.enrichment.dto.EnrichRequest;
 import musarum.backend.enrichment.dto.EnrichmentResponse;
 
@@ -121,6 +122,33 @@ public class EmendatiumClient {
     public record OrganizeRequest(String path, Object metadata, String overrideName) {}
     public record QuarantineRequest(String path) {}
     public record RenameResponse(String oldPath, String newPath, boolean changed) {}
+    public record ArtistEnrichRequest(String name, String mbArtistId) {}
+
+    /**
+     * Pide a Emendatium info fresca del artista (TheAudioDB + LastFM
+     * fallback) SIN pasar por ningún fichero de audio — mucho más barato
+     * que {@code /api/enrich}. Devuelve {@link Optional#empty()} si no
+     * hay match o si Emendatium está deshabilitado.
+     */
+    public Optional<ArtistInfo> artistInfo(String name, String mbArtistId) {
+        if (!isEnabled()) return Optional.empty();
+        if ((name == null || name.isBlank()) && (mbArtistId == null || mbArtistId.isBlank())) {
+            return Optional.empty();
+        }
+        try {
+            ArtistInfo resp = http.post()
+                    .uri(baseUrl + "/api/enrich/artist")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new ArtistEnrichRequest(name, mbArtistId))
+                    .retrieve()
+                    .body(ArtistInfo.class);
+            return Optional.ofNullable(resp);
+        } catch (Exception e) {
+            log.warn("Emendatium /api/enrich/artist falló para '{}' / {}: {}",
+                    name, mbArtistId, e.getMessage());
+            return Optional.empty();
+        }
+    }
 
     /**
      * Mueve el fichero a la raíz de la biblioteca (donde Carlos tiene

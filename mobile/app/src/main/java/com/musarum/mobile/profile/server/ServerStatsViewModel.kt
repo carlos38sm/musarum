@@ -205,6 +205,40 @@ class ServerStatsViewModel(
         }
     }
 
+    fun reEnrichArtists(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val summary = apiService.reEnrichArtists()
+                startEnrichPolling()
+                onResult(
+                    true,
+                    "Encolados ${summary.queued} artistas. Las fotos irán entrando."
+                )
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                onResult(false, t.message ?: "No se pudo re-enriquecer artistas")
+            }
+        }
+    }
+
+    fun reEnrichSongsOnly(onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val summary = apiService.reEnrichSongsOnly()
+                startEnrichPolling()
+                onResult(
+                    true,
+                    "Encoladas ${summary.queued} canciones. BPM/key/letras se actualizarán."
+                )
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (t: Throwable) {
+                onResult(false, t.message ?: "No se pudo re-enriquecer canciones")
+            }
+        }
+    }
+
     private fun checkInitialEnrichProgress() {
         viewModelScope.launch {
             try {

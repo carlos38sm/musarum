@@ -418,6 +418,70 @@ public class ServerStatsService {
 
     public record ReEnrichSummary(int queued, long total) {}
 
+    /**
+     * Relanza enriquecimiento SOLO sobre artistas. Recorre todos los
+     * artistas de la DB y por cada uno pide a Emendatium la info fresca
+     * de TheAudioDB (fallback LastFM para bio). Mucho más barato que
+     * {@link #reEnrichAll()} porque no analiza audio ni abre ficheros:
+     * una llamada HTTP por artista. Útil cuando el OWNER quiere refrescar
+     * las fotos de las bolitas sin esperar a que el pipeline general pase
+     * por cada canción.
+     *
+     * <p>La política de sobrescritura la decide {@code Artist.applyEnrichment}:
+     * la {@code imageUrl} siempre pisa (si Emendatium devuelve una nueva);
+     * {@code biography} y {@code country} solo se completan si estaban null.
+     */
+    @Transactional(readOnly = true)
+    public ReEnrichSummary reEnrichArtists() {
+        long total = artistRepository.count();
+        enrichmentProgress.startRun(total);
+
+        int queued = 0;
+        int page = 0;
+        int size = 500;
+        while (true) {
+            var p = artistRepository.findAll(
+                    org.springframework.data.domain.PageRequest.of(page, size));
+            for (var a : p.getContent()) {
+                emendatiumEnricher.enrichArtistAsync(a.getId(), a.getName(), a.getMbId());
+                queued++;
+            }
+            if (!p.hasNext()) break;
+            page++;
+        }
+        log.info("reEnrichArtists: encolados {} artistas (de {} totales)", queued, total);
+        return new ReEnrichSummary(queued, total);
+    }
+
+    /**
+     * Relanza enriquecimiento SOLO sobre canciones aplicando los escalares
+     * (bpm, key, replaygain, letras, isrc, mbRelease). No toca artista ni
+     * álbum — pensado para cuando el OWNER ya curó fotos/bios/covers a mano
+     * y no quiere que esta pasada se las pise. Tampoco mueve ni renombra
+     * ficheros: la operación es idempotente sobre el filesystem.
+     */
+    @Transactional(readOnly = true)
+    public ReEnrichSummary reEnrichSongsOnly() {
+        long total = songRepository.count();
+        enrichmentProgress.startRun(total);
+
+        int queued = 0;
+        int page = 0;
+        int size = 200;
+        while (true) {
+            var p = songRepository.findReenqueueable(
+                    org.springframework.data.domain.PageRequest.of(page, size));
+            for (Song s : p.getContent()) {
+                emendatiumEnricher.enrichSongScalarsOnlyAsync(s.getId(), s.getAudioPath());
+                queued++;
+            }
+            if (!p.hasNext()) break;
+            page++;
+        }
+        log.info("reEnrichSongsOnly: encoladas {} canciones elegibles (de {} totales)", queued, total);
+        return new ReEnrichSummary(queued, total);
+    }
+
     /** Snapshot del progreso de "Re-enriquecer todo" para el móvil. */
     public EnrichmentProgress.EnrichmentProgressDto reEnrichProgress() {
         return enrichmentProgress.snapshot();

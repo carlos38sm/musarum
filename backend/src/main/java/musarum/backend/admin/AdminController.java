@@ -121,6 +121,32 @@ class AdminController {
     }
 
     /**
+     * Re-enriquece SOLO artistas (fotos y bios vía TheAudioDB/LastFM). No
+     * toca canciones, no abre ficheros de audio: una llamada HTTP por
+     * artista. Mucho más rápido que {@link #reEnrichAll()} cuando lo
+     * único que interesa es refrescar las bolitas.
+     */
+    @PostMapping("/re-enrich-artists")
+    @PreAuthorize("hasRole('OWNER')")
+    ServerStatsService.ReEnrichSummary reEnrichArtists() {
+        logCaller("re-enrich-artists");
+        return statsService.reEnrichArtists();
+    }
+
+    /**
+     * Re-enriquece SOLO canciones aplicando campos escalares (BPM, key,
+     * replaygain, letras, isrc). No toca artistas ni álbumes — pensado
+     * para cuando ya se curaron fotos/bios/covers a mano y no se quieren
+     * pisar. Tampoco mueve ni renombra ficheros.
+     */
+    @PostMapping("/re-enrich-songs-only")
+    @PreAuthorize("hasRole('OWNER')")
+    ServerStatsService.ReEnrichSummary reEnrichSongsOnly() {
+        logCaller("re-enrich-songs-only");
+        return statsService.reEnrichSongsOnly();
+    }
+
+    /**
      * Progreso del "Re-enriquecer todo" en curso. El móvil hace polling
      * aquí mientras running=true para pintar la barra. No cambia nada,
      * solo devuelve contadores — es barato.
