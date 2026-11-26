@@ -57,7 +57,11 @@ public record TrackMetadata(
             String country,
             Integer formedYear,
             String style,
-            String website
+            String website,
+            // URL remota a la foto del artista (TheAudioDB CDN). Se guarda
+            // literal en artists.image_url del backend — el móvil la pide
+            // directamente, no la cacheamos en el servidor.
+            String imageUrl
     ) {}
 
     @Builder(toBuilder = true)

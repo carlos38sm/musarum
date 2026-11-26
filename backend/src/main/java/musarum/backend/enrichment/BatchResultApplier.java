@@ -131,7 +131,7 @@ class BatchResultApplier {
                 meta.mbArtistId(),
                 meta.artistInfo().biography(),
                 meta.artistInfo().country(),
-                null
+                meta.artistInfo().imageUrl()
         );
     }
 
@@ -215,7 +215,7 @@ class BatchResultApplier {
                 meta.mbArtistId(),
                 meta.artistInfo().biography(),
                 meta.artistInfo().country(),
-                null
+                meta.artistInfo().imageUrl()
         );
     }
 

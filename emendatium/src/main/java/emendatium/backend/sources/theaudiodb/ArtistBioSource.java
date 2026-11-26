@@ -48,13 +48,24 @@ public class ArtistBioSource implements MetadataSource {
                 .filter(y -> y != null && y.matches("\\d{4}"))
                 .map(Integer::parseInt)
                 .orElse(null);
+        // Foto real del artista: preferimos thumb (cara), caemos a logo si
+        // el thumb viene vacío. Solo aceptamos URLs http(s), por si TheAudioDB
+        // devuelve un valor degenerado.
+        String imageUrl = audioDb
+                .map(a -> {
+                    String t = Values.clean(a.thumb());
+                    return (t != null && !t.isBlank()) ? t : Values.clean(a.logo());
+                })
+                .filter(u -> u != null && (u.startsWith("http://") || u.startsWith("https://")))
+                .orElse(null);
 
-        if (biography == null && country == null && style == null && website == null && formedYear == null) {
+        if (biography == null && country == null && style == null && website == null
+                && formedYear == null && imageUrl == null) {
             return Optional.empty();
         }
 
         return Optional.of(TrackMetadata.builder()
-                .artistInfo(new TrackMetadata.ArtistInfo(biography, country, formedYear, style, website))
+                .artistInfo(new TrackMetadata.ArtistInfo(biography, country, formedYear, style, website, imageUrl))
                 .build());
     }
 }
